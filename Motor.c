@@ -1,21 +1,14 @@
+/******************************/
+/*       Motor.c by MAP       */
+/******************************/
+
+/* INCLUDE */
+
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
-/* USER INPUT (DEBUG ONLY) */
-
-unsigned __int32 u_rnd_seed = 0x66010338; //fixed seed or "True" for a random one
-unsigned __int32 u_frames = 5000000; //how many frames you want to go through (I suggest between 0x4000 and 0xFFFFFFFF)
-
-//technically both of these are a single u32 int split in 2, originating from the MT RNG
-unsigned __int16 u_tid = 0x8888; //your tid, either hex or dec
-unsigned __int16 u_sid = 0x422a; //your sid, either hex or dec
-
-char *u_language = "en"; //language of your game (jp, en, fr, it, ge, sp, ko)
-char *u_version = "Platinum"; //version of your game (Diamond, Pearl, Platinum)
-unsigned __int32 u_aslr = 0x0227116C; //depends on language and version, use 0x0227116C for english plat
 
 
 /* CONSTANTS */
@@ -65,6 +58,7 @@ char Items[ITEMS][14] = {"None", "Master Ball", "Ultra Ball", "Great Ball", "Pok
 
 char Moves[MOVES][14] = { "----" , "Pound", "Karate Chop", "Double Slap", "Comet Punch", "Mega Punch", "Pay Day", "Fire Punch", "Ice Punch", "Thunder Punch", "Scratch", "Vice Grip", "Guillotine", "Razor Wind", "Swords Dance", "Cut", "Gust", "Wing Attack", "Whirlwind", "Fly", "Bind", "Slam", "Vine Whip", "Stomp", "Double Kick", "Mega Kick", "Jump Kick", "Rolling Kick", "Sand Attack", "Headbutt", "Horn Attack", "Fury Attack", "Horn Drill", "Tackle", "Body Slam", "Wrap", "Take Down", "Thrash", "Double-Edge", "Tail Whip", "Poison Sting", "Twineedle", "Pin Missile", "Leer", "Bite", "Growl", "Roar", "Sing", "Supersonic", "Sonic Boom", "Disable", "Acid", "Ember", "Flamethrower", "Mist", "Water Gun", "Hydro Pump", "Surf", "Ice Beam", "Blizzard", "Psybeam", "Bubble Beam", "Aurora Beam", "Hyper Beam", "Peck", "Drill Peck", "Submission", "Low Kick", "Counter", "Seismic Toss", "Strength", "Absorb", "Mega Drain", "Leech Seed", "Growth", "Razor Leaf", "Solar Beam", "Poison Powder", "Stun Spore", "Sleep Powder", "Petal Dance", "String Shot", "Dragon Rage", "Fire Spin", "Thunder Shock", "Thunderbolt", "Thunder Wave", "Thunder", "Rock Throw", "Earthquake", "Fissure", "Dig", "Toxic", "Confusion", "Psychic", "Hypnosis", "Meditate", "Agility", "Quick Attack", "Rage", "Teleport", "Night Shade", "Mimic", "Screech", "Double Team", "Recover", "Harden", "Minimize", "Smokescreen", "Confuse Ray", "Withdraw", "Defense Curl", "Barrier", "Light Screen", "Haze", "Reflect", "Focus Energy", "Bide", "Metronome", "Mirror Move", "Self-Destruct", "Egg Bomb", "Lick", "Smog", "Sludge", "Bone Club", "Fire Blast", "Waterfall", "Clamp", "Swift", "Skull Bash", "Spike Cannon", "Constrict", "Amnesia", "Kinesis", "Soft-Boiled", "High Jump Kick", "Glare", "Dream Eater", "Poison Gas", "Barrage", "Leech Life", "Lovely Kiss", "Sky Attack", "Transform", "Bubble", "Dizzy Punch", "Spore", "Flash", "Psywave", "Splash", "Acid Armor", "Crabhammer", "Explosion", "Fury Swipes", "Bonemerang", "Rest", "Rock Slide", "Hyper Fang", "Sharpen", "Conversion", "Tri Attack", "Super Fang", "Slash", "Substitute", "Struggle", "Sketch", "Triple Kick", "Thief", "Spider Web", "Mind Reader", "Nightmare", "Flame Wheel", "Snore", "Curse", "Flail", "Conversion 2", "Aeroblast", "Cotton Spore", "Reversal", "Spite", "Powder Snow", "Protect", "Mach Punch", "Scary Face", "Feint Attack", "Sweet Kiss", "Belly Drum", "Sludge Bomb", "Mud-Slap", "Octazooka", "Spikes", "Zap Cannon", "Foresight", "Destiny Bond", "Perish Song", "Icy Wind", "Detect", "Bone Rush", "Lock-On", "Outrage", "Sandstorm", "Giga Drain", "Endure", "Charm", "Rollout", "False Swipe", "Swagger", "Milk Drink", "Spark", "Fury Cutter", "Steel Wing", "Mean Look", "Attract", "Sleep Talk", "Heal Bell", "Return", "Present", "Frustration", "Safeguard", "Pain Split", "Sacred Fire", "Magnitude", "Dynamic Punch", "Megahorn", "Dragon Breath", "Baton Pass", "Encore", "Pursuit", "Rapid Spin", "Sweet Scent", "Iron Tail", "Metal Claw", "Vital Throw", "Morning Sun", "Synthesis", "Moonlight", "Hidden Power", "Cross Chop", "Twister", "Rain Dance", "Sunny Day", "Crunch", "Mirror Coat", "Psych Up", "Extreme Speed", "Ancient Power", "Shadow Ball", "Future Sight", "Rock Smash", "Whirlpool", "Beat Up", "Fake Out", "Uproar", "Stockpile", "Spit Up", "Swallow", "Heat Wave", "Hail", "Torment", "Flatter", "Will-O-Wisp", "Memento", "Facade", "Focus Punch", "Smelling Salts", "Follow Me", "Nature Power", "Charge", "Taunt", "Helping Hand", "Trick", "Role Play", "Wish", "Assist", "Ingrain", "Superpower", "Magic Coat", "Recycle", "Revenge", "Brick Break", "Yawn", "Knock Off", "Endeavor", "Eruption", "Skill Swap", "Imprison", "Refresh", "Grudge", "Snatch", "Secret Power", "Dive", "Arm Thrust", "Camouflage", "Tail Glow", "Luster Purge", "Mist Ball", "Feather Dance", "Teeter Dance", "Blaze Kick", "Mud Sport", "Ice Ball", "Needle Arm", "Slack Off", "Hyper Voice", "Poison Fang", "Crush Claw", "Blast Burn", "Hydro Cannon", "Meteor Mash", "Astonish", "Weather Ball", "Aromatherapy", "Fake Tears", "Air Cutter", "Overheat", "Odor Sleuth", "Rock Tomb", "Silver Wind", "Metal Sound", "Grass Whistle", "Tickle", "Cosmic Power", "Water Spout", "Signal Beam", "Shadow Punch", "Extrasensory", "Sky Uppercut", "Sand Tomb", "Sheer Cold", "Muddy Water", "Bullet Seed", "Aerial Ace", "Icicle Spear", "Iron Defense", "Block", "Howl", "Dragon Claw", "Frenzy Plant", "Bulk Up", "Bounce", "Mud Shot", "Poison Tail", "Covet", "Volt Tackle", "Magical Leaf", "Water Sport", "Calm Mind", "Leaf Blade", "Dragon Dance", "Rock Blast", "Shock Wave", "Water Pulse", "Doom Desire", "Psycho Boost", "Roost", "Gravity", "Miracle Eye", "Wake-Up Slap", "Hammer Arm", "Gyro Ball", "Healing Wish", "Brine", "Natural Gift", "Feint", "Pluck", "Tailwind", "Acupressure", "Metal Burst", "U-turn", "Close Combat", "Payback", "Assurance", "Embargo", "Fling", "Psycho Shift", "Trump Card", "Heal Block", "Wring Out", "Power Trick", "Gastro Acid", "Lucky Chant", "Me First", "Copycat", "Power Swap", "Guard Swap", "Punishment", "Last Resort", "Worry Seed", "Sucker Punch", "Toxic Spikes", "Heart Swap", "Aqua Ring", "Magnet Rise", "Flare Blitz", "Force Palm", "Aura Sphere", "Rock Polish", "Poison Jab", "Dark Pulse", "Night Slash", "Aqua Tail", "Seed Bomb", "Air Slash", "X-Scissor", "Bug Buzz", "Dragon Pulse", "Dragon Rush", "Power Gem", "Drain Punch", "Vacuum Wave", "Focus Blast", "Energy Ball", "Brave Bird", "Earth Power", "Switcheroo", "Giga Impact", "Nasty Plot", "Bullet Punch", "Avalanche", "Ice Shard", "Shadow Claw", "Thunder Fang", "Ice Fang", "Fire Fang", "Shadow Sneak", "Mud Bomb", "Psycho Cut", "Zen Headbutt", "Mirror Shot", "Flash Cannon", "Rock Climb", "Defog", "Trick Room", "Draco Meteor", "Discharge", "Lava Plume", "Leaf Storm", "Power Whip", "Rock Wrecker", "Cross Poison", "Gunk Shot", "Iron Head", "Magnet Bomb", "Stone Edge", "Captivate", "Stealth Rock", "Grass Knot", "Chatter", "Judgment", "Bug Bite", "Charge Beam", "Wood Hammer", "Aqua Jet", "Attack Order", "Defend Order", "Heal Order", "Head Smash", "Double Hit", "Roar of Time", "Spacial Rend", "Lunar Dance", "Crush Grip", "Magma Storm", "Dark Void", "Seed Flare", "Ominous Wind", "Shadow Force"};
 
+
 /* PKMN STRUCT */
 
 typedef struct {
@@ -83,39 +77,10 @@ typedef struct {
   int bstats[STATS];
   unsigned __int16 data[BLOCKS][BLOCK_SIZE];
   unsigned __int16 cond[COND_SIZE];
-  //incomplete
 } Pkmn;
 
 
 /* FUNCTIONS */
-
-unsigned __int16 GetLanguage(){
-  /* Get the game language's 16-bit value. */
-  for (int i = 0; i < LANGUAGES; i++){
-    char *lang = Languages[i];
-    if (*lang == *u_language){
-      return i << 8;
-    } else {
-      continue;
-    }
-  }
-  printf("Couldn't find the language string.\n");
-  return -1; //error handler, couldn't find the language string
-}
-
-unsigned __int16 GetVersion(){
-  /* Get the game version's 16-bit value. */
-  for (int i = 0; i < VERSIONS; i++){
-    char *vers = Versions[i];
-    if (*vers == *u_version){
-      return i + 0xA << 8;
-    } else {
-      continue;
-    }
-  }
-  printf("Couldn't find the version string.\n");
-  return -1; //error handler, couldn't find the version string
-}
 
 int GetNatureId(unsigned __int32 pid){
     /* Get the ID of the Nature, provided the PID. */
@@ -224,7 +189,7 @@ unsigned __int32 ReverseSeed(unsigned __int32 seed) {
   unsigned __int8 b = (seed >> 16) & 0xff;
   unsigned __int16 c = seed & 0xffff;
   while (b > SEED_MAX_B || c < SEED_MIN_C || c > SEED_MAX_C) {
-    state = (state * 0xEEB9EB65 + 0xA3561A1) & 0xFFFFFFFF;
+    state = (state * 0xEEB9EB65 + 0xA3561A1) & 0xffffffff;
     a = (state >> 24) & 0xff;
     b = (state >> 16) & 0xff;
     c = state & 0xffff;
@@ -317,25 +282,67 @@ int MethodJSeedToPID(unsigned __int32 seed, Pkmn *pkmn) {
 int main()
 {
   srand(time(NULL)); //init rand, call once
-  clock_t begin = clock();
 
-  /* Start of main stuff */
+  /* User inputs */
+  unsigned __int16 user_vers = 0xffff;
+  unsigned __int16 user_lang = 0xffff;
+  unsigned __int16 user_tid = 0xffff;
+  unsigned __int16 user_sid = 0xffff;
+  unsigned __int32 user_seed = 0xffffffff;
+  unsigned __int32 user_frames = 0xffffffff;
+  unsigned __int32 user_aslr = 0x0227116C; //depends on language and version, use 0x0227116C for english plat
 
-  unsigned __int16 p1 = (u_aslr + LOC_BEG_OPP_PARTY) & 0xffff;
-  unsigned __int16 p2 = (u_aslr + LOC_END_OPP_PARTY) & 0xffff;
+  do {
+    printf("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ");
+    scanf("%hd", &user_vers);
+  } while (user_vers > 2);
+  do {
+    printf("Enter your Language (1=jp, 2=en, 3=fr, 4=it, 5=ge, 7=sp, 8=ko): ");
+    scanf("%hd", &user_lang);
+  } while (user_lang > 8);
+  do {
+    printf("Enter your TID (0 to 65536): ");
+    scanf("%hd", &user_tid);
+  } while (user_tid == 0xffff);
+  do {
+    printf("Enter your SID (0 to 65536): ");
+    scanf("%hd", &user_sid);
+  } while (user_sid == 0xffff);
+  do {
+    printf("Enter your Seed (32 bit, hex): ");
+    scanf("%X", &user_seed);
+  } while (user_seed == 0xffffffff);
+  do {
+    printf("Enter your scope (32 bit, dec): ");
+    scanf("%u", &user_frames);
+  } while (user_frames == 0xffffffff);
+
+  char *strlang = Languages[user_lang];
+  char *strvers = Versions[user_vers];
+
+  user_vers = (user_vers + 10) << 8; //convert for use in pkmn data
+  user_lang = user_lang << 8; //convert for use in pkmn data
+
+  printf("\n> %s (%s)\n", strvers, strlang);
+  printf("> TID = %u | SID = %u\n", user_tid, user_sid);
+  printf("> Seed 0x%08X\n", user_seed);
+  printf("> ASLR 0x%08X\n", user_aslr);
+  printf("> Searching through %u frames...\n\n", user_frames);
+  printf("Seed       | Level   | Species      | Item           | Ability          | Hatch steps | Fateful | Moves\n");
+  printf("--------------------------------------------------------------------------------------------------------------------------------\n");
+
+  unsigned __int16 p1 = (user_aslr + LOC_BEG_OPP_PARTY) & 0xffff;
+  unsigned __int16 p2 = (user_aslr + LOC_END_OPP_PARTY) & 0xffff;
 
   unsigned __int32 pid_list[PIDS_MAX] = {}; //0 init
+  unsigned __int32 results = 0;
 
-  unsigned __int32 seed = RandomSeed(); //u_rnd_seed;
+  unsigned __int32 seed = user_seed;//RandomSeed();
 
-  printf("%s (%s)\n", u_version, u_language);
-  printf("ASLR = 0x%08X\n", u_aslr);
-  printf("Seed = 0x%08X\n", seed);
-  printf("TID = %d\n", u_tid);
-  printf("SID = %d\n", u_sid);
-  printf("Searching through %lu frames...\n", u_frames);
+  clock_t begin = clock(); //timer starts
 
-  for (int frame = 0; frame < u_frames; frame++){
+  /* Main search loop */
+  for (int frame = 0; frame < user_frames; frame++){
 
     if (frame != 0) { //advance the RNG everytime, except on the 0th frame
       seed = Rng_32(seed, 1);
@@ -381,11 +388,11 @@ int main()
     rotom.pos_d = PositionOfBlock(rotom.order, 'D');
 
     rotom.data[rotom.pos_a][0] = 0x01DF; //species
-    rotom.data[rotom.pos_a][2] = u_tid; //tid
-    rotom.data[rotom.pos_a][3] = u_sid; //sid
+    rotom.data[rotom.pos_a][2] = user_tid; //tid
+    rotom.data[rotom.pos_a][3] = user_sid; //sid
     rotom.data[rotom.pos_a][4] = 0x1F40; //xp1 (depends also on version/level)
     rotom.data[rotom.pos_a][6] = 0x1A46; //ability and friendship concatenated
-    rotom.data[rotom.pos_a][7] = GetLanguage(); //language
+    rotom.data[rotom.pos_a][7] = user_lang; //language
 
     rotom.data[rotom.pos_b][0] = 0x0054; //thundershock
     rotom.data[rotom.pos_b][1] = 0x006D; //confuse ray
@@ -397,7 +404,7 @@ int main()
     rotom.data[rotom.pos_b][9] = rotom.iv2;
     rotom.data[rotom.pos_b][12] = 0x0004; //genderless
 
-    if (u_language == "fr") {
+    if (user_lang == 3) { //fr
       rotom.data[rotom.pos_c][0] = 0x0137; //M
       rotom.data[rotom.pos_c][1] = 0x0139; //O
       rotom.data[rotom.pos_c][2] = 0x013E; //T
@@ -405,19 +412,19 @@ int main()
       rotom.data[rotom.pos_c][4] = 0x013D; //S
       rotom.data[rotom.pos_c][5] = 0x0137; //M
       rotom.data[rotom.pos_c][6] = 0x012B; //A
-      rotom.data[rotom.pos_c][7] = 0xFFFF; //terminator
+      rotom.data[rotom.pos_c][7] = 0xffff; //terminator
     }
-    else if (u_language == "jp") {
+    else if (user_lang == 1) { //jp
       rotom.data[rotom.pos_c][0] = 0x009E; //RO
       rotom.data[rotom.pos_c][1] = 0x0079; //TO
       rotom.data[rotom.pos_c][2] = 0x0091; //MU
-      rotom.data[rotom.pos_c][3] = 0xFFFF; //terminator
+      rotom.data[rotom.pos_c][3] = 0xffff; //terminator
     }
-    else if (u_language == "ko") {
+    else if (user_lang == 8) { //ko
       rotom.data[rotom.pos_c][0] = 0x06C0; //RO
       rotom.data[rotom.pos_c][1] = 0x0BFA; //TO
       rotom.data[rotom.pos_c][2] = 0x0759; //MU
-      rotom.data[rotom.pos_c][3] = 0xFFFF; //terminator
+      rotom.data[rotom.pos_c][3] = 0xffff; //terminator
     }
     else { //en, it, ge, sp
       rotom.data[rotom.pos_c][0] = 0x013C; //R
@@ -425,15 +432,15 @@ int main()
       rotom.data[rotom.pos_c][2] = 0x013E; //T
       rotom.data[rotom.pos_c][3] = 0x0139; //O
       rotom.data[rotom.pos_c][4] = 0x0137; //M
-      rotom.data[rotom.pos_c][5] = 0xFFFF; //terminator
+      rotom.data[rotom.pos_c][5] = 0xffff; //terminator
     }
 
-    rotom.data[rotom.pos_c][11] = 0x0C00; //version >why is it off by 1 when using GetVersion() for Platinum???
+    rotom.data[rotom.pos_c][11] = user_vers; //version
 
     rotom.data[rotom.pos_d][13] = 0x0400; //pokeball
-    rotom.data[rotom.pos_d][14] = 0x0014; //level (depends also on version)
+    rotom.data[rotom.pos_d][14] = 0x0014; //level
 
-    rotom.cond[2] = rotom.data[rotom.pos_d][14]; //level (depends also on version)
+    rotom.cond[2] = rotom.data[rotom.pos_d][14]; //level
     rotom.cond[3] = IvToStat(&rotom, hp);
     rotom.cond[4] = rotom.cond[3]; //current hp = max hp
     rotom.cond[5] = IvToStat(&rotom, at);
@@ -443,22 +450,22 @@ int main()
     rotom.cond[9] = IvToStat(&rotom, sd);
     rotom.cond[12] = 0x0200;
     rotom.cond[13] = 0xFF0C;
-    rotom.cond[14] = 0xFFFF;
-    rotom.cond[15] = 0xFFFF;
-    rotom.cond[16] = 0xFFFF;
-    rotom.cond[17] = 0xFFFF;
-    rotom.cond[18] = 0xFFFF;
-    rotom.cond[19] = 0xFFFF;
-    rotom.cond[20] = 0xFFFF;
-    rotom.cond[21] = 0xFFFF;
-    rotom.cond[22] = 0xFFFF;
-    rotom.cond[23] = 0xFFFF;
-    rotom.cond[24] = 0xFFFF;
+    rotom.cond[14] = 0xffff;
+    rotom.cond[15] = 0xffff;
+    rotom.cond[16] = 0xffff;
+    rotom.cond[17] = 0xffff;
+    rotom.cond[18] = 0xffff;
+    rotom.cond[19] = 0xffff;
+    rotom.cond[20] = 0xffff;
+    rotom.cond[21] = 0xffff;
+    rotom.cond[22] = 0xffff;
+    rotom.cond[23] = 0xffff;
+    rotom.cond[24] = 0xffff;
     // rotom.cond[25] = 0x0000;
-    rotom.cond[26] = 0xFFFF;
+    rotom.cond[26] = 0xffff;
     // rotom.cond[27] = 0x8910; //0x0149; //not the correct value after encryption???
-    rotom.cond[28] = 0xFFFF;
-    rotom.cond[29] = 0xFFFF;
+    rotom.cond[28] = 0xffff;
+    rotom.cond[29] = 0xffff;
 
     SetCheckum(&rotom);
     Encrypt(&rotom);
@@ -651,22 +658,26 @@ int main()
         strcpy(strmoves[i], buffer);
       }
       else {
-        strcpy(strmoves[i], &(Moves[moves[i]]));
+        char *buffer = Moves[moves[i]];
+        strcpy(strmoves[i], buffer);
       }
     }
 
     /* Print successful result */
-    printf("0x%08X | Lv. %03d | %-12s | %-14s | %-16s | %05d steps | %s | ", seed, f_level, strspecies, stritem, strabi, f_steps, fateful);
+    printf("0x%08X | Lv. %-3d | %-12s | %-14s | %-16s | %-5d steps | %s | ", seed, f_level, strspecies, stritem, strabi, f_steps, fateful);
     printf("%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
+    results += 1;
 
   }
 
-  /* End of main stuff */
+  /* End of main loop */
 
   clock_t end = clock();
   double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-  printf("\nFinished in %.1f s.\n", time_spent);
-  printf("Press Enter to exit.");
-  getchar();
+  printf("\nFound %u results in %.1f seconds.\n", results, time_spent);
+  // printf("Press Enter to exit.");
+  char exit;
+  scanf("%s", &exit);
+  // getchar(); //can't use that!!!
   return 0;
 }
