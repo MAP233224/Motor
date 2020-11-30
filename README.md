@@ -19,6 +19,5 @@ Once all of these parameters have been entered, the application will go through 
 It will provide the Seed on which it found the Pokémon on, alongside several other characteristics (Level, Item, Ability, Moves, ...).
 
 This glitch is not guaranteed to work on console and is still being troubleshot on emulator (crashes sometimes before showing the battle menu, sometimes at the end of the battle).
-You can however perform it on Desmume 0.9.11 by downloading Motor.lua and modifying your Seed, your TID and your SID.
-You'll be required to have a save with a full party of 6 Pokémon, all knocked out (from the Pomeg Glitch usually).
-
+You can however perform it on Desmume 0.9.11 by editing Motor.lua and modifying your Seed, your TID and your SID.
+You'll be required to have a save file with a full party of 6 Pokémon, all knocked out, for the glitch to work.
