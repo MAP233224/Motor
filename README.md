@@ -11,12 +11,9 @@ Each user will need to provide several things to the application:
 - their Trainer ID and Secret ID (TID and SID)
 - their game's version (Diamond, Pearl or Platinum)
 - their game's language (Japanese, English, French, Italian, German, Spanish, Korean)
-- their desired species ID (optional, from Bulbasaur to Arceus)
-- their desired item ID (optional, from Master Ball to Secret Key)
+- their desired species ID (optional, from Bulbasaur to Arceus https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_IV))
+- their desired item ID (optional, from Master Ball to Secret Key https://bulbapedia.bulbagarden.net/wiki/List_of_items_by_index_number_(Generation_IV))
 - how many seeds they want to go through (maximum 4,294,967,295)
-
-Species IDs : https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_IV)
-Item IDs : https://bulbapedia.bulbagarden.net/wiki/List_of_items_by_index_number_(Generation_IV)
 
 Once all of these parameters have been entered, the application will go through each seed and output every successful hit.
 It will provide the Seed on which it found the Pokémon on, alongside several other characteristics (Level, Item, Ability, Moves, ...).
