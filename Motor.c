@@ -88,16 +88,17 @@ typedef struct {
   u16 cond[COND_SIZE];
 } Pkmn;
 
-// typedef struct {
-//   u16 version;
-//   u16 language;
-//   u16 tid;
-//   u16 sid;
-//   u32 seed;
-//   u32 scope;
-//   u16 species;
-//   u32 aslr;
-// } User;
+typedef struct {
+  u16 version;
+  u16 language;
+  u16 tid;
+  u16 sid;
+  u32 seed;
+  u32 frames;
+  u16 species;
+  u16 item;
+  u32 aslr; //depends on language and version, use 0x0227116C for english plat
+} User;
 
 /* FUNCTIONS */
 
@@ -305,94 +306,130 @@ int main()
 {
   srand(time(NULL)); //init rand, call once
 
-  /* User inputs */
-  u16 user_vers = 0xffff;
-  u16 user_lang = 0xffff;
-  u16 user_tid = 0xffff;
-  u16 user_sid = 0xffff;
-  u32 user_seed = 0xffffffff;
-  u32 user_frames = 0xffffffff;
-  u16 user_species = 0xffff;
-  u16 user_item = 0xffff;
-  u32 user_aslr = 0x0227116C; //depends on language and version, use 0x0227116C for english plat
+  User user = {0}; //init0 struct
 
+  u8 answer = 0xff;
   do {
-    printf("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ");
-    scanf("%hu", &user_vers);
-  } while (user_vers > 2);
-  do {
-    printf("Enter your Language (1=jp, 2=en, 3=fr, 4=it, 5=ge, 7=sp, 8=ko): ");
-    scanf("%hu", &user_lang);
-  } while (user_lang > 8);
-  do {
-    printf("Enter your TID (0 to 65535): ");
-    scanf("%hu", &user_tid);
-  } while (user_tid == 0xffff);
-  do {
-    printf("Enter your SID (0 to 65535): ");
-    scanf("%hu", &user_sid);
-  } while (user_sid == 0xffff);
-  do {
-    printf("Search for a species (0=no, species_id=yes): ");
-    scanf("%hu", &user_species);
-  } while (user_species >= SPECIES);
-  do {
-    printf("Search for an item (0=no, item_id=yes): ");
-    scanf("%hu", &user_item);
-  } while (user_item >= ITEMS);
-  do {
-    printf("Enter your Seed (0=random, else 32 bit hex): 0x");
-    scanf("%X", &user_seed);
-  } while (user_seed == 0xffffffff);
-  do {
-    printf("How many frames to search through (32 bit, dec): ");
-    scanf("%u", &user_frames);
-  } while (user_frames == 0xffffffff);
+    printf("Use previous user settings? (0=no, 1=yes) ");
+    scanf("%u", &answer);
+  } while (answer > 1);
 
-  u8 *strlang = Languages[user_lang];
-  u8 *strvers = Versions[user_vers];
-  u8 *strspec = Pokelist[user_species];
-  u8 *stritem = Items[user_item];
+  if (answer == 1) { //use saved user data in Profile.txt
+    FILE *profile;
+    profile = fopen("Profile.txt", "r"); //read only
+    //check for empty file before user scan!
+    fscanf(profile, "%u", &user.version);
+    fscanf(profile, "%u", &user.language);
+    fscanf(profile, "%u", &user.tid);
+    fscanf(profile, "%u", &user.sid);
+    fclose(profile);
+  }
+  else { //console scan for version, language, tid and sid
+    user.version = 0xffff;
+    user.language = 0xffff;
+    user.tid = 0xffff;
+    user.sid = 0xffff;
+    do {
+      printf("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ");
+      scanf("%u", &user.version);
+    } while (user.version > 2);
+    do {
+      printf("Enter your Language (1=jp, 2=en, 3=fr, 4=it, 5=ge, 7=sp, 8=ko): ");
+      scanf("%u", &user.language);
+    } while (user.language > 8);
+    do {
+      printf("Enter your TID (0 to 65535): ");
+      scanf("%u", &user.tid);
+    } while (user.tid == 0xffff);
+    do {
+      printf("Enter your SID (0 to 65535): ");
+      scanf("%u", &user.sid);
+    } while (user.sid == 0xffff);
 
-  if (user_seed == 0){
-    user_seed = RandomSeed();
+    u8 save_user = 0xff;
+    do {
+      printf("Save those user settings? (0=no, 1=yes) ");
+      scanf("%u", &save_user);
+    } while (save_user > 1);
+
+    if (save_user == 1) {
+      FILE *save_profile;
+      save_profile = fopen("Profile.txt", "w+"); //erase and write or create the file
+      fprintf(save_profile, "%u\n", user.version);
+      fprintf(save_profile, "%u\n", user.language);
+      fprintf(save_profile, "%u\n", user.tid);
+      fprintf(save_profile, "%u\n", user.sid);
+      fclose(save_profile);
+    }
   }
 
-  user_vers = (user_vers + 10) << 8; //convert for use in pkmn data
-  user_lang = user_lang << 8; //convert for use in pkmn data
+  user.seed = 0xffffffff;
+  user.frames = 0xffffffff;
+  user.species = 0xffff;
+  user.item = 0xffff;
+  user.aslr = 0x0227116C; //depends on language and version, use 0x0227116C for english plat
+
+  do {
+    printf("Search for a species (0=no, species_id=yes): ");
+    scanf("%u", &user.species);
+  } while (user.species >= SPECIES);
+  do {
+    printf("Search for an item (0=no, item_id=yes): ");
+    scanf("%u", &user.item);
+  } while (user.item >= ITEMS);
+  do {
+    printf("Enter your Seed (0=random, else 32 bit hex): 0x");
+    scanf("%X", &user.seed);
+  } while (user.seed == 0xffffffff);
+  do {
+    printf("How many frames to search through (32 bit, dec): ");
+    scanf("%u", &user.frames);
+  } while (user.frames == 0xffffffff);
+
+  u8 *strlang = Languages[user.language];
+  u8 *strvers = Versions[user.version];
+  u8 *strspec = Pokelist[user.species];
+  u8 *stritem = Items[user.item];
+
+  if (user.seed == 0){
+    user.seed = RandomSeed();
+  }
+
+  user.version = (user.version + 10) << 8; //convert for use in pkmn data
+  user.language = user.language << 8; //convert for use in pkmn data
 
   FILE *fp; //declare file object
   u8 *strfilename = "Motor_results.txt"; //name of the file
   fp = fopen(strfilename, "w+"); //open/create file
 
   fprintf(fp, "> %s (%s)\n", strvers, strlang);
-  fprintf(fp, "> TID = %u | SID = %u\n", user_tid, user_sid);
-  fprintf(fp, "> Seed 0x%08X\n", user_seed);
-  fprintf(fp, "> ASLR 0x%08X\n", user_aslr);
-  fprintf(fp, "> Searched through %u frames for %s holding %s\n\n", user_frames, strspec, stritem);
+  fprintf(fp, "> TID = %u | SID = %u\n", user.tid, user.sid);
+  fprintf(fp, "> Seed 0x%08X\n", user.seed);
+  fprintf(fp, "> ASLR 0x%08X\n", user.aslr);
+  fprintf(fp, "> Searched through %u frames for %s holding %s\n\n", user.frames, strspec, stritem);
   fprintf(fp, "Seed       | Level   | Species      | Item           | Ability          | Hatch steps | Fateful | Moves\n");
   fprintf(fp, "--------------------------------------------------------------------------------------------------------------------------------\n");
 
   printf("\n> %s (%s)\n", strvers, strlang);
-  printf("> TID = %u | SID = %u\n", user_tid, user_sid);
-  printf("> Seed 0x%08X\n", user_seed);
-  printf("> ASLR 0x%08X\n", user_aslr);
-  printf("> Searching through %u frames for %s holding %s...\n\n", user_frames, strspec, stritem);
+  printf("> TID = %u | SID = %u\n", user.tid, user.sid);
+  printf("> Seed 0x%08X\n", user.seed);
+  printf("> ASLR 0x%08X\n", user.aslr);
+  printf("> Searching through %u frames for %s holding %s...\n\n", user.frames, strspec, stritem);
   printf("Seed       | Level   | Species      | Item           | Ability          | Hatch steps | Fateful | Moves\n");
   printf("--------------------------------------------------------------------------------------------------------------------------------\n");
 
-  u16 p1 = (user_aslr + LOC_BEG_OPP_PARTY) & 0xffff;
-  u16 p2 = (user_aslr + LOC_END_OPP_PARTY) & 0xffff;
+  u16 p1 = (user.aslr + LOC_BEG_OPP_PARTY) & 0xffff;
+  u16 p2 = (user.aslr + LOC_END_OPP_PARTY) & 0xffff;
 
   u32 pid_list[PIDS_MAX] = {}; //0 init
   u32 results = 0;
 
-  u32 seed = user_seed; //advanced in the main loop
+  u32 seed = user.seed; //advanced in the main loop
 
   clock_t begin = clock(); //timer starts
 
   /* Main search loop */
-  for (u32 frame = 0; frame < user_frames; frame++){
+  for (u32 frame = 0; frame < user.frames; frame++){
 
     if (frame != 0) { //advance the RNG everytime, except on the 0th frame
       seed = Rng_32(seed, 1);
@@ -438,11 +475,11 @@ int main()
     rotom.pos_d = PositionOfBlock(rotom.order, 'D');
 
     rotom.data[rotom.pos_a][0] = 0x01DF; //species
-    rotom.data[rotom.pos_a][2] = user_tid; //tid
-    rotom.data[rotom.pos_a][3] = user_sid; //sid
+    rotom.data[rotom.pos_a][2] = user.tid; //tid
+    rotom.data[rotom.pos_a][3] = user.sid; //sid
     rotom.data[rotom.pos_a][4] = 0x1F40; //xp1 (depends also on version/level)
     rotom.data[rotom.pos_a][6] = 0x1A46; //ability and friendship concatenated
-    rotom.data[rotom.pos_a][7] = user_lang; //language
+    rotom.data[rotom.pos_a][7] = user.language; //language
 
     rotom.data[rotom.pos_b][0] = 0x0054; //thundershock
     rotom.data[rotom.pos_b][1] = 0x006D; //confuse ray
@@ -454,7 +491,7 @@ int main()
     rotom.data[rotom.pos_b][9] = rotom.iv2;
     rotom.data[rotom.pos_b][12] = 0x0004; //genderless
 
-    if (user_lang == 3) { //fr
+    if (user.language == 3) { //fr
       rotom.data[rotom.pos_c][0] = 0x0137; //M
       rotom.data[rotom.pos_c][1] = 0x0139; //O
       rotom.data[rotom.pos_c][2] = 0x013E; //T
@@ -464,13 +501,13 @@ int main()
       rotom.data[rotom.pos_c][6] = 0x012B; //A
       rotom.data[rotom.pos_c][7] = 0xffff; //terminator
     }
-    else if (user_lang == 1) { //jp
+    else if (user.language == 1) { //jp
       rotom.data[rotom.pos_c][0] = 0x009E; //RO
       rotom.data[rotom.pos_c][1] = 0x0079; //TO
       rotom.data[rotom.pos_c][2] = 0x0091; //MU
       rotom.data[rotom.pos_c][3] = 0xffff; //terminator
     }
-    else if (user_lang == 8) { //ko
+    else if (user.language == 8) { //ko
       rotom.data[rotom.pos_c][0] = 0x06C0; //RO
       rotom.data[rotom.pos_c][1] = 0x0BFA; //TO
       rotom.data[rotom.pos_c][2] = 0x0759; //MU
@@ -485,7 +522,7 @@ int main()
       rotom.data[rotom.pos_c][5] = 0xffff; //terminator
     }
 
-    rotom.data[rotom.pos_c][11] = user_vers; //version
+    rotom.data[rotom.pos_c][11] = user.version; //version
 
     rotom.data[rotom.pos_d][13] = 0x0400; //pokeball
     rotom.data[rotom.pos_d][14] = 0x0014; //level
@@ -618,17 +655,17 @@ int main()
     }
 
     /* Species check */
-    if (user_species == 0) { //user didn't specify a species
+    if (user.species == 0) { //user didn't specify a species
       if (f_species >= SPECIES) { //any valid species
         continue;
       }
     }
-    else if (f_species != user_species) { //match user_species
+    else if (f_species != user.species) { //match user.species
       continue;
     }
 
     /* Search for specific item */
-    if (user_item != 0 && f_item != user_item) {
+    if (user.item != 0 && f_item != user.item) {
       continue;
     }
 
