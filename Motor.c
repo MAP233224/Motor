@@ -367,7 +367,6 @@ int main()
   user.frames = 0xffffffff;
   user.species = 0xffff;
   user.item = 0xffff;
-  user.aslr = 0x0227116C; //depends on language and version, use 0x0227116C for english plat
 
   do {
     printf("Search for a species (0=no, species_id=yes): ");
@@ -397,6 +396,7 @@ int main()
 
   user.version = (user.version + 10) << 8; //convert for use in pkmn data
   user.language = user.language << 8; //convert for use in pkmn data
+  user.aslr = 0x0227116C; //depends on language and version, use 0x0227116C for english plat
 
   FILE *fp; //declare file object
   u8 *strfilename = "Motor_results.txt"; //name of the file
