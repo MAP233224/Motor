@@ -54,6 +54,8 @@ u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "k
 u8 Versions[VERSIONS][9] = {"Diamond", "Pearl", "Platinum"}; //versions
 // enum { diamond=0, pearl, platinum };
 
+u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0, 0x0227116C}, {0, 0x02271460}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}; //aslr to match with language and version
+
 u8 Orders[BLOCK_PERM][BLOCKS+1] = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA", "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA"}; //all 24 block permutations
 
 enum { hp=0, at, df, sp, sa, sd }; //enum for the indices of each stat
@@ -97,7 +99,7 @@ typedef struct {
   u32 frames;
   u16 species;
   u16 item;
-  u32 aslr; //depends on language and version, use 0x0227116C for english plat
+  u32 aslr;
 } User;
 
 /* FUNCTIONS */
@@ -394,9 +396,10 @@ int main()
     user.seed = RandomSeed();
   }
 
-  user.version = (user.version + 10) << 8; //convert for use in pkmn data
-  user.language = user.language << 8; //convert for use in pkmn data
-  user.aslr = 0x0227116C; //depends on language and version, use 0x0227116C for english plat
+  u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
+  u16 w_language = user.language << 8; //convert for use in pkmn data
+  user.aslr = Aslrs[user.language][(u8)(user.version/2)]; //depends on language and version, only plat en and fr for now
+  // user.aslr = 0x0227116C; //debug
 
   FILE *fp; //declare file object
   u8 *strfilename = "Motor_results.txt"; //name of the file
@@ -479,7 +482,7 @@ int main()
     rotom.data[rotom.pos_a][3] = user.sid; //sid
     rotom.data[rotom.pos_a][4] = 0x1F40; //xp1 (depends also on version/level)
     rotom.data[rotom.pos_a][6] = 0x1A46; //ability and friendship concatenated
-    rotom.data[rotom.pos_a][7] = user.language; //language
+    rotom.data[rotom.pos_a][7] = w_language; //language
 
     rotom.data[rotom.pos_b][0] = 0x0054; //thundershock
     rotom.data[rotom.pos_b][1] = 0x006D; //confuse ray
@@ -522,7 +525,7 @@ int main()
       rotom.data[rotom.pos_c][5] = 0xffff; //terminator
     }
 
-    rotom.data[rotom.pos_c][11] = user.version; //version
+    rotom.data[rotom.pos_c][11] = w_version; //version
 
     rotom.data[rotom.pos_d][13] = 0x0400; //pokeball
     rotom.data[rotom.pos_d][14] = 0x0014; //level
