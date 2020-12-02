@@ -4,7 +4,9 @@ This glitch allows players to catch any desired species in the place of the stat
 
 ***NB: The current version of this application only supports Pokémon Platinum for the English language.***
 
-To build on Windows 10 with GCC, use the command ``gcc -O3 Motor.c -o Motor`` in Windows Shell.
+To build on Windows 10 with GCC, use these commands in Windows Shell:
+``windres Motor.rc -O coff -o Motor.res`` (to create the .res file and include the .ico in the final build)
+``gcc -O3 Motor.c -o Motor Motor.res`` (optimized mode flag -O3 helps search through seeds 3 times faster than without)
 
 Each user will need to provide several things to the application:
 
