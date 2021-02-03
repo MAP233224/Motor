@@ -341,7 +341,8 @@ int main()
   srand(time(NULL)); //init rand, call once
 
   User user = {0}; //init0 struct
-
+  
+  u8 answer;
   ScanValue("Use previous user settings (0=no, 1=yes): ", &answer, "%u", 1);
 
   if (answer == 1) { //use saved user data in Profile.txt
