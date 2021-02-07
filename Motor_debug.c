@@ -11,7 +11,6 @@
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
 
 /* TYPEDEF */
@@ -239,32 +238,6 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
   }
 }
 
-u32 ReverseSeed(u32 seed) {
-  /* Find the nearest console-hitable seed provided the current state of the RNG. Print the number of iterations. */
-  u16 frame = 0;
-  u32 state = seed;
-  u8 a = (seed >> 24) & 0xff;
-  u8 b = (seed >> 16) & 0xff;
-  u16 c = seed & 0xffff;
-  while (b > SEED_MAX_B || c < SEED_MIN_C || c > SEED_MAX_C) {
-    state = (state * 0xEEB9EB65 + 0xA3561A1) & 0xffffffff;
-    a = (state >> 24) & 0xff;
-    b = (state >> 16) & 0xff;
-    c = state & 0xffff;
-    frame += 1;
-  }
-  printf("%d frames", frame);
-  return state;
-}
-
-u32 RandomSeed() {
-  /* Generate a random console-hitable RNG seed */
-  u8 a = rand() % SEED_MAX_A;
-  u8 b = rand() % SEED_MAX_B;
-  u16 c = rand() % (SEED_MAX_C-SEED_MIN_C);
-  return (a << 24) | (b << 16) | c;
-}
-
 u32 Rng_32(u32 seed, u16 iter) {
   /* General purpose LCRNG */
   u32 state = seed;
@@ -298,13 +271,13 @@ void Encrypt(Pkmn *pkmn) {
   u8 rng_c = RngPosOfBlock(pos_c);
   u8 rng_d = RngPosOfBlock(pos_d);
   for (u8 i = 0; i < BLOCK_SIZE; i++) {
-    pkmn->data[pos_a][i] = pkmn->data[pos_a][i] ^ Rng_t16(pkmn->checksum, rng_a + i);
-    pkmn->data[pos_b][i] = pkmn->data[pos_b][i] ^ Rng_t16(pkmn->checksum, rng_b + i);
-    pkmn->data[pos_c][i] = pkmn->data[pos_c][i] ^ Rng_t16(pkmn->checksum, rng_c + i);
-    pkmn->data[pos_d][i] = pkmn->data[pos_d][i] ^ Rng_t16(pkmn->checksum, rng_d + i);
+    pkmn->data[pos_a][i] ^= Rng_t16(pkmn->checksum, rng_a + i);
+    pkmn->data[pos_b][i] ^= Rng_t16(pkmn->checksum, rng_b + i);
+    pkmn->data[pos_c][i] ^= Rng_t16(pkmn->checksum, rng_c + i);
+    pkmn->data[pos_d][i] ^= Rng_t16(pkmn->checksum, rng_d + i);
   }
   for (u8 i = 0; i < COND_SIZE; i++) {
-    pkmn->cond[i] = pkmn->cond[i] ^ Rng_t16(pkmn->pid, i+1);
+    pkmn->cond[i] ^= Rng_t16(pkmn->pid, i+1);
   }
 }
 
@@ -338,10 +311,9 @@ void MethodJSeedToPID(u32 seed, Pkmn *pkmn) {
 
 int main()
 {
-  srand(time(NULL)); //init rand, call once
 
-  User user = {0}; //init0 struct
-  
+  User user = {0}; //0 init
+
   u8 answer;
   ScanValue("Use previous user settings (0=no, 1=yes): ", &answer, "%u", 1);
 
@@ -363,12 +335,11 @@ int main()
     ScanValue("Enter your SID (0 to 65535): ", &user.sid, "%u", 0xffff);
 
     u8 save_user;
-
     ScanValue("Save those user settings? (0=no, 1=yes) ", &save_user, "%u", 1);
 
-    if (save_user == 1) {
+    if (save_user == 1) { //erase previous and save new user profile
       FILE *save_profile;
-      save_profile = fopen("Profile.txt", "w+"); //erase and write or create the file
+      save_profile = fopen("Profile.txt", "w+");
       fprintf(save_profile, "%u\n", user.version);
       fprintf(save_profile, "%u\n", user.language);
       fprintf(save_profile, "%u\n", user.tid);
@@ -380,7 +351,7 @@ int main()
   ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES+1);
   ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS+1);
   ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
-  ScanValue("Enter your Seed (0=random, else 32 bit hex): 0x", &user.seed, "%x", 0xffffffff);
+  ScanValue("Enter your Seed (32 bit, hex): 0x", &user.seed, "%x", 0xffffffff);
   ScanValue("How many frames to search through (32 bit, dec): ", &user.frames, "%u", 0xffffffff);
 
   u8 *strlang = Languages[user.language];
@@ -388,14 +359,9 @@ int main()
   u8 *strspec = Pokelist[user.species];
   u8 *stritem = Items[user.item];
 
-  if (user.seed == 0){
-    user.seed = RandomSeed();
-  }
-
   u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
   u16 w_language = user.language << 8; //convert for use in pkmn data
   user.aslr = Aslrs[user.language][(u8)(user.version/2)]; //depends on language and version, only plat en and fr for now
-  // user.aslr = 0x0227116C; //debug
 
   FILE *fp; //declare file object
   u8 *strfilename = "Motor_debug_results.txt"; //name of the file
@@ -420,7 +386,7 @@ int main()
   u32 pid_list[PIDS_MAX] = {}; //0 init
   u32 results = 0;
 
-  u32 seed = user.seed; //advanced in the main loop
+  u32 seed = user.seed; //copy, advanced in the main loop
 
   clock_t begin = clock(); //timer starts
 
@@ -431,8 +397,8 @@ int main()
       seed = Rng_32(seed, 1);
     }
 
-    Pkmn wild = {0}; //0 init for every element of this instance of the struct
-    Pkmn seven = {0}; //idem
+    Pkmn wild = {0}; //0 init
+    Pkmn seven = {0}; //0 init
 
     MethodJSeedToPID(seed, &wild);
 
