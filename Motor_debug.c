@@ -126,8 +126,8 @@ void ScanValue(u8 message[], u32 *value, u8 format[], u64 max) {
 }
 
 u8 GetNatureId(u32 pid){
-    /* Get the ID of the Nature (from 0 to 24), provided the PID. */
-    return pid%25;
+  /* Get the ID of the Nature (from 0 to 24), provided the PID. */
+  return pid%25;
 }
 
 u8 BlockOrder(u32 pid){
@@ -190,59 +190,39 @@ void SetCheckum(Pkmn *pkmn) {
 
 bool IsBadEgg(u16 badeggflag) {
   /* Check if the bad egg flag is set by looking at bit 2 of the "bad egg" 16-bit word. */
-  if ((badeggflag & 4) == 4) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if ((badeggflag & 4) == 4) { return true; }
+  return false;
 }
 
 bool IsEgg(u16 eggflag) {
   /* Check if the egg flag is set by looking at bit 30 of the "iv2" 16-bit word. */
-  if ((eggflag & 0x4000) == 0x4000) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if ((eggflag & 0x4000) == 0x4000) { return true; }
+  return false;
 }
 
 bool IsFatefulEncounter(u16 fateflag) {
   /* Check if the fateful encounter bit is set. */
-  if ((fateflag & 1) == 1) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if ((fateflag & 1) == 1) { return true; }
+  return false;
 }
 
 bool SkippedCheckum(u16 badeggflag) {
   /* Check if the checksum was skipped by looking at bit 0 and 1 of the "bad egg" 16-bit word. */
-  if (((badeggflag & 1) == 1) && ((badeggflag & 2) == 2)) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if (((badeggflag & 1) == 1) && ((badeggflag & 2) == 2)) { return true; }
+  return false;
 }
 
 bool IsShiny(u32 pid, u16 tid, u16 sid) {
   /* Check if a pkmn is shiny by xoring its pid (top and bottom 16 bits), tid and sid */
-  if (((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if (((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8) { return true; }
+  return false;
 }
 
 u32 Rng_32(u32 seed, u16 iter) {
   /* General purpose LCRNG */
   u32 state = seed;
   for (u16 i = 0; i < iter; i++) {
-      state = state * 0x41C64E6D + 0x6073;
+    state = state * 0x41C64E6D + 0x6073;
   }
   return state;
 }
@@ -252,8 +232,8 @@ u16 Rng_t16(u32 seed, u16 iter) {
   u32 state = seed;
   u16 top16 = 0;
   for (u16 i = 0; i < iter; i++) {
-      state = state * 0x41C64E6D + 0x6073;
-      top16 = state >> 16;
+    state = state * 0x41C64E6D + 0x6073;
+    top16 = state >> 16;
   }
   return top16;
 }
@@ -418,9 +398,7 @@ int main()
         pid_list[i] = 0;
       }
     }
-    if (duplicate == true) {
-      continue;
-    }
+    if (duplicate == true) { continue; }
 
     if (user.version == 2) { //for Platinum, init with Rotom
       wild.bstats[hp] = 50;
@@ -660,21 +638,15 @@ int main()
 
     /* If the ball doesn't have a valid id the battle won't load */
     u8 ballid = seven.data[seven.pos_d][13] >> 8;
-    if ((ballid > 16) || (ballid == 0)) {
-      continue;
-    }
+    if ((ballid > 16) || (ballid == 0)) { continue; } //this might be more complicated than that
 
     SetCheckum(&seven);
     Encrypt(&seven);
 
     /* Is a bad egg or checksum was not skipped */
     wild.bef = seven.data[seven.pos_c][2];
-    if (IsBadEgg(wild.bef) == true) {
-      continue;
-    }
-    if (SkippedCheckum(wild.bef) == false) {
-      continue;
-    }
+    if (IsBadEgg(wild.bef) == true) { continue; }
+    if (SkippedCheckum(wild.bef) == false) { continue; }
 
     wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16); //don't actually need the top part I think
     wild.order = BlockOrder(wild.pid);
@@ -701,18 +673,12 @@ int main()
 
     /* Species check */
     if (user.species == 0) { //user didn't specify a species
-      if (f_species >= SPECIES) { //any valid species
-        continue;
-      }
+      if (f_species >= SPECIES) { continue; } //any valid species
     }
-    else if (f_species != user.species) { //match user.species
-      continue;
-    }
+    else if (f_species != user.species) { continue; } //match user.species
 
     /* Search for specific item */
-    if (user.item != 0 && f_item != user.item) {
-      continue;
-    }
+    if (user.item != 0 && f_item != user.item) { continue; }
 
     /* Get final moveset and fateful encounter flag */
     u16 fate;
@@ -749,9 +715,7 @@ int main()
 
     /* Filter for a specific move */
     if (user.move != 0) {
-      if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) {
-        continue;
-      }
+      if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) { continue; }
     }
 
     /* Get final level */
