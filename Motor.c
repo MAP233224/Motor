@@ -11,11 +11,11 @@
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
 
 /* TYPEDEF */
 
+typedef unsigned __int64 u64;
 typedef unsigned __int32 u32;
 typedef unsigned __int16 u16;
 typedef unsigned __int8 u8;
@@ -37,15 +37,17 @@ typedef signed __int8 s8;
 #define NATURES (25)
 #define STATS (6)
 
-#define LOC_BEG_OPP_PARTY (0x58864) //Platinum
-#define LOC_END_OPP_PARTY (0x593C4) //Platinum
+#define LOC_BEG_OPP_PARTY_PL (0x58864) //Platinum
+#define LOC_END_OPP_PARTY_PL (0x593C4) //Platinum
+#define LOC_BEG_OPP_PARTY_DP (0x4C7B0) //Diamond and Pearl
+#define LOC_END_OPP_PARTY_DP (0x4D310) //Diamond and Pearl
 
 #define SEED_MAX_A (256) //month & day
 #define SEED_MAX_B (24) //hour
 #define SEED_MIN_C (0x0300) //delay min
 #define SEED_MAX_C (0x1000) //delay max
 
-#define RS_OFF (4) //misalignment between rotom and seven
+#define RS_OFF (4) //misalignment between wild and seven
 #define PIDS_MAX (1060) //calculated from a previous program that found the highest possible occidentary
 
 u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko"}; //languages by index
@@ -54,7 +56,7 @@ u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "k
 u8 Versions[VERSIONS][9] = {"Diamond", "Pearl", "Platinum"}; //versions
 // enum { diamond=0, pearl, platinum };
 
-u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0, 0x0227116C}, {0, 0x02271460}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}; //aslr to match with language and version
+u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0x0226D300, 0x0227116C}, {0, 0x02271460}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}; //aslr to match with language and version
 
 u8 Orders[BLOCK_PERM][BLOCKS+1] = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA", "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA"}; //all 24 block permutations
 
@@ -70,7 +72,7 @@ u8 Items[ITEMS][14] = {"anything", "Master Ball", "Ultra Ball", "Great Ball", "P
 
 u8 Moves[MOVES][14] = { "None" , "Pound", "Karate Chop", "Double Slap", "Comet Punch", "Mega Punch", "Pay Day", "Fire Punch", "Ice Punch", "Thunder Punch", "Scratch", "Vice Grip", "Guillotine", "Razor Wind", "Swords Dance", "Cut", "Gust", "Wing Attack", "Whirlwind", "Fly", "Bind", "Slam", "Vine Whip", "Stomp", "Double Kick", "Mega Kick", "Jump Kick", "Rolling Kick", "Sand Attack", "Headbutt", "Horn Attack", "Fury Attack", "Horn Drill", "Tackle", "Body Slam", "Wrap", "Take Down", "Thrash", "Double-Edge", "Tail Whip", "Poison Sting", "Twineedle", "Pin Missile", "Leer", "Bite", "Growl", "Roar", "Sing", "Supersonic", "Sonic Boom", "Disable", "Acid", "Ember", "Flamethrower", "Mist", "Water Gun", "Hydro Pump", "Surf", "Ice Beam", "Blizzard", "Psybeam", "Bubble Beam", "Aurora Beam", "Hyper Beam", "Peck", "Drill Peck", "Submission", "Low Kick", "Counter", "Seismic Toss", "Strength", "Absorb", "Mega Drain", "Leech Seed", "Growth", "Razor Leaf", "Solar Beam", "Poison Powder", "Stun Spore", "Sleep Powder", "Petal Dance", "String Shot", "Dragon Rage", "Fire Spin", "Thunder Shock", "Thunderbolt", "Thunder Wave", "Thunder", "Rock Throw", "Earthquake", "Fissure", "Dig", "Toxic", "Confusion", "Psychic", "Hypnosis", "Meditate", "Agility", "Quick Attack", "Rage", "Teleport", "Night Shade", "Mimic", "Screech", "Double Team", "Recover", "Harden", "Minimize", "Smokescreen", "Confuse Ray", "Withdraw", "Defense Curl", "Barrier", "Light Screen", "Haze", "Reflect", "Focus Energy", "Bide", "Metronome", "Mirror Move", "Self-Destruct", "Egg Bomb", "Lick", "Smog", "Sludge", "Bone Club", "Fire Blast", "Waterfall", "Clamp", "Swift", "Skull Bash", "Spike Cannon", "Constrict", "Amnesia", "Kinesis", "Soft-Boiled", "High Jump Kick", "Glare", "Dream Eater", "Poison Gas", "Barrage", "Leech Life", "Lovely Kiss", "Sky Attack", "Transform", "Bubble", "Dizzy Punch", "Spore", "Flash", "Psywave", "Splash", "Acid Armor", "Crabhammer", "Explosion", "Fury Swipes", "Bonemerang", "Rest", "Rock Slide", "Hyper Fang", "Sharpen", "Conversion", "Tri Attack", "Super Fang", "Slash", "Substitute", "Struggle", "Sketch", "Triple Kick", "Thief", "Spider Web", "Mind Reader", "Nightmare", "Flame Wheel", "Snore", "Curse", "Flail", "Conversion 2", "Aeroblast", "Cotton Spore", "Reversal", "Spite", "Powder Snow", "Protect", "Mach Punch", "Scary Face", "Feint Attack", "Sweet Kiss", "Belly Drum", "Sludge Bomb", "Mud-Slap", "Octazooka", "Spikes", "Zap Cannon", "Foresight", "Destiny Bond", "Perish Song", "Icy Wind", "Detect", "Bone Rush", "Lock-On", "Outrage", "Sandstorm", "Giga Drain", "Endure", "Charm", "Rollout", "False Swipe", "Swagger", "Milk Drink", "Spark", "Fury Cutter", "Steel Wing", "Mean Look", "Attract", "Sleep Talk", "Heal Bell", "Return", "Present", "Frustration", "Safeguard", "Pain Split", "Sacred Fire", "Magnitude", "Dynamic Punch", "Megahorn", "Dragon Breath", "Baton Pass", "Encore", "Pursuit", "Rapid Spin", "Sweet Scent", "Iron Tail", "Metal Claw", "Vital Throw", "Morning Sun", "Synthesis", "Moonlight", "Hidden Power", "Cross Chop", "Twister", "Rain Dance", "Sunny Day", "Crunch", "Mirror Coat", "Psych Up", "Extreme Speed", "Ancient Power", "Shadow Ball", "Future Sight", "Rock Smash", "Whirlpool", "Beat Up", "Fake Out", "Uproar", "Stockpile", "Spit Up", "Swallow", "Heat Wave", "Hail", "Torment", "Flatter", "Will-O-Wisp", "Memento", "Facade", "Focus Punch", "Smelling Salts", "Follow Me", "Nature Power", "Charge", "Taunt", "Helping Hand", "Trick", "Role Play", "Wish", "Assist", "Ingrain", "Superpower", "Magic Coat", "Recycle", "Revenge", "Brick Break", "Yawn", "Knock Off", "Endeavor", "Eruption", "Skill Swap", "Imprison", "Refresh", "Grudge", "Snatch", "Secret Power", "Dive", "Arm Thrust", "Camouflage", "Tail Glow", "Luster Purge", "Mist Ball", "Feather Dance", "Teeter Dance", "Blaze Kick", "Mud Sport", "Ice Ball", "Needle Arm", "Slack Off", "Hyper Voice", "Poison Fang", "Crush Claw", "Blast Burn", "Hydro Cannon", "Meteor Mash", "Astonish", "Weather Ball", "Aromatherapy", "Fake Tears", "Air Cutter", "Overheat", "Odor Sleuth", "Rock Tomb", "Silver Wind", "Metal Sound", "Grass Whistle", "Tickle", "Cosmic Power", "Water Spout", "Signal Beam", "Shadow Punch", "Extrasensory", "Sky Uppercut", "Sand Tomb", "Sheer Cold", "Muddy Water", "Bullet Seed", "Aerial Ace", "Icicle Spear", "Iron Defense", "Block", "Howl", "Dragon Claw", "Frenzy Plant", "Bulk Up", "Bounce", "Mud Shot", "Poison Tail", "Covet", "Volt Tackle", "Magical Leaf", "Water Sport", "Calm Mind", "Leaf Blade", "Dragon Dance", "Rock Blast", "Shock Wave", "Water Pulse", "Doom Desire", "Psycho Boost", "Roost", "Gravity", "Miracle Eye", "Wake-Up Slap", "Hammer Arm", "Gyro Ball", "Healing Wish", "Brine", "Natural Gift", "Feint", "Pluck", "Tailwind", "Acupressure", "Metal Burst", "U-turn", "Close Combat", "Payback", "Assurance", "Embargo", "Fling", "Psycho Shift", "Trump Card", "Heal Block", "Wring Out", "Power Trick", "Gastro Acid", "Lucky Chant", "Me First", "Copycat", "Power Swap", "Guard Swap", "Punishment", "Last Resort", "Worry Seed", "Sucker Punch", "Toxic Spikes", "Heart Swap", "Aqua Ring", "Magnet Rise", "Flare Blitz", "Force Palm", "Aura Sphere", "Rock Polish", "Poison Jab", "Dark Pulse", "Night Slash", "Aqua Tail", "Seed Bomb", "Air Slash", "X-Scissor", "Bug Buzz", "Dragon Pulse", "Dragon Rush", "Power Gem", "Drain Punch", "Vacuum Wave", "Focus Blast", "Energy Ball", "Brave Bird", "Earth Power", "Switcheroo", "Giga Impact", "Nasty Plot", "Bullet Punch", "Avalanche", "Ice Shard", "Shadow Claw", "Thunder Fang", "Ice Fang", "Fire Fang", "Shadow Sneak", "Mud Bomb", "Psycho Cut", "Zen Headbutt", "Mirror Shot", "Flash Cannon", "Rock Climb", "Defog", "Trick Room", "Draco Meteor", "Discharge", "Lava Plume", "Leaf Storm", "Power Whip", "Rock Wrecker", "Cross Poison", "Gunk Shot", "Iron Head", "Magnet Bomb", "Stone Edge", "Captivate", "Stealth Rock", "Grass Knot", "Chatter", "Judgment", "Bug Bite", "Charge Beam", "Wood Hammer", "Aqua Jet", "Attack Order", "Defend Order", "Heal Order", "Head Smash", "Double Hit", "Roar of Time", "Spacial Rend", "Lunar Dance", "Crush Grip", "Magma Storm", "Dark Void", "Seed Flare", "Ominous Wind", "Shadow Force"};
 
-/* PKMN STRUCT */
+/* STRUCTS */
 
 typedef struct {
   u32 pid;
@@ -103,11 +105,32 @@ typedef struct {
   u32 aslr;
 } User;
 
-/* FUNCTIONS */
+/* METHODS */
+
+void ScanValue(u8 message[], u32 *value, u8 format[], u64 max) {
+  /* General purpose safe scan. Instruction message, value to change, string format and max value */
+  do {
+    printf("%s", message);
+    u8 userInput[32];
+    fgets(userInput, 16, stdin);
+    if (strlen(userInput) == 0 || strlen(userInput) > 15) {
+      continue;
+    }
+    if (sscanf(userInput, format, value) != 1) {
+      *value = max + 1;
+      continue;
+    }
+  } while (*value > max);
+}
 
 u8 GetNatureId(u32 pid){
-    /* Get the ID of the Nature (from 0 to 24), provided the PID. */
-    return pid%25;
+  /* Get the ID of the Nature (from 0 to 24), provided the PID. */
+  return pid%25;
+}
+
+u8 GetFormId(u8 form){
+  /* Get the form ID from the form byte */
+  return form >> 3;
 }
 
 u8 BlockOrder(u32 pid){
@@ -136,10 +159,10 @@ u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value){
   if (m == 1) {
     stat_value = (stat_value*110)/100;
   }
-  else if (m == -1){
+  else if (m == -1) {
     stat_value = (stat_value*90)/100;
   }
-  else {
+  else { //0
     stat_value = stat_value;
   }
   return stat_value;
@@ -170,85 +193,39 @@ void SetCheckum(Pkmn *pkmn) {
 
 bool IsBadEgg(u16 badeggflag) {
   /* Check if the bad egg flag is set by looking at bit 2 of the "bad egg" 16-bit word. */
-  if ((badeggflag & 4) == 4) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if ((badeggflag & 4) == 4) { return true; }
+  return false;
 }
 
 bool IsEgg(u16 eggflag) {
   /* Check if the egg flag is set by looking at bit 30 of the "iv2" 16-bit word. */
-  if ((eggflag & 0x4000) == 0x4000) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if ((eggflag & 0x4000) == 0x4000) { return true; }
+  return false;
 }
 
 bool IsFatefulEncounter(u16 fateflag) {
   /* Check if the fateful encounter bit is set. */
-  if ((fateflag & 1) == 1) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if ((fateflag & 1) == 1) { return true; }
+  return false;
 }
 
 bool SkippedCheckum(u16 badeggflag) {
   /* Check if the checksum was skipped by looking at bit 0 and 1 of the "bad egg" 16-bit word. */
-  if (((badeggflag & 1) == 1) && ((badeggflag & 2) == 2)) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  if (((badeggflag & 1) == 1) && ((badeggflag & 2) == 2)) { return true; }
+  return false;
 }
 
 bool IsShiny(u32 pid, u16 tid, u16 sid) {
   /* Check if a pkmn is shiny by xoring its pid (top and bottom 16 bits), tid and sid */
-  if (((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8) {
-    return true;
-  }
-  else {
-    return false;
-  }
-}
-
-u32 ReverseSeed(u32 seed) {
-  /* Find the nearest console-hitable seed provided the current state of the RNG. Print the number of iterations. */
-  u16 frame = 0;
-  u32 state = seed;
-  u8 a = (seed >> 24) & 0xff;
-  u8 b = (seed >> 16) & 0xff;
-  u16 c = seed & 0xffff;
-  while (b > SEED_MAX_B || c < SEED_MIN_C || c > SEED_MAX_C) {
-    state = (state * 0xEEB9EB65 + 0xA3561A1) & 0xffffffff;
-    a = (state >> 24) & 0xff;
-    b = (state >> 16) & 0xff;
-    c = state & 0xffff;
-    frame += 1;
-  }
-  printf("%d frames", frame);
-  return state;
-}
-
-u32 RandomSeed() {
-  /* Generate a random console-hitable RNG seed */
-  u8 a = rand() % SEED_MAX_A;
-  u8 b = rand() % SEED_MAX_B;
-  u16 c = rand() % (SEED_MAX_C-SEED_MIN_C);
-  return (a << 24) | (b << 16) | c;
+  if (((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8) { return true; }
+  return false;
 }
 
 u32 Rng_32(u32 seed, u16 iter) {
   /* General purpose LCRNG */
   u32 state = seed;
   for (u16 i = 0; i < iter; i++) {
-      state = state * 0x41C64E6D + 0x6073;
+    state = state * 0x41C64E6D + 0x6073;
   }
   return state;
 }
@@ -258,8 +235,8 @@ u16 Rng_t16(u32 seed, u16 iter) {
   u32 state = seed;
   u16 top16 = 0;
   for (u16 i = 0; i < iter; i++) {
-      state = state * 0x41C64E6D + 0x6073;
-      top16 = state >> 16;
+    state = state * 0x41C64E6D + 0x6073;
+    top16 = state >> 16;
   }
   return top16;
 }
@@ -277,13 +254,13 @@ void Encrypt(Pkmn *pkmn) {
   u8 rng_c = RngPosOfBlock(pos_c);
   u8 rng_d = RngPosOfBlock(pos_d);
   for (u8 i = 0; i < BLOCK_SIZE; i++) {
-    pkmn->data[pos_a][i] = pkmn->data[pos_a][i] ^ Rng_t16(pkmn->checksum, rng_a + i);
-    pkmn->data[pos_b][i] = pkmn->data[pos_b][i] ^ Rng_t16(pkmn->checksum, rng_b + i);
-    pkmn->data[pos_c][i] = pkmn->data[pos_c][i] ^ Rng_t16(pkmn->checksum, rng_c + i);
-    pkmn->data[pos_d][i] = pkmn->data[pos_d][i] ^ Rng_t16(pkmn->checksum, rng_d + i);
+    pkmn->data[pos_a][i] ^= Rng_t16(pkmn->checksum, rng_a + i);
+    pkmn->data[pos_b][i] ^= Rng_t16(pkmn->checksum, rng_b + i);
+    pkmn->data[pos_c][i] ^= Rng_t16(pkmn->checksum, rng_c + i);
+    pkmn->data[pos_d][i] ^= Rng_t16(pkmn->checksum, rng_d + i);
   }
   for (u8 i = 0; i < COND_SIZE; i++) {
-    pkmn->cond[i] = pkmn->cond[i] ^ Rng_t16(pkmn->pid, i+1);
+    pkmn->cond[i] ^= Rng_t16(pkmn->pid, i+1);
   }
 }
 
@@ -317,15 +294,11 @@ void MethodJSeedToPID(u32 seed, Pkmn *pkmn) {
 
 int main()
 {
-  srand(time(NULL)); //init rand, call once
 
-  User user = {0}; //init0 struct
+  User user = {0}; //0 init
 
-  u8 answer = 0xff;
-  do {
-    printf("Use previous user settings? (0=no, 1=yes) ");
-    scanf("%u", &answer);
-  } while (answer > 1);
+  u8 answer;
+  ScanValue("Use previous user settings (0=no, 1=yes): ", &answer, "%u", 1);
 
   if (answer == 1) { //use saved user data in Profile.txt
     FILE *profile;
@@ -338,36 +311,18 @@ int main()
     fclose(profile);
   }
   else { //console scan for version, language, tid and sid
-    user.version = 0xffff;
-    user.language = 0xffff;
-    user.tid = 0xffff;
-    user.sid = 0xffff;
-    do {
-      printf("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ");
-      scanf("%u", &user.version);
-    } while (user.version > 2);
-    do {
-      printf("Enter your Language (1=jp, 2=en, 3=fr, 4=it, 5=ge, 7=sp, 8=ko): ");
-      scanf("%u", &user.language);
-    } while (user.language > 8);
-    do {
-      printf("Enter your TID (0 to 65535): ");
-      scanf("%u", &user.tid);
-    } while (user.tid == 0xffff);
-    do {
-      printf("Enter your SID (0 to 65535): ");
-      scanf("%u", &user.sid);
-    } while (user.sid == 0xffff);
 
-    u8 save_user = 0xff;
-    do {
-      printf("Save those user settings? (0=no, 1=yes) ");
-      scanf("%u", &save_user);
-    } while (save_user > 1);
+    ScanValue("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ", &user.version, "%u", 2);
+    ScanValue("Enter your Language (1=jp, 2=en, 3=fr, 4=it, 5=ge, 7=sp, 8=ko): ", &user.language, "%u", 8);
+    ScanValue("Enter your TID (0 to 65535): ", &user.tid, "%u", 0xffff);
+    ScanValue("Enter your SID (0 to 65535): ", &user.sid, "%u", 0xffff);
 
-    if (save_user == 1) {
+    u8 save_user;
+    ScanValue("Save those user settings? (0=no, 1=yes) ", &save_user, "%u", 1);
+
+    if (save_user == 1) { //erase previous and save new user profile
       FILE *save_profile;
-      save_profile = fopen("Profile.txt", "w+"); //erase and write or create the file
+      save_profile = fopen("Profile.txt", "w+");
       fprintf(save_profile, "%u\n", user.version);
       fprintf(save_profile, "%u\n", user.language);
       fprintf(save_profile, "%u\n", user.tid);
@@ -376,74 +331,45 @@ int main()
     }
   }
 
-  user.seed = 0xffffffff;
-  user.frames = 0;
-  user.species = 0xffff;
-  user.item = 0xffff;
-  user.move = 0xffff;
-
-  do {
-    printf("Search for a species (0=no, species_id=yes): ");
-    scanf("%u", &user.species);
-  } while (user.species >= SPECIES);
-  do {
-    printf("Search for an item (0=no, item_id=yes): ");
-    scanf("%u", &user.item);
-  } while (user.item >= ITEMS);
-  do {
-    printf("Search for a move (0=no, move_id=yes): ");
-    scanf("%u", &user.move);
-  } while (user.move == 0xffff);
-  do {
-    printf("Enter your Seed (0=random, else 32 bit hex): 0x");
-    scanf("%X", &user.seed);
-  } while (user.seed == 0xffffffff);
-  do {
-    printf("How many frames to search through (32 bit, dec): ");
-    scanf("%u", &user.frames);
-  } while (user.frames == 0);
+  ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES+1);
+  ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS+1);
+  ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
+  ScanValue("Enter your Seed (32 bit, hex): 0x", &user.seed, "%x", 0xffffffff);
+  ScanValue("How many frames to search through (32 bit, dec): ", &user.frames, "%u", 0xffffffff);
 
   u8 *strlang = Languages[user.language];
   u8 *strvers = Versions[user.version];
   u8 *strspec = Pokelist[user.species];
   u8 *stritem = Items[user.item];
 
-  if (user.seed == 0){
-    user.seed = RandomSeed();
-  }
-
   u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
   u16 w_language = user.language << 8; //convert for use in pkmn data
   user.aslr = Aslrs[user.language][(u8)(user.version/2)]; //depends on language and version, only plat en and fr for now
-  // user.aslr = 0x0227116C; //debug
 
   FILE *fp; //declare file object
   u8 *strfilename = "Motor_results.txt"; //name of the file
   fp = fopen(strfilename, "w+"); //open/create file
 
   fprintf(fp, "> %s (%s)\n", strvers, strlang);
-  fprintf(fp, "> TID = %u | SID = %u\n", user.tid, user.sid);
+  fprintf(fp, "> TID = %u\n> SID = %u\n", user.tid, user.sid);
   fprintf(fp, "> Seed 0x%08X\n", user.seed);
   fprintf(fp, "> ASLR 0x%08X\n", user.aslr);
   fprintf(fp, "> Searched through %u frames for %s holding %s\n\n", user.frames, strspec, stritem);
-  fprintf(fp, "Seed       | Level   | Species      | Item           | Ability          | Hatch steps | Fateful | Shiny | Moves\n");
+  fprintf(fp, "Seed       | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | Moves\n");
   fprintf(fp, "----------------------------------------------------------------------------------------------------------------------------------------\n");
 
   printf("\n> %s (%s)\n", strvers, strlang);
-  printf("> TID = %u | SID = %u\n", user.tid, user.sid);
+  printf("> TID = %u\n> SID = %u\n", user.tid, user.sid);
   printf("> Seed 0x%08X\n", user.seed);
   printf("> ASLR 0x%08X\n", user.aslr);
   printf("> Searching through %u frames for %s holding %s...\n\n", user.frames, strspec, stritem);
-  printf("Seed       | Level   | Species      | Item           | Ability          | Hatch steps | Fateful | Shiny | Moves\n");
+  printf("Seed       | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | Moves\n");
   printf("----------------------------------------------------------------------------------------------------------------------------------------\n");
-
-  u16 p1 = (user.aslr + LOC_BEG_OPP_PARTY) & 0xffff;
-  u16 p2 = (user.aslr + LOC_END_OPP_PARTY) & 0xffff;
 
   u32 pid_list[PIDS_MAX] = {}; //0 init
   u32 results = 0;
 
-  u32 seed = user.seed; //advanced in the main loop
+  u32 seed = user.seed; //copy, advanced in the main loop
 
   clock_t begin = clock(); //timer starts
 
@@ -454,19 +380,19 @@ int main()
       seed = Rng_32(seed, 1);
     }
 
-    Pkmn rotom = {0}; //0 init for every element of this instance of the struct
-    Pkmn seven = {0}; //idem
+    Pkmn wild = {0}; //0 init
+    Pkmn seven = {0}; //0 init
 
-    MethodJSeedToPID(seed, &rotom);
+    MethodJSeedToPID(seed, &wild);
 
     /* Checking for duplicate PIDs (is still letting some duplicates through?)*/
     bool duplicate = false;
     for (u16 i = 0; i < PIDS_MAX; i++) {
-      if (pid_list[i] == rotom.pid) {
+      if (pid_list[i] == wild.pid) {
         duplicate = true;
         break;
       } else if (pid_list[i] == 0) {
-        pid_list[i] = rotom.pid; //insert the new pid
+        pid_list[i] = wild.pid; //insert the new pid
         break;
       }
     }
@@ -475,106 +401,167 @@ int main()
         pid_list[i] = 0;
       }
     }
-    if (duplicate == true) {
-      continue;
+    if (duplicate == true) { continue; }
+
+    if (user.version == 2) { //for Platinum, init with Rotom
+      wild.bstats[hp] = 50;
+      wild.bstats[at] = 50;
+      wild.bstats[df] = 77;
+      wild.bstats[sp] = 91;
+      wild.bstats[sa] = 95;
+      wild.bstats[sd] = 77;
+
+      wild.order = BlockOrder(wild.pid);
+      wild.pos_a = PositionOfBlock(wild.order, 'A');
+      wild.pos_b = PositionOfBlock(wild.order, 'B');
+      wild.pos_c = PositionOfBlock(wild.order, 'C');
+      wild.pos_d = PositionOfBlock(wild.order, 'D');
+
+      wild.data[wild.pos_a][0] = 0x01DF; //species
+      wild.data[wild.pos_a][2] = user.tid; //tid
+      wild.data[wild.pos_a][3] = user.sid; //sid
+      wild.data[wild.pos_a][4] = 0x1F40; //xp1 (depends also on version/level)
+      wild.data[wild.pos_a][6] = 0x1A46; //ability and friendship concatenated
+      wild.data[wild.pos_a][7] = w_language; //language
+
+      wild.data[wild.pos_b][0] = 0x0054; //thundershock
+      wild.data[wild.pos_b][1] = 0x006D; //confuse ray
+      wild.data[wild.pos_b][2] = 0x00FD; //uproar
+      wild.data[wild.pos_b][3] = 0x0068; //doubleteam
+      wild.data[wild.pos_b][4] = 0x0A1E; //pp1and2
+      wild.data[wild.pos_b][5] = 0x0F0A; //pp3and4
+      wild.data[wild.pos_b][8] = wild.iv1;
+      wild.data[wild.pos_b][9] = wild.iv2;
+      wild.data[wild.pos_b][12] = 0x0004; //genderless
+
+      if (user.language == 3) { //fr
+        wild.data[wild.pos_c][0] = 0x0137; //M
+        wild.data[wild.pos_c][1] = 0x0139; //O
+        wild.data[wild.pos_c][2] = 0x013E; //T
+        wild.data[wild.pos_c][3] = 0x0133; //I
+        wild.data[wild.pos_c][4] = 0x013D; //S
+        wild.data[wild.pos_c][5] = 0x0137; //M
+        wild.data[wild.pos_c][6] = 0x012B; //A
+        wild.data[wild.pos_c][7] = 0xffff; //terminator
+      }
+      else if (user.language == 1) { //jp
+        wild.data[wild.pos_c][0] = 0x009E; //RO
+        wild.data[wild.pos_c][1] = 0x0079; //TO
+        wild.data[wild.pos_c][2] = 0x0091; //MU
+        wild.data[wild.pos_c][3] = 0xffff; //terminator
+      }
+      else if (user.language == 8) { //ko
+        wild.data[wild.pos_c][0] = 0x06C0; //RO
+        wild.data[wild.pos_c][1] = 0x0BFA; //TO
+        wild.data[wild.pos_c][2] = 0x0759; //MU
+        wild.data[wild.pos_c][3] = 0xffff; //terminator
+      }
+      else { //en, it, ge, sp
+        wild.data[wild.pos_c][0] = 0x013C; //R
+        wild.data[wild.pos_c][1] = 0x0139; //O
+        wild.data[wild.pos_c][2] = 0x013E; //T
+        wild.data[wild.pos_c][3] = 0x0139; //O
+        wild.data[wild.pos_c][4] = 0x0137; //M
+        wild.data[wild.pos_c][5] = 0xffff; //terminator
+      }
+
+      wild.data[wild.pos_c][11] = w_version; //version
+
+      wild.data[wild.pos_d][13] = 0x0400; //pokeball
+      wild.data[wild.pos_d][14] = 0x0014; //level
+    }
+    else { //for Diamond and Pearl, init with Giratina
+      wild.bstats[hp] = 150;
+      wild.bstats[at] = 100;
+      wild.bstats[df] = 120;
+      wild.bstats[sp] = 90;
+      wild.bstats[sa] = 100;
+      wild.bstats[sd] = 120;
+
+      wild.order = BlockOrder(wild.pid);
+      wild.pos_a = PositionOfBlock(wild.order, 'A');
+      wild.pos_b = PositionOfBlock(wild.order, 'B');
+      wild.pos_c = PositionOfBlock(wild.order, 'C');
+      wild.pos_d = PositionOfBlock(wild.order, 'D');
+
+      wild.data[wild.pos_a][0] = 0x01E7; //species
+      wild.data[wild.pos_a][2] = user.tid; //tid
+      wild.data[wild.pos_a][3] = user.sid; //sid
+      wild.data[wild.pos_a][4] = 0x8ACE; //xp1 (depends also on version/level)
+      wild.data[wild.pos_a][5] = 0x0006; //xp1 (depends also on version/level)
+      wild.data[wild.pos_a][6] = 0x2E00; //ability and friendship concatenated
+      wild.data[wild.pos_a][7] = w_language; //language
+
+      wild.data[wild.pos_b][0] = 0x01D3; //shadow force
+      wild.data[wild.pos_b][1] = 0x0179; //heal block
+      wild.data[wild.pos_b][2] = 0x019E; //earth power
+      wild.data[wild.pos_b][3] = 0x00A3; //slash
+      wild.data[wild.pos_b][4] = 0x0F05; //pp1and2
+      wild.data[wild.pos_b][5] = 0x140A; //pp3and4
+      wild.data[wild.pos_b][8] = wild.iv1;
+      wild.data[wild.pos_b][9] = wild.iv2;
+      wild.data[wild.pos_b][12] = 0x0004; //genderless
+
+      if (user.language == 1) { //jp, wrong
+        wild.data[wild.pos_c][0] = 0x009E; //RO
+        wild.data[wild.pos_c][1] = 0x0079; //TO
+        wild.data[wild.pos_c][2] = 0x0091; //MU
+        wild.data[wild.pos_c][3] = 0xffff; //terminator
+      }
+      else if (user.language == 8) { //ko, wrong
+        wild.data[wild.pos_c][0] = 0x06C0; //RO
+        wild.data[wild.pos_c][1] = 0x0BFA; //TO
+        wild.data[wild.pos_c][2] = 0x0759; //MU
+        wild.data[wild.pos_c][3] = 0xffff; //terminator
+      }
+      else { //en, fr, it, ge, sp
+        wild.data[wild.pos_c][0] = 0x0131; //G
+        wild.data[wild.pos_c][1] = 0x0133; //I
+        wild.data[wild.pos_c][2] = 0x013C; //R
+        wild.data[wild.pos_c][3] = 0x012B; //A
+        wild.data[wild.pos_c][4] = 0x013E; //T
+        wild.data[wild.pos_c][5] = 0x0133; //I
+        wild.data[wild.pos_c][6] = 0x0138; //N
+        wild.data[wild.pos_c][7] = 0x012B; //A
+        wild.data[wild.pos_c][7] = 0xffff; //terminator
+      }
+
+      wild.data[wild.pos_c][11] = w_version; //version
+
+      wild.data[wild.pos_d][13] = 0x0400; //pokeball
+      wild.data[wild.pos_d][14] = 0x0046; //level
     }
 
-    /* Initialize Rotom */
-    rotom.bstats[hp] = 50;
-    rotom.bstats[at] = 50;
-    rotom.bstats[df] = 77;
-    rotom.bstats[sp] = 91;
-    rotom.bstats[sa] = 95;
-    rotom.bstats[sd] = 77;
+    wild.cond[2] = wild.data[wild.pos_d][14]; //level
+    wild.cond[3] = IvToStat(&wild, hp);
+    wild.cond[4] = wild.cond[3]; //current hp = max hp
+    wild.cond[5] = IvToStat(&wild, at);
+    wild.cond[6] = IvToStat(&wild, df);
+    wild.cond[7] = IvToStat(&wild, sp);
+    wild.cond[8] = IvToStat(&wild, sa);
+    wild.cond[9] = IvToStat(&wild, sd);
 
-    rotom.order = BlockOrder(rotom.pid);
-    rotom.pos_a = PositionOfBlock(rotom.order, 'A');
-    rotom.pos_b = PositionOfBlock(rotom.order, 'B');
-    rotom.pos_c = PositionOfBlock(rotom.order, 'C');
-    rotom.pos_d = PositionOfBlock(rotom.order, 'D');
+    wild.cond[12] = w_language; //language again
+    wild.cond[13] = 0xff00 + (w_version >> 8); //version variation
+    wild.cond[14] = 0xffff;
+    wild.cond[15] = 0xffff;
+    wild.cond[16] = 0xffff;
+    wild.cond[17] = 0xffff;
+    wild.cond[18] = 0xffff;
+    wild.cond[19] = 0xffff;
+    wild.cond[20] = 0xffff;
+    wild.cond[21] = 0xffff;
+    wild.cond[22] = 0xffff;
+    wild.cond[23] = 0xffff;
+    wild.cond[24] = 0xffff;
+    // wild.cond[25] = 0;
+    wild.cond[26] = 0xffff;
+    // wild.cond[27] = 0;
+    wild.cond[28] = 0xffff;
+    wild.cond[29] = 0xffff;
 
-    rotom.data[rotom.pos_a][0] = 0x01DF; //species
-    rotom.data[rotom.pos_a][2] = user.tid; //tid
-    rotom.data[rotom.pos_a][3] = user.sid; //sid
-    rotom.data[rotom.pos_a][4] = 0x1F40; //xp1 (depends also on version/level)
-    rotom.data[rotom.pos_a][6] = 0x1A46; //ability and friendship concatenated
-    rotom.data[rotom.pos_a][7] = w_language; //language
-
-    rotom.data[rotom.pos_b][0] = 0x0054; //thundershock
-    rotom.data[rotom.pos_b][1] = 0x006D; //confuse ray
-    rotom.data[rotom.pos_b][2] = 0x00FD; //uproar
-    rotom.data[rotom.pos_b][3] = 0x0068; //doubleteam
-    rotom.data[rotom.pos_b][4] = 0x0A1E; //pp1and2
-    rotom.data[rotom.pos_b][5] = 0x0F0A; //pp3and4
-    rotom.data[rotom.pos_b][8] = rotom.iv1;
-    rotom.data[rotom.pos_b][9] = rotom.iv2;
-    rotom.data[rotom.pos_b][12] = 0x0004; //genderless
-
-    if (user.language == 3) { //fr
-      rotom.data[rotom.pos_c][0] = 0x0137; //M
-      rotom.data[rotom.pos_c][1] = 0x0139; //O
-      rotom.data[rotom.pos_c][2] = 0x013E; //T
-      rotom.data[rotom.pos_c][3] = 0x0133; //I
-      rotom.data[rotom.pos_c][4] = 0x013D; //S
-      rotom.data[rotom.pos_c][5] = 0x0137; //M
-      rotom.data[rotom.pos_c][6] = 0x012B; //A
-      rotom.data[rotom.pos_c][7] = 0xffff; //terminator
-    }
-    else if (user.language == 1) { //jp
-      rotom.data[rotom.pos_c][0] = 0x009E; //RO
-      rotom.data[rotom.pos_c][1] = 0x0079; //TO
-      rotom.data[rotom.pos_c][2] = 0x0091; //MU
-      rotom.data[rotom.pos_c][3] = 0xffff; //terminator
-    }
-    else if (user.language == 8) { //ko
-      rotom.data[rotom.pos_c][0] = 0x06C0; //RO
-      rotom.data[rotom.pos_c][1] = 0x0BFA; //TO
-      rotom.data[rotom.pos_c][2] = 0x0759; //MU
-      rotom.data[rotom.pos_c][3] = 0xffff; //terminator
-    }
-    else { //en, it, ge, sp
-      rotom.data[rotom.pos_c][0] = 0x013C; //R
-      rotom.data[rotom.pos_c][1] = 0x0139; //O
-      rotom.data[rotom.pos_c][2] = 0x013E; //T
-      rotom.data[rotom.pos_c][3] = 0x0139; //O
-      rotom.data[rotom.pos_c][4] = 0x0137; //M
-      rotom.data[rotom.pos_c][5] = 0xffff; //terminator
-    }
-
-    rotom.data[rotom.pos_c][11] = w_version; //version
-
-    rotom.data[rotom.pos_d][13] = 0x0400; //pokeball
-    rotom.data[rotom.pos_d][14] = 0x0014; //level
-
-    rotom.cond[2] = rotom.data[rotom.pos_d][14]; //level
-    rotom.cond[3] = IvToStat(&rotom, hp);
-    rotom.cond[4] = rotom.cond[3]; //current hp = max hp
-    rotom.cond[5] = IvToStat(&rotom, at);
-    rotom.cond[6] = IvToStat(&rotom, df);
-    rotom.cond[7] = IvToStat(&rotom, sp);
-    rotom.cond[8] = IvToStat(&rotom, sa);
-    rotom.cond[9] = IvToStat(&rotom, sd);
-    rotom.cond[12] = w_language;
-    rotom.cond[13] = 0xff00 + (w_version >> 8); //version variation
-    rotom.cond[14] = 0xffff;
-    rotom.cond[15] = 0xffff;
-    rotom.cond[16] = 0xffff;
-    rotom.cond[17] = 0xffff;
-    rotom.cond[18] = 0xffff;
-    rotom.cond[19] = 0xffff;
-    rotom.cond[20] = 0xffff;
-    rotom.cond[21] = 0xffff;
-    rotom.cond[22] = 0xffff;
-    rotom.cond[23] = 0xffff;
-    rotom.cond[24] = 0xffff;
-    // rotom.cond[25] = 0;
-    rotom.cond[26] = 0xffff;
-    // rotom.cond[27] = 0;
-    rotom.cond[28] = 0xffff;
-    rotom.cond[29] = 0xffff;
-
-    SetCheckum(&rotom);
-    Encrypt(&rotom);
+    SetCheckum(&wild);
+    Encrypt(&wild);
 
     /* Initialize Seven */
     seven.pid = 0x00005544;
@@ -588,72 +575,86 @@ int main()
     /* Simulating the stack overflow */
     for (u8 i = 0; i < BLOCK_SIZE-RS_OFF; i++) {
       for (u8 j = 1; j < BLOCKS; j++) { //only need to start from j=1 bc block A is taken care of later.
-        seven.data[j][i+RS_OFF] = rotom.data[j-1][i]; //warning: negative index
+        seven.data[j][i+RS_OFF] = wild.data[j-1][i]; //warning: negative index
       }
     }
     for (u8 i = 0; i < BLOCKS; i++) {
       for (u8 j = 0; j < BLOCKS-2; j++) {
-        seven.data[j+2][i] = rotom.data[j][BLOCK_SIZE-RS_OFF+i];
+        seven.data[j+2][i] = wild.data[j][BLOCK_SIZE-RS_OFF+i];
       }
     }
     for (u8 i = 0; i < COND_SIZE; i++) {
       if (i < RS_OFF) {
-        seven.cond[i] = rotom.data[2][BLOCK_SIZE-RS_OFF+i];
+        seven.cond[i] = wild.data[2][BLOCK_SIZE-RS_OFF+i];
       }
       else if (i < RS_OFF+BLOCK_SIZE) {
-        seven.cond[i] = rotom.data[3][i-RS_OFF];
+        seven.cond[i] = wild.data[3][i-RS_OFF];
       }
       else {
-        seven.cond[i] = rotom.cond[i-RS_OFF-BLOCK_SIZE];
+        seven.cond[i] = wild.cond[i-RS_OFF-BLOCK_SIZE];
       }
     }
 
-    seven.data[seven.pos_a][0] = p1;
-    seven.data[seven.pos_a][1] = 0x022c;
-    seven.data[seven.pos_a][2] = p2;
-    seven.data[seven.pos_a][3] = 0x022c;
-    seven.data[seven.pos_a][4] = 0;
-    seven.data[seven.pos_a][5] = 0x0005;
-    seven.data[seven.pos_a][6] = 0xe000;
-    seven.data[seven.pos_a][7] = 0xfa00;
-    seven.data[seven.pos_a][8] = 0xfc00;
-    seven.data[seven.pos_a][9] = 0x4000;
-    seven.data[seven.pos_a][10] = 0x3a05;
-    seven.data[seven.pos_a][11] = 0x0800;
-    seven.data[seven.pos_a][12] = 0x0006;
-    seven.data[seven.pos_a][13] = 0;
-    seven.data[seven.pos_a][14] = 0x0001;
-    seven.data[seven.pos_a][15] = 0;
+    if (user.version == 2) { //platinum
+      seven.data[seven.pos_a][0] = (u16)((user.aslr + LOC_BEG_OPP_PARTY_PL) & 0xffff);
+      seven.data[seven.pos_a][1] = (u16)((user.aslr + LOC_BEG_OPP_PARTY_PL) >> 16);
+      seven.data[seven.pos_a][2] = (u16)((user.aslr + LOC_END_OPP_PARTY_PL) & 0xffff);
+      seven.data[seven.pos_a][3] = (u16)((user.aslr + LOC_END_OPP_PARTY_PL) >> 16);
+      seven.data[seven.pos_a][4] = 0;
+      seven.data[seven.pos_a][5] = 0x0005;
+      seven.data[seven.pos_a][6] = 0xe000;
+      seven.data[seven.pos_a][7] = 0xfa00;
+      seven.data[seven.pos_a][8] = 0xfc00;
+      seven.data[seven.pos_a][9] = 0x4000;
+      seven.data[seven.pos_a][10] = 0x3a05;
+      seven.data[seven.pos_a][11] = 0x0800;
+      seven.data[seven.pos_a][12] = 0x0006;
+      seven.data[seven.pos_a][13] = 0;
+      seven.data[seven.pos_a][14] = 0x0001;
+      seven.data[seven.pos_a][15] = 0;
+    }
+    else { //dp
+      seven.data[seven.pos_a][0] = (u16)((user.aslr + LOC_BEG_OPP_PARTY_DP) & 0xffff);
+      seven.data[seven.pos_a][1] = (u16)((user.aslr + LOC_BEG_OPP_PARTY_DP) >> 16);
+      seven.data[seven.pos_a][2] = (u16)((user.aslr + LOC_END_OPP_PARTY_DP) & 0xffff);
+      seven.data[seven.pos_a][3] = (u16)((user.aslr + LOC_END_OPP_PARTY_DP) >> 16);
+      seven.data[seven.pos_a][4] = 0x3377;
+      seven.data[seven.pos_a][5] = 0x1463;
+      seven.data[seven.pos_a][6] = 0x9631;
+      seven.data[seven.pos_a][7] = 0x7779;
+      seven.data[seven.pos_a][8] = 0x3377;
+      seven.data[seven.pos_a][9] = 0x1463;
+      seven.data[seven.pos_a][10] = 0x7605;
+      seven.data[seven.pos_a][11] = 0x7777;
+      seven.data[seven.pos_a][12] = 0x0006;
+      seven.data[seven.pos_a][13] = 0;
+      seven.data[seven.pos_a][14] = 0x0001;
+      seven.data[seven.pos_a][15] = 0;
+    }
 
-    seven.data[seven.pos_c][0] = rotom.pid % 65536;
-    seven.data[seven.pos_c][1] = rotom.pid >> 16;
-    seven.data[seven.pos_c][2] = rotom.bef;
-    seven.data[seven.pos_c][3] = rotom.checksum;
+    seven.data[seven.pos_c][0] = wild.pid % 65536;
+    seven.data[seven.pos_c][1] = wild.pid >> 16;
+    seven.data[seven.pos_c][2] = wild.bef;
+    seven.data[seven.pos_c][3] = wild.checksum;
 
     Encrypt(&seven);
 
     /* If the ball doesn't have a valid id the battle won't load */
     u8 ballid = seven.data[seven.pos_d][13] >> 8;
-    if ((ballid > 16) || (ballid == 0)) {
-      continue;
-    }
+    if ((ballid > 16) || (ballid == 0)) { continue; } //this might be more complicated than that
 
     SetCheckum(&seven);
     Encrypt(&seven);
 
     /* Is a bad egg or checksum was not skipped */
-    rotom.bef = seven.data[seven.pos_c][2];
-    if (IsBadEgg(rotom.bef) == true) {
-      continue;
-    }
-    if (SkippedCheckum(rotom.bef) == false) {
-      continue;
-    }
+    wild.bef = seven.data[seven.pos_c][2];
+    if (IsBadEgg(wild.bef) == true) { continue; }
+    if (SkippedCheckum(wild.bef) == false) { continue; }
 
-    rotom.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16); //don't actually need the top part I think
-    rotom.order = BlockOrder(rotom.pid);
-    u8 perm_a = PositionOfBlock(rotom.order, 'A'); //for the species, item, ability and steps to hatch
-    u8 perm_b = PositionOfBlock(rotom.order, 'B'); //for the moves and fateful encounter flag
+    wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16); //don't actually need the top part I think
+    wild.order = BlockOrder(wild.pid);
+    u8 perm_a = PositionOfBlock(wild.order, 'A'); //for the species, item, ability and steps to hatch
+    u8 perm_b = PositionOfBlock(wild.order, 'B'); //for the moves and fateful encounter flag
 
     /* Get final species, item, ability and steps to hatch */
     u16 f_species;
@@ -675,20 +676,14 @@ int main()
 
     /* Species check */
     if (user.species == 0) { //user didn't specify a species
-      if (f_species >= SPECIES) { //any valid species
-        continue;
-      }
+      if (f_species >= SPECIES) { continue; } //any valid species
     }
-    else if (f_species != user.species) { //match user.species
-      continue;
-    }
+    else if (f_species != user.species) { continue; } //match user.species
 
     /* Search for specific item */
-    if (user.item != 0 && f_item != user.item) {
-      continue;
-    }
+    if (user.item != 0 && f_item != user.item) { continue; }
 
-    /* Get final moveset and fateful encounter flag */
+    /* Get final moveset, egg steps, form id and fateful encounter flag */
     u16 fate;
     u16 egg;
     u16 moves[4];
@@ -723,18 +718,14 @@ int main()
 
     /* Filter for a specific move */
     if (user.move != 0) {
-      if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) {
-        continue;
-      }
+      if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) { continue; }
     }
-
-    /* Check for 4 legal moves (disabled by default) */
-    // if ((moves[0] >= MOVES) || (moves[1] >= MOVES) || (moves[2] >= MOVES) || (moves[3] >= MOVES)) {
-    //   continue;
-    // }
 
     /* Get final level */
     u8 f_level = seven.cond[22] & 0xff;
+
+    /* Get form id */
+    u8 form = GetFormId((u8)fate);
 
     /* Fateful encounter string definition */
     u8 *fateful;
@@ -797,7 +788,7 @@ int main()
 
     /* Get shinyness */
     u8 *shiny;
-    if (IsShiny(rotom.pid, user.tid, user.sid) == true) {
+    if (IsShiny(wild.pid, user.tid, user.sid) == true) {
       shiny = "Shiny";
     }
     else {
@@ -805,10 +796,10 @@ int main()
     }
 
     /* Print successful result */
-    fprintf(fp, "0x%08X | Lv. %-3d | %-12s | %-14s | %-16s | %-5d steps | %s | %s | ", seed, f_level, str_f_species, str_f_item, str_f_abi, f_steps, fateful, shiny);
+    fprintf(fp, "0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
     fprintf(fp, "%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
 
-    printf("0x%08X | Lv. %-3d | %-12s | %-14s | %-16s | %-5d steps | %s | %s | ", seed, f_level, str_f_species, str_f_item, str_f_abi, f_steps, fateful, shiny);
+    printf("0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
     printf("%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
 
     results += 1;
