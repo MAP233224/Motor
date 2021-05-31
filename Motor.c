@@ -56,7 +56,7 @@ u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "k
 u8 Versions[VERSIONS][9] = {"Diamond", "Pearl", "Platinum"}; //versions
 // enum { diamond=0, pearl, platinum };
 
-u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0x0226D300, 0x0227116C}, {0, 0x02271460}, {0x0226D500, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}; //aslr to match with language and version
+u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0x0226D300, 0x0227116C}, {0x0226D5FC, 0x02271460}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0}}; //aslr to match with language and version
 
 u8 Orders[BLOCK_PERM][BLOCKS+1] = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA", "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA"}; //all 24 block permutations
 
@@ -114,11 +114,9 @@ void ScanValue(u8 message[], u32 *value, u8 format[], u64 max) {
     u8 userInput[32];
     fgets(userInput, 16, stdin);
     if (strlen(userInput) == 0 || strlen(userInput) > 15) {
-      // printf("DEBUG: Invalid strlen()\n");
       continue;
     }
     if (sscanf(userInput, format, value) != 1) {
-      // printf("DEBUG: Invalid sscanf()\n");
       *value = max + 1;
       continue;
     }
