@@ -56,7 +56,7 @@ u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "k
 u8 Versions[VERSIONS][9] = {"Diamond", "Pearl", "Platinum"}; //versions
 // enum { diamond=0, pearl, platinum };
 
-u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0x0226D300, 0x0227116C}, {0, 0x02271460}, {0x0226D500, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}; //aslr to match with language and version
+u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0x0226D300, 0x0227116C}, {0x0226D5FC, 0x02271460}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0}}; //aslr to match with language and version
 
 u8 Orders[BLOCK_PERM][BLOCKS+1] = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA", "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA"}; //all 24 block permutations
 
