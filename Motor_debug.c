@@ -339,16 +339,16 @@ int main()
   fprintf(fp, "> Seed 0x%08X\n", user.seed);
   fprintf(fp, "> ASLR 0x%08X\n", user.aslr);
   fprintf(fp, "> Searched through %u frames for %s holding %s\n\n", user.frames, strspec, stritem);
-  fprintf(fp, "Seed       | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | Moves\n");
-  fprintf(fp, "----------------------------------------------------------------------------------------------------------------------------------------\n");
+  fprintf(fp, "Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
+  fprintf(fp, "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
   printf("\n> %s (%s)\n", strvers, strlang);
   printf("> TID = %u\n> SID = %u\n", user.tid, user.sid);
   printf("> Seed 0x%08X\n", user.seed);
   printf("> ASLR 0x%08X\n", user.aslr);
   printf("> Searching through %u frames for %s holding %s...\n\n", user.frames, strspec, stritem);
-  printf("Seed       | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | Moves\n");
-  printf("----------------------------------------------------------------------------------------------------------------------------------------\n");
+  printf("Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
+  printf("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
   u32 pid_list[PIDS_MAX] = {}; //0 init
   u32 results = 0;
@@ -635,7 +635,7 @@ int main()
     wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16); //don't actually need the top part I think
     wild.order = BlockOrder(wild.pid);
     u8 perm_a = PositionOfBlock(wild.order, 'A'); //for the species, item, ability and steps to hatch
-    u8 perm_b = PositionOfBlock(wild.order, 'B'); //for the moves and fateful encounter flag
+    u8 perm_b = PositionOfBlock(wild.order, 'B'); //for the moves, IVs and fateful encounter flag
 
     /* Get final species, item, ability and steps to hatch */
     u16 f_species;
@@ -666,32 +666,42 @@ int main()
 
     /* Get final moveset, egg steps, form id and fateful encounter flag */
     u16 fate;
-    u16 egg;
     u16 moves[4];
     if (perm_b == 3) {
       for (u8 i = 0; i < 4; i++) {
         moves[i] = seven.cond[RS_OFF+i];
       }
       fate = seven.cond[RS_OFF+12]; //16
-      egg = seven.cond[RS_OFF+9];
+      wild.iv1 = seven.cond[RS_OFF+8];
+      wild.iv2 = seven.cond[RS_OFF+9];
     }
     else if (perm_b == 2) {
       for (u8 i = 0; i < 4; i++) {
         moves[i] = seven.cond[RS_OFF+i];
       }
       fate = seven.cond[0];
-      egg = seven.cond[RS_OFF+9];
+      wild.iv1 = seven.cond[RS_OFF+8];
+      wild.iv2 = seven.cond[RS_OFF+9];
     }
     else {
       for (u8 i = 0; i < 4; i++) {
         moves[i] = seven.data[perm_b+1][RS_OFF+i];
       }
       fate = seven.data[perm_b+2][0];
-      egg = seven.data[perm_b+1][RS_OFF+9];
+      wild.iv1 = seven.data[perm_b+1][RS_OFF+8];
+      wild.iv2 = seven.data[perm_b+1][RS_OFF+9];
     }
 
+    /* Decompose IVs */
+    wild.ivs[hp] = wild.iv1 & 31;
+    wild.ivs[at] = (wild.iv1 >> 5) & 31;
+    wild.ivs[df] = (wild.iv1 >> 10) & 31;
+    wild.ivs[sp] = wild.iv2 & 31;
+    wild.ivs[sa] = (wild.iv2 >> 5) & 31;
+    wild.ivs[sd] = (wild.iv2 >> 10) & 31;
+
     /* Calculate steps to hatch if Egg, zero if not */
-    f_steps = IsEgg(egg) * (f_steps + 1) * 255;
+    f_steps = IsEgg(wild.iv2) * (f_steps + 1) * 255;
 
     /* Filter for a specific move */
     if (user.move != 0) {
@@ -747,10 +757,12 @@ int main()
     else { shiny = "-----"; }
 
     /* Print successful result */
-    fprintf(fp, "0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
+    fprintf(fp, "0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
+    fprintf(fp, "%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
     fprintf(fp, "%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
 
-    printf("0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
+    printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
+    printf("%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
     printf("%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
 
     results++;
