@@ -50,19 +50,17 @@ typedef signed __int8 s8;
 #define RS_OFF (4) //misalignment between wild and seven
 #define PIDS_MAX (1060) //calculated from a previous program that found the highest possible occidentary
 
-u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko"}; //languages by index
-// enum { dummy_0=0, jp, en, fr, it, ge, dummy_6, sp, ko };
+u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko"}; //languages by index, 0 and 6 unassigned
 
 u8 Versions[VERSIONS][9] = {"Diamond", "Pearl", "Platinum"}; //versions
-// enum { diamond=0, pearl, platinum };
 
-u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0x02271A24, 0}, {0x0226D300, 0x0227116C}, {0x0226D5FC, 0x02271460}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0}}; //aslr to match with language and version
+u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0x02271A24, 0}, {0x0226D300, 0x0227116C}, {0x0226D5FC, 0x02271460}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0}}; //ASLR to match with language and version
 
 u8 Orders[BLOCK_PERM][BLOCKS+1] = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA", "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA"}; //all 24 block permutations
 
 enum { hp=0, at, df, sp, sa, sd }; //enum for the indices of each stat
 
-s8 NatureStatModifiers[NATURES][STATS-1] = {{0, 0, 0, 0, 0}, {1, -1, 0, 0, 0}, {1, 0, -1, 0, 0}, {1, 0, 0, -1, 0}, {1, 0, 0, 0, -1}, {-1, 1, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 1, -1, 0, 0}, {0, 1, 0, -1, 0}, {0, 1, 0, 0, -1}, {-1, 0, 1, 0, 0}, {0, -1, 1, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 1, -1, 0}, {0, 0, 1, 0, -1}, {-1, 0, 0, 1, 0}, {0, -1, 0, 1, 0}, {0, 0, -1, 1, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 1, -1}, {-1, 0, 0, 0, 1}, {0, -1, 0, 0, 1}, {0, 0, -1, 0, 1}, {0, 0, 0, -1, 1}, {0, 0, 0, 0, 0}};
+s8 NatureStatModifiers[NATURES][STATS-1] = {{0, 0, 0, 0, 0}, {1, -1, 0, 0, 0}, {1, 0, -1, 0, 0}, {1, 0, 0, -1, 0}, {1, 0, 0, 0, -1}, {-1, 1, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 1, -1, 0, 0}, {0, 1, 0, -1, 0}, {0, 1, 0, 0, -1}, {-1, 0, 1, 0, 0}, {0, -1, 1, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 1, -1, 0}, {0, 0, 1, 0, -1}, {-1, 0, 0, 1, 0}, {0, -1, 0, 1, 0}, {0, 0, -1, 1, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 1, -1}, {-1, 0, 0, 0, 1}, {0, -1, 0, 0, 1}, {0, 0, -1, 0, 1}, {0, 0, 0, -1, 1}, {0, 0, 0, 0, 0}}; //table for bonus/malus in each stat depending on Nature, HP omitted
 
 u8 Abilities[ABILITIES][16] = {"None", "Stench", "Drizzle", "Speed Boost", "Battle Armor", "Sturdy", "Damp", "Limber", "Sand Veil", "Static", "Volt Absorb", "Water Absorb", "Oblivious", "Cloud Nine", "Compound Eyes", "Insomnia", "Color Change", "Immunity", "Flash Fire", "Shield Dust", "Own Tempo", "Suction Cups", "Intimidate", "Shadow Tag", "Rough Skin", "Wonder Guard", "Levitate", "Effect Spore", "Synchronize", "Clear Body", "Natural Cure", "Lightning Rod", "Serene Grace", "Swift Swim", "Chlorophyll", "Illuminate", "Trace", "Huge Power", "Poison Point", "Inner Focus", "Magma Armor", "Water Veil", "Magnet Pull", "Soundproof", "Rain Dish", "Sand Stream", "Pressure", "Thick Fat", "Early Bird", "Flame Body", "Run Away", "Keen Eye", "Hyper Cutter", "Pickup", "Truant", "Hustle", "Cute Charm", "Plus", "Minus", "Forecast", "Sticky Hold", "Shed Skin", "Guts", "Marvel Scale", "Liquid Ooze", "Overgrow", "Blaze", "Torrent", "Swarm", "Rock Head", "Drought", "Arena Trap", "Vital Spirit", "White Smoke", "Pure Power", "Shell Armor", "Air Lock", "Tangled Feet", "Motor Drive", "Rivalry", "Steadfast", "Snow Cloak", "Gluttony", "Anger Point", "Unburden", "Heatproof", "Simple", "Dry Skin", "Download", "Iron Fist", "Poison Heal", "Adaptability", "Skill Link", "Hydration", "Solar Power", "Quick Feet", "Normalize", "Sniper", "Magic Guard", "No Guard", "Stall", "Technician", "Leaf Guard", "Klutz", "Mold Breaker", "Super Luck", "Aftermath", "Anticipation", "Forewarn", "Unaware", "Tinted Lens", "Filter", "Slow Start", "Scrappy", "Storm Drain", "Ice Body", "Solid Rock", "Snow Warning", "Honey Gather", "Frisk", "Reckless", "Multitype", "Flower Gift", "Bad Dreams"};
 
@@ -206,19 +204,14 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
   return (bool)(((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8);
 }
 
-u32 Rng_32(u32 seed, u16 iter) {
-  /* General purpose LCRNG */
-  u32 state = seed;
-  for (u16 i = 0; i < iter; i++) {
-    state = state * 0x41C64E6D + 0x6073;
-  }
-  return state;
+u32 RngNext(u32 state) {
+  /* General purpose LCRNG, return the next state */
+  return state * 0x41C64E6D + 0x6073;
 }
 
-u16 Rng_t16(u32 seed, u16 iter) {
+u16 Rng_t16(u32 state, u16 iter) {
   /* General purpose LCRNG, return only the 16 most significant bits */
-  u32 state = seed;
-  u16 top16 = 0;
+  u16 top16;
   for (u16 i = 0; i < iter; i++) {
     state = state * 0x41C64E6D + 0x6073;
     top16 = state >> 16;
@@ -364,9 +357,7 @@ int main()
   /* Main search loop */
   for (u32 frame = 0; frame < user.frames; frame++){
 
-    if (frame != 0) { //advance the RNG everytime, except on the 0th frame
-      seed = Rng_32(seed, 1);
-    }
+    if (frame != 0) { seed = RngNext(seed); } //advance the RNG everytime, except on the 0th frame
 
     Pkmn wild = {0}; //0 init
     Pkmn seven = {0}; //0 init
