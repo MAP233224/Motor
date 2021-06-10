@@ -50,19 +50,17 @@ typedef signed __int8 s8;
 #define RS_OFF (4) //misalignment between wild and seven
 #define PIDS_MAX (1060) //calculated from a previous program that found the highest possible occidentary
 
-u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko"}; //languages by index
-// enum { dummy_0=0, jp, en, fr, it, ge, dummy_6, sp, ko };
+u8 Languages[LANGUAGES][3] = {"_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko"}; //languages by index, 0 and 6 unassigned
 
 u8 Versions[VERSIONS][9] = {"Diamond", "Pearl", "Platinum"}; //versions
-// enum { diamond=0, pearl, platinum };
 
-u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0, 0}, {0x0226D300, 0x0227116C}, {0x0226D5FC, 0x02271460}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0}}; //aslr to match with language and version
+u32 Aslrs[LANGUAGES][VERSIONS-1] = {{0, 0}, {0x02271A24, 0}, {0x0226D300, 0x0227116C}, {0x0226D5FC, 0x02271460}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0}}; //ASLR to match with language and version
 
 u8 Orders[BLOCK_PERM][BLOCKS+1] = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA", "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA"}; //all 24 block permutations
 
 enum { hp=0, at, df, sp, sa, sd }; //enum for the indices of each stat
 
-s8 NatureStatModifiers[NATURES][STATS-1] = {{0, 0, 0, 0, 0}, {1, -1, 0, 0, 0}, {1, 0, -1, 0, 0}, {1, 0, 0, -1, 0}, {1, 0, 0, 0, -1}, {-1, 1, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 1, -1, 0, 0}, {0, 1, 0, -1, 0}, {0, 1, 0, 0, -1}, {-1, 0, 1, 0, 0}, {0, -1, 1, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 1, -1, 0}, {0, 0, 1, 0, -1}, {-1, 0, 0, 1, 0}, {0, -1, 0, 1, 0}, {0, 0, -1, 1, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 1, -1}, {-1, 0, 0, 0, 1}, {0, -1, 0, 0, 1}, {0, 0, -1, 0, 1}, {0, 0, 0, -1, 1}, {0, 0, 0, 0, 0}};
+s8 NatureStatModifiers[NATURES][STATS-1] = {{0, 0, 0, 0, 0}, {1, -1, 0, 0, 0}, {1, 0, -1, 0, 0}, {1, 0, 0, -1, 0}, {1, 0, 0, 0, -1}, {-1, 1, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 1, -1, 0, 0}, {0, 1, 0, -1, 0}, {0, 1, 0, 0, -1}, {-1, 0, 1, 0, 0}, {0, -1, 1, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 1, -1, 0}, {0, 0, 1, 0, -1}, {-1, 0, 0, 1, 0}, {0, -1, 0, 1, 0}, {0, 0, -1, 1, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 1, -1}, {-1, 0, 0, 0, 1}, {0, -1, 0, 0, 1}, {0, 0, -1, 0, 1}, {0, 0, 0, -1, 1}, {0, 0, 0, 0, 0}}; //table for bonus/malus in each stat depending on Nature, HP omitted
 
 u8 Abilities[ABILITIES][16] = {"None", "Stench", "Drizzle", "Speed Boost", "Battle Armor", "Sturdy", "Damp", "Limber", "Sand Veil", "Static", "Volt Absorb", "Water Absorb", "Oblivious", "Cloud Nine", "Compound Eyes", "Insomnia", "Color Change", "Immunity", "Flash Fire", "Shield Dust", "Own Tempo", "Suction Cups", "Intimidate", "Shadow Tag", "Rough Skin", "Wonder Guard", "Levitate", "Effect Spore", "Synchronize", "Clear Body", "Natural Cure", "Lightning Rod", "Serene Grace", "Swift Swim", "Chlorophyll", "Illuminate", "Trace", "Huge Power", "Poison Point", "Inner Focus", "Magma Armor", "Water Veil", "Magnet Pull", "Soundproof", "Rain Dish", "Sand Stream", "Pressure", "Thick Fat", "Early Bird", "Flame Body", "Run Away", "Keen Eye", "Hyper Cutter", "Pickup", "Truant", "Hustle", "Cute Charm", "Plus", "Minus", "Forecast", "Sticky Hold", "Shed Skin", "Guts", "Marvel Scale", "Liquid Ooze", "Overgrow", "Blaze", "Torrent", "Swarm", "Rock Head", "Drought", "Arena Trap", "Vital Spirit", "White Smoke", "Pure Power", "Shell Armor", "Air Lock", "Tangled Feet", "Motor Drive", "Rivalry", "Steadfast", "Snow Cloak", "Gluttony", "Anger Point", "Unburden", "Heatproof", "Simple", "Dry Skin", "Download", "Iron Fist", "Poison Heal", "Adaptability", "Skill Link", "Hydration", "Solar Power", "Quick Feet", "Normalize", "Sniper", "Magic Guard", "No Guard", "Stall", "Technician", "Leaf Guard", "Klutz", "Mold Breaker", "Super Luck", "Aftermath", "Anticipation", "Forewarn", "Unaware", "Tinted Lens", "Filter", "Slow Start", "Scrappy", "Storm Drain", "Ice Body", "Solid Rock", "Snow Warning", "Honey Gather", "Frisk", "Reckless", "Multitype", "Flower Gift", "Bad Dreams"};
 
@@ -204,19 +202,14 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
   return (bool)(((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8);
 }
 
-u32 Rng_32(u32 seed, u16 iter) {
-  /* General purpose LCRNG */
-  u32 state = seed;
-  for (u16 i = 0; i < iter; i++) {
-    state = state * 0x41C64E6D + 0x6073;
-  }
-  return state;
+u32 RngNext(u32 state) {
+  /* General purpose LCRNG, return the next state */
+  return state * 0x41C64E6D + 0x6073;
 }
 
-u16 Rng_t16(u32 seed, u16 iter) {
+u16 Rng_t16(u32 state, u16 iter) {
   /* General purpose LCRNG, return only the 16 most significant bits */
-  u32 state = seed;
-  u16 top16 = 0;
+  u16 top16;
   for (u16 i = 0; i < iter; i++) {
     state = state * 0x41C64E6D + 0x6073;
     top16 = state >> 16;
@@ -224,27 +217,37 @@ u16 Rng_t16(u32 seed, u16 iter) {
   return top16;
 }
 
-void Encrypt(Pkmn *pkmn) {
-  /* Encrypt with the XOR and RNG method each 16-bit word of Pkmn data. */
-  /* First with the Checksum as the Seed/Key (for block data), then with the PID (for condition data). */
-  /* Finally, assign each of the ABCD block in its corresponding place in Pkmn data. */
+void SetBlocks(Pkmn *pkmn) {
+  /* Get the order of each block from the PID and set them in the correct permutation */
+  pkmn->order = BlockOrder(pkmn->pid);
   pkmn->pos_a = PositionOfBlock(pkmn->order, 'A');
   pkmn->pos_b = PositionOfBlock(pkmn->order, 'B');
   pkmn->pos_c = PositionOfBlock(pkmn->order, 'C');
   pkmn->pos_d = PositionOfBlock(pkmn->order, 'D');
-  u8 rng_a = RngPosOfBlock(pkmn->pos_a);
-  u8 rng_b = RngPosOfBlock(pkmn->pos_b);
-  u8 rng_c = RngPosOfBlock(pkmn->pos_c);
-  u8 rng_d = RngPosOfBlock(pkmn->pos_d);
+}
+
+void Encrypt(Pkmn *pkmn) {
+  /* Encrypt with the XOR and LCRNG each 16-bit word of Pkmn data. */
+  /* First with the Checksum as the Seed/Key (for block data), then with the PID (for condition data). */
   for (u8 i = 0; i < BLOCK_SIZE; i++) {
-    pkmn->data[pkmn->pos_a][i] ^= Rng_t16(pkmn->checksum, rng_a + i);
-    pkmn->data[pkmn->pos_b][i] ^= Rng_t16(pkmn->checksum, rng_b + i);
-    pkmn->data[pkmn->pos_c][i] ^= Rng_t16(pkmn->checksum, rng_c + i);
-    pkmn->data[pkmn->pos_d][i] ^= Rng_t16(pkmn->checksum, rng_d + i);
+    pkmn->data[pkmn->pos_a][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_a) + i);
+    pkmn->data[pkmn->pos_b][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_b) + i);
+    pkmn->data[pkmn->pos_c][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_c) + i);
+    pkmn->data[pkmn->pos_d][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_d) + i);
   }
   for (u8 i = 0; i < COND_SIZE; i++) {
     pkmn->cond[i] ^= Rng_t16(pkmn->pid, i+1);
   }
+}
+
+void GetIVs(Pkmn *pkmn){
+  /* Decompose IVs */
+  pkmn->ivs[hp] = pkmn->iv1 & 31;
+  pkmn->ivs[at] = (pkmn->iv1 >> 5) & 31;
+  pkmn->ivs[df] = (pkmn->iv1 >> 10) & 31;
+  pkmn->ivs[sp] = pkmn->iv2 & 31;
+  pkmn->ivs[sa] = (pkmn->iv2 >> 5) & 31;
+  pkmn->ivs[sd] = (pkmn->iv2 >> 10) & 31;
 }
 
 void MethodJSeedToPID(u32 seed, Pkmn *pkmn) {
@@ -252,20 +255,14 @@ void MethodJSeedToPID(u32 seed, Pkmn *pkmn) {
   u16 frame = 1;
   pkmn->nature = Rng_t16(seed, frame) / 0x0A3E;
   frame += 1;
-  u32 pid = (Rng_t16(seed, frame)) | (Rng_t16(seed, frame+1) << 16);
-  while (pid % 25 != pkmn->nature) { //until the 2 natures are the same, reroll PID
+  pkmn->pid = (Rng_t16(seed, frame)) | (Rng_t16(seed, frame+1) << 16);
+  while (pkmn->pid % 25 != pkmn->nature) { //until the 2 natures are the same, reroll PID
     frame += 2;
-    pid = (Rng_t16(seed, frame)) | (Rng_t16(seed, frame+1) << 16);
+    pkmn->pid = (Rng_t16(seed, frame)) | (Rng_t16(seed, frame+1) << 16);
   }
-  pkmn->pid = pid;
-  u16 iv1 = Rng_t16(seed, frame+2);
-  u16 iv2 = Rng_t16(seed, frame+3);
-  pkmn->ivs[hp] = iv1 & 31;
-  pkmn->ivs[at] = (iv1 >> 5) & 31;
-  pkmn->ivs[df] = (iv1 >> 10) & 31;
-  pkmn->ivs[sp] = iv2 & 31;
-  pkmn->ivs[sa] = (iv2 >> 5) & 31;
-  pkmn->ivs[sd] = (iv2 >> 10) & 31;
+  pkmn->iv1 = Rng_t16(seed, frame+2);
+  pkmn->iv2 = Rng_t16(seed, frame+3);
+  GetIVs(pkmn);
   u32 ivsum = (pkmn->ivs[hp] << 0) | (pkmn->ivs[at] << 5) | (pkmn->ivs[df] << 10) | (pkmn->ivs[sp] << 15) | (pkmn->ivs[sa] << 20) | (pkmn->ivs[sd] << 25);
   pkmn->iv1 = ivsum & 0xffff;
   pkmn->iv2 = ivsum >> 16;
@@ -358,9 +355,7 @@ int main()
   /* Main search loop */
   for (u32 frame = 0; frame < user.frames; frame++){
 
-    if (frame != 0) { //advance the RNG everytime, except on the 0th frame
-      seed = Rng_32(seed, 1);
-    }
+    if (frame != 0) { seed = RngNext(seed); } //advance the RNG everytime, except on the 0th frame
 
     Pkmn wild = {0}; //0 init
     Pkmn seven = {0}; //0 init
@@ -385,11 +380,7 @@ int main()
     }
     if (duplicate) { continue; }
 
-    wild.order = BlockOrder(wild.pid);
-    wild.pos_a = PositionOfBlock(wild.order, 'A');
-    wild.pos_b = PositionOfBlock(wild.order, 'B');
-    wild.pos_c = PositionOfBlock(wild.order, 'C');
-    wild.pos_d = PositionOfBlock(wild.order, 'D');
+    SetBlocks(&wild);
 
     if (user.version == 2) { //for Platinum, init with Rotom
       wild.bstats[hp] = 50;
@@ -478,11 +469,13 @@ int main()
       wild.data[wild.pos_b][9] = wild.iv2;
       wild.data[wild.pos_b][12] = 0x0004; //genderless
 
-      if (user.language == 1) { //jp, wrong
-        wild.data[wild.pos_c][0] = 0x009E; //RO
-        wild.data[wild.pos_c][1] = 0x0079; //TO
-        wild.data[wild.pos_c][2] = 0x0091; //MU
-        wild.data[wild.pos_c][3] = 0xffff; //terminator
+      if (user.language == 1) { //jp
+        wild.data[wild.pos_c][0] = 0x005F; //GI
+        wild.data[wild.pos_c][1] = 0x009A; //RA
+        wild.data[wild.pos_c][2] = 0x0077; //TE
+        wild.data[wild.pos_c][3] = 0x0054; //i
+        wild.data[wild.pos_c][4] = 0x007B; //NA
+        wild.data[wild.pos_c][5] = 0xffff; //terminator
       }
       else if (user.language == 8) { //ko, wrong
         wild.data[wild.pos_c][0] = 0x06C0; //RO
@@ -542,11 +535,7 @@ int main()
     /* Initialize Seven */
     seven.pid = 0x00005544;
     seven.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
-    seven.order = 2; //BlockOrder(seven.pid);
-    seven.pos_a = 0; //PositionOfBlock(seven.order, 'A');
-    seven.pos_b = 2; //PositionOfBlock(seven.order, 'B');
-    seven.pos_c = 1; //PositionOfBlock(seven.order, 'C');
-    seven.pos_d = 3; //PositionOfBlock(seven.order, 'D');
+    SetBlocks(&seven);
 
     /* Simulating the stack overflow */
     for (u8 i = 0; i < BLOCK_SIZE-RS_OFF; i++) {
@@ -613,6 +602,7 @@ int main()
     u8 ballid = seven.data[seven.pos_d][13] >> 8;
     if ((ballid > 16) || (ballid == 0)) { continue; } //might be more complex than that
 
+    SetBlocks(&seven);
     SetCheckum(&seven);
     Encrypt(&seven);
 
@@ -622,26 +612,24 @@ int main()
     if (!SkippedCheckum(wild.bef)) { continue; }
 
     wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16); //don't actually need the top part I think
-    wild.order = BlockOrder(wild.pid);
-    u8 perm_a = PositionOfBlock(wild.order, 'A'); //for the species, item, ability and steps to hatch
-    u8 perm_b = PositionOfBlock(wild.order, 'B'); //for the moves, IVs and fateful encounter flag
+    SetBlocks(&wild);
 
     /* Get final species, item, ability and steps to hatch */
     u16 f_species;
     u16 f_item;
     u8 f_ability;
     u16 f_steps;
-    if (perm_a == 3) {
+    if (wild.pos_a == 3) {
       f_species = seven.cond[RS_OFF];
       f_item = seven.cond[RS_OFF+1];
       f_ability = seven.cond[RS_OFF+6] >> 8;
       f_steps = seven.cond[RS_OFF+6] & 0xff;
     }
     else {
-      f_species = seven.data[perm_a+1][RS_OFF];
-      f_item = seven.data[perm_a+1][RS_OFF+1];
-      f_ability = seven.data[perm_a+1][RS_OFF+6] >> 8;
-      f_steps = seven.data[perm_a+1][RS_OFF+6] & 0xff;
+      f_species = seven.data[wild.pos_a+1][RS_OFF];
+      f_item = seven.data[wild.pos_a+1][RS_OFF+1];
+      f_ability = seven.data[wild.pos_a+1][RS_OFF+6] >> 8;
+      f_steps = seven.data[wild.pos_a+1][RS_OFF+6] & 0xff;
     }
 
     /* Species check */
@@ -656,7 +644,7 @@ int main()
     /* Get final moveset, egg steps, form id and fateful encounter flag */
     u16 fate;
     u16 moves[4];
-    if (perm_b == 3) {
+    if (wild.pos_b == 3) {
       for (u8 i = 0; i < 4; i++) {
         moves[i] = seven.cond[RS_OFF+i];
       }
@@ -664,7 +652,7 @@ int main()
       wild.iv1 = seven.cond[RS_OFF+8];
       wild.iv2 = seven.cond[RS_OFF+9];
     }
-    else if (perm_b == 2) {
+    else if (wild.pos_b == 2) {
       for (u8 i = 0; i < 4; i++) {
         moves[i] = seven.cond[RS_OFF+i];
       }
@@ -674,20 +662,14 @@ int main()
     }
     else {
       for (u8 i = 0; i < 4; i++) {
-        moves[i] = seven.data[perm_b+1][RS_OFF+i];
+        moves[i] = seven.data[wild.pos_b+1][RS_OFF+i];
       }
-      fate = seven.data[perm_b+2][0];
-      wild.iv1 = seven.data[perm_b+1][RS_OFF+8];
-      wild.iv2 = seven.data[perm_b+1][RS_OFF+9];
+      fate = seven.data[wild.pos_b+2][0];
+      wild.iv1 = seven.data[wild.pos_b+1][RS_OFF+8];
+      wild.iv2 = seven.data[wild.pos_b+1][RS_OFF+9];
     }
 
-    /* Decompose IVs */
-    wild.ivs[hp] = wild.iv1 & 31;
-    wild.ivs[at] = (wild.iv1 >> 5) & 31;
-    wild.ivs[df] = (wild.iv1 >> 10) & 31;
-    wild.ivs[sp] = wild.iv2 & 31;
-    wild.ivs[sa] = (wild.iv2 >> 5) & 31;
-    wild.ivs[sd] = (wild.iv2 >> 10) & 31;
+    GetIVs(&wild);
 
     /* Calculate steps to hatch if Egg, zero if not */
     f_steps = IsEgg(wild.iv2) * (f_steps + 1) * 255;
@@ -727,10 +709,10 @@ int main()
     else { str_f_abi = Abilities[f_ability]; } //get ability name from index
 
     /* Moves string format */
-    u8 strmoves[4][14] = {};
+    u8 strmoves[4][16] = {};
     for (u8 i = 0; i < 4; i++) {
       if (moves[i] > MOVES) {
-        u8 buffer[14];
+        u8 buffer[16];
         sprintf(buffer, "0x%04X", moves[i]);
         strcpy(strmoves[i], buffer);
       }
