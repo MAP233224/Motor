@@ -92,11 +92,11 @@ typedef struct {
   u16 sid;
   u32 seed;
   u32 frames;
-  u8 dupe;
   u16 species;
   u16 item;
   u16 move;
   u32 aslr;
+  u8 dupe;
 } User;
 
 /* METHODS */
