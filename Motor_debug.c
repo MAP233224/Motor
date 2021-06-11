@@ -42,11 +42,6 @@ typedef signed __int8 s8;
 #define LOC_BEG_OPP_PARTY_DP (0x4C7B0) //Diamond and Pearl
 #define LOC_END_OPP_PARTY_DP (0x4D310) //Diamond and Pearl
 
-#define SEED_MAX_A (256) //month & day
-#define SEED_MAX_B (24) //hour
-#define SEED_MIN_C (0x0300) //delay min
-#define SEED_MAX_C (0x1000) //delay max
-
 #define RS_OFF (4) //misalignment between wild and seven
 #define PIDS_MAX (1060) //calculated from a previous program that found the highest possible occidentary
 
@@ -97,6 +92,7 @@ typedef struct {
   u16 sid;
   u32 seed;
   u32 frames;
+  u8 dupe;
   u16 species;
   u16 item;
   u16 move;
@@ -209,6 +205,14 @@ u32 RngNext(u32 state) {
   return state * 0x41C64E6D + 0x6073;
 }
 
+u32 Rng_32(u32 state, u16 iter) {
+  /* General purpose LCRNG, return full 32 bit RNG value */
+  for (u16 i = 0; i < iter; i++) {
+    state = state * 0x41C64E6D + 0x6073;
+  }
+  return state;
+}
+
 u16 Rng_t16(u32 state, u16 iter) {
   /* General purpose LCRNG, return only the 16 most significant bits */
   u16 top16;
@@ -229,17 +233,32 @@ void SetBlocks(Pkmn *pkmn) {
 }
 
 void Encrypt(Pkmn *pkmn) {
-  /* Encrypt with the XOR and LCRNG each 16-bit word of Pkmn data. */
-  /* First with the Checksum as the Seed/Key (for block data), then with the PID (for condition data). */
-  for (u8 i = 0; i < BLOCK_SIZE; i++) {
-    pkmn->data[pkmn->pos_a][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_a) + i);
-    pkmn->data[pkmn->pos_b][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_b) + i);
-    pkmn->data[pkmn->pos_c][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_c) + i);
-    pkmn->data[pkmn->pos_d][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_d) + i);
-  }
-  for (u8 i = 0; i < COND_SIZE; i++) {
-    pkmn->cond[i] ^= Rng_t16(pkmn->pid, i+1);
-  }
+    /* Encrypt with the XOR and LCRNG each 16-bit word of Pkmn data. */
+    /* First with the Checksum as the Seed/Key (for block data), then with the PID (for condition data). */
+    u32 pkmn_cond_state = pkmn->pid;
+    u32 pkmn_a_state = Rng_32(pkmn->checksum, RngPosOfBlock(pkmn->pos_a));
+    u32 pkmn_b_state = Rng_32(pkmn->checksum, RngPosOfBlock(pkmn->pos_b));
+    u32 pkmn_c_state = Rng_32(pkmn->checksum, RngPosOfBlock(pkmn->pos_c));
+    u32 pkmn_d_state = Rng_32(pkmn->checksum, RngPosOfBlock(pkmn->pos_d));
+    for (u8 i = 0; i < BLOCK_SIZE; i++) {
+        // pkmn->data[pkmn->pos_a][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_a) + i);
+        // pkmn->data[pkmn->pos_b][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_b) + i);
+        // pkmn->data[pkmn->pos_c][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_c) + i);
+        // pkmn->data[pkmn->pos_d][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_d) + i);
+        pkmn->data[pkmn->pos_a][i] ^= (pkmn_a_state >> 16);
+        pkmn->data[pkmn->pos_b][i] ^= (pkmn_b_state >> 16);
+        pkmn->data[pkmn->pos_c][i] ^= (pkmn_c_state >> 16);
+        pkmn->data[pkmn->pos_d][i] ^= (pkmn_d_state >> 16);
+        pkmn_a_state = RngNext(pkmn_a_state);
+        pkmn_b_state = RngNext(pkmn_b_state);
+        pkmn_c_state = RngNext(pkmn_c_state);
+        pkmn_d_state = RngNext(pkmn_d_state);
+    }
+    for (u8 i = 0; i < COND_SIZE; i++) {
+        // pkmn->cond[i] ^= Rng_t16(pkmn->pid, i+1);
+        pkmn_cond_state = RngNext(pkmn_cond_state);
+        pkmn->cond[i] ^= (pkmn_cond_state >> 16);
+    }
 }
 
 void GetIVs(Pkmn *pkmn){
@@ -316,6 +335,7 @@ int main()
   ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
   ScanValue("Enter your Seed (32 bit, hex): 0x", &user.seed, "%x", 0xffffffff);
   ScanValue("How many frames to search through (32 bit, dec): ", &user.frames, "%u", 0xffffffff);
+  ScanValue("Allow more seed options per result? (0=no, 1=yes): ", &user.dupe, "%u", 1);
 
   u8 *strlang = Languages[user.language];
   u8 *strvers = Versions[user.version];
@@ -324,7 +344,6 @@ int main()
 
   u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
   u16 w_language = user.language << 8; //convert for use in pkmn data
-  // user.aslr = 0x02271304;
   user.aslr = Aslrs[user.language][(u8)(user.version/2)]; //depends on language and version, only plat en and fr for now
 
   FILE *fp; //declare file object
@@ -364,23 +383,25 @@ int main()
 
     MethodJSeedToPID(seed, &wild);
 
-    /* Checking for duplicate PIDs (is still letting some duplicates through?)*/
-    bool duplicate = false;
-    for (u16 i = 0; i < PIDS_MAX; i++) {
-      if (pid_list[i] == wild.pid) {
-        duplicate = true;
-        break;
-      } else if (pid_list[i] == 0) {
-        pid_list[i] = wild.pid; //insert the new pid
-        break;
-      }
-    }
-    if (frame % PIDS_MAX == PIDS_MAX - 1) { //if filled, zero it out
+    /* Checking for duplicate PIDs if user specified it */
+    if (user.dupe==0) {
+      bool duplicate = false;
       for (u16 i = 0; i < PIDS_MAX; i++) {
-        pid_list[i] = 0;
+        if (pid_list[i] == wild.pid) {
+          duplicate = true;
+          break;
+        } else if (pid_list[i] == 0) {
+          pid_list[i] = wild.pid; //insert the new pid
+          break;
+        }
       }
+      if (frame % PIDS_MAX == PIDS_MAX - 1) { //if filled, zero it out
+        for (u16 i = 0; i < PIDS_MAX; i++) {
+          pid_list[i] = 0;
+        }
+      }
+      if (duplicate) { continue; }
     }
-    if (duplicate) { continue; }
 
     SetBlocks(&wild);
 
