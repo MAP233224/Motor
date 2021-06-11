@@ -2,14 +2,14 @@
 --      Motor.lua by MAP      --
 --------------------------------
 
--- Note: Only works for Platinum (en and fr) for now
+-- Note: Only works for DP (en, fr, it, ge, sp) for now
 
 --------------------------------
 
-user_seed = 0xBC959FED
-user_pointer = 0 --0x0227116C
-user_tid = 34952
-user_sid = 16938
+user_seed = 0x2AE944A9 --enter the seed you got from Motor.exe, press '5' to set it
+user_pointer = 0 --automatically search for a specific ASLR
+user_tid = 2880 --enter a custom TID, press '3' to set it
+user_sid = 33456 --enter a custom SID, press '3' to set it
 
 --------------------------------
 
@@ -43,7 +43,7 @@ function GetGameInfo()
   local id = bit.band(vers, 0xFF)
   local lang = bit.band(bit.rshift(vers, 24), 0xFF)
   local b=0
-  if id == 0x41 then -- Diamond and Pearl
+  if id == 0x41 then -- Diamond & Pearl
     if lang == 0x44 then b = 0x02107100 -- german
     elseif lang == 0x45 then b = 0x02106FC0 -- english
     elseif lang == 0x46 then b = 0x02107140 -- french
@@ -79,16 +79,6 @@ function SearchPointer()
 		print("Searching for pointer "..string.format("%.8X", user_pointer))
 	end
 end
-
--- function GetLanguageIndex(string)
---   for i, v in pairs(LANGUAGES) do
---     if v == string then
---       return i
---     elseif v == "_9" then
---       return 0
---     end
---   end
--- end
 
 function Mult32(a, b)
  local c = bit.rshift(a, 16)
@@ -265,7 +255,6 @@ function Controls()
   prev=tabl
 end
 
-
 function Main()
   base, version = GetGameInfo()
   rng = base + RNG_OFF[version]
@@ -274,12 +263,12 @@ function Main()
   wild_loc = pointer + WILD_OFF[version]
   og_wild_loc = pointer + OG_WILD_OFF[version]
   Controls()
-	SearchPointer()
-	frame = GetRng()
+  SearchPointer()
+  frame = GetRng()
   frame_dist = GetSeedDistance(frame)
   GetTid()
   GetWildData()
-	gui.text(2, -190, "Base = "..string.format("%.8X",pointer))
+  gui.text(2, -190, "Base = "..string.format("%.8X",pointer))
   gui.text(2, -180, "Seed = "..string.format("%.8X",user_seed))
   gui.text(2, -170, "Dist = "..frame_dist)
 end
