@@ -26,5 +26,6 @@ If you want to build the application yourself on Windows 10 with GCC, use these 
 ``windres Motor.rc -O coff -o Motor.res`` (to create the .res file and include the .ico in the final build)  
 ``gcc -O3 Motor.c -o Motor Motor.res`` (optimized mode flag -O3 helps search through seeds 3 times faster than without)  
 
-If you have any questions or issues regarding the application, direct them to me via Twitter @shinyhunter_map
+If you have any questions or issues regarding the application, direct them to me via Twitter @shinyhunter_map  
+If you want to thank me with a little extra, you can donate at https://ko-fi.com/map233224 <3
 
