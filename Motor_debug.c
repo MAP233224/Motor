@@ -68,6 +68,37 @@ u8 Moves[MOVES][16] = { "None" , "Pound", "Karate Chop", "Double Slap", "Comet P
 /* STRUCTS */
 
 typedef struct {
+  u16 species;
+  u16 level;
+  u16 bstats[STATS];
+  u16 xp1;
+  u16 xp2;
+  u16 frab; //frienship and ability concatenated
+  u16 moves[4];
+  u16 pp1and2;
+  u16 pp3and4;
+  u16 name[11];
+} Original;
+
+Original dp_giratina = {0x01E7, 70, {150, 100, 120, 90, 100, 120}, 0x8ACE, 0x0006, 0x2E00, {0x01D3, 0x0179, 0x019E, 0x00A3}, 0x0F05, 0x140A, {0x0131, 0x0133, 0x013C, 0x012B, 0x013E, 0x0133, 0x0138, 0x012B, 0xffff, 0, 0}};
+Original dp_arceus = {0x01ED, 80, {120, 120, 120, 120, 120, 120}, 0xC400, 0x0009, 0x7900, {0x011F, 0x00F8, 0x0069, 0x003F}, 0x0F14, 0x050A, {0x012B, 0x013C, 0x012D, 0x012F, 0x013F, 0x013D, 0xFFFF, 0, 0, 0, 0}};
+Original dp_rotom = {0x01DF, 15, {50, 50, 77, 91, 95, 77}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_uxie = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_azelf = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_shaymin = {0, 30, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_darkrai = {0, 40, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_motisma = {0x01DF, 15, {50, 50, 77, 91, 95, 77}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0x0137, 0x0139, 0x013E, 0x0133, 0x013D, 0x0137, 0x012B, 0xffff, 0, 0, 0}};
+Original dp_crehelf = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_crefadet = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_selfe = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original dp_tobutz = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+Original pt_giratina = {0, 47, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original pt_rotom = {0x01DF, 20, {50, 50, 77, 91, 95, 77}, 0x1F40, 0, 0x1A46, {0x0054, 0x006D, 0x00FD, 0x0068}, 0x0A1E, 0x0F0A, {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xffff, 0, 0, 0, 0, 0}};
+Original pt_uxie = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+Original pt_azelf = {0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+typedef struct {
   u32 pid;
   u16 bef;
   u16 checksum;
@@ -80,26 +111,40 @@ typedef struct {
   u8 ivs[STATS];
   u16 iv1;
   u16 iv2;
-  u8 bstats[STATS];
   u16 data[BLOCKS][BLOCK_SIZE];
   u16 cond[COND_SIZE];
 } Pkmn;
 
 typedef struct {
-  u16 version;
-  u16 language;
-  u16 tid;
-  u16 sid;
+  u32 version;
+  u32 language;
+  u32 tid;
+  u32 sid;
   u32 seed;
   u32 frames;
-  u16 species;
-  u16 item;
-  u16 move;
+  u32 species;
+  u32 item;
+  u32 move;
   u32 aslr;
-  u8 dupe;
+  u32 dupe;
 } User;
 
 /* METHODS */
+
+void DebugPkmnData(Pkmn *pkmn) {
+  /* Prints out the raw data of the chosen pkmn */
+  printf("%04X\n", pkmn->checksum);
+  for (int i=0; i<BLOCKS; i++){
+    for (int j=0; j<BLOCK_SIZE; j++){
+      printf("%04X ", pkmn->data[i][j]);
+      if (j%8==7) { printf("\n");}
+    }
+  }
+  for (int i=0; i<COND_SIZE; i++){
+    printf("%04X ", pkmn->cond[i]);
+    if (i%8==7) { printf("\n");}
+  }
+}
 
 void ScanValue(u8 message[], u32 *value, u8 format[], u64 max) {
   /* General purpose safe scan. Instruction message, value to change, string format and max value */
@@ -152,15 +197,15 @@ u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value){
   return stat_value * (10 + m) / 10;
 }
 
-u16 IvToStat(Pkmn *pkmn, u8 stat) {
+u16 IvToStat(Pkmn *pkmn, Original *wild, u8 stat) {
   /* Calculate the value of a stat based on the IV, Base Stat, Nature and Level. */
-  u8 lv = pkmn->cond[2];
+  u8 lv = wild->level;
   u16 val;
   if (stat == 0) { //hp
-    val = (2*(pkmn->bstats[stat]) + pkmn->ivs[stat])*lv/100 + lv + 10;
+    val = (2*(wild->bstats[stat]) + pkmn->ivs[stat])*lv/100 + lv + 10;
   }
   else { //others
-    val = (2*(pkmn->bstats[stat]) + pkmn->ivs[stat])*lv/100 + 5;
+    val = (2*(wild->bstats[stat]) + pkmn->ivs[stat])*lv/100 + 5;
     val = StatNatureModifier(pkmn->nature, stat-1, val); //ignore for hp (index 0), hence the -1
   }
   return val;
@@ -296,7 +341,7 @@ int main()
 
   User user = {0}; //0 init
 
-  u8 answer;
+  u32 answer;
   ScanValue("Use previous user settings (0=no, 1=yes): ", &answer, "%u", 1);
 
   if (answer == 1) { //use saved user data in Profile.txt
@@ -316,7 +361,7 @@ int main()
     ScanValue("Enter your TID (0 to 65535): ", &user.tid, "%u", 0xffff);
     ScanValue("Enter your SID (0 to 65535): ", &user.sid, "%u", 0xffff);
 
-    u8 save_user;
+    u32 save_user;
     ScanValue("Save those user settings? (0=no, 1=yes) ", &save_user, "%u", 1);
 
     if (save_user == 1) { //erase previous and save new user profile
@@ -327,6 +372,43 @@ int main()
       fprintf(save_profile, "%u\n", user.tid);
       fprintf(save_profile, "%u\n", user.sid);
       fclose(save_profile);
+    }
+  }
+
+  /* PICK THE ORIGINAL WILD HERE (depending on version, language, pkmn) */
+  u32 og;
+  Original ogwild;
+  if (user.version==2) { //platinum
+    ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Uxie, 2=Azelf, 3=Rotom): ", &og, "%u", 3);
+    switch (og) {
+      case 0: ogwild=pt_giratina; break;
+      case 1: ogwild=pt_uxie; break;
+      case 2: ogwild=pt_azelf; break;
+      case 3: ogwild=pt_rotom; break;
+      default: ogwild=pt_rotom;
+    }
+  }
+  else { //dp
+    ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", 6);
+    if (og>3) {
+      if (user.language==3) { og+=7; } //french
+      if (user.language==5) { og+=14; } //german
+    }
+    switch (og) {
+      case 0: ogwild=dp_giratina; break;
+      case 1: ogwild=dp_arceus; break;
+      case 2: ogwild=dp_shaymin; break;
+      case 3: ogwild=dp_darkrai; break;
+      case 4: ogwild=dp_uxie; break;
+      case 5: ogwild=dp_azelf; break;
+      case 6: ogwild=dp_rotom; break;
+      case 11: ogwild=dp_crehelf; break;
+      case 12: ogwild=dp_crefadet; break;
+      case 13: ogwild=dp_motisma; break;
+      case 18: ogwild=dp_uxie; break;
+      case 19: ogwild=dp_azelf; break;
+      case 20: ogwild=dp_rotom; break;
+      default: ogwild=dp_giratina;
     }
   }
 
@@ -341,6 +423,14 @@ int main()
   u8 *strvers = Versions[user.version];
   u8 *strspec = Pokelist[user.species];
   u8 *stritem = Items[user.item];
+  u8 *strmove;
+  if (user.move == 0) { strmove = "anything"; }
+  else if (user.move > MOVES) {
+    u8 buffer[8];
+    sprintf(buffer, "0x%04X", user.move);
+    strmove = buffer;
+  }
+  else { strmove = Moves[user.move]; }
 
   u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
   u16 w_language = user.language << 8; //convert for use in pkmn data
@@ -354,7 +444,7 @@ int main()
   fprintf(fp, "> TID = %u\n> SID = %u\n", user.tid, user.sid);
   fprintf(fp, "> Seed 0x%08X\n", user.seed);
   fprintf(fp, "> ASLR 0x%08X\n", user.aslr);
-  fprintf(fp, "> Searched through %u frames for %s holding %s\n\n", user.frames, strspec, stritem);
+  fprintf(fp, "> Searched through %u frames for %s holding %s knowing %s\n\n", user.frames, strspec, stritem, strmove);
   fprintf(fp, "Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
   fprintf(fp, "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
@@ -362,7 +452,7 @@ int main()
   printf("> TID = %u\n> SID = %u\n", user.tid, user.sid);
   printf("> Seed 0x%08X\n", user.seed);
   printf("> ASLR 0x%08X\n", user.aslr);
-  printf("> Searching through %u frames for %s holding %s...\n\n", user.frames, strspec, stritem);
+  printf("> Searching through %u frames for %s holding %s knowing %s...\n\n", user.frames, strspec, stritem, strmove);
   printf("Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
   printf("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
@@ -405,133 +495,48 @@ int main()
 
     SetBlocks(&wild);
 
-    if (user.version == 2) { //for Platinum, init with Rotom
-      wild.bstats[hp] = 50;
-      wild.bstats[at] = 50;
-      wild.bstats[df] = 77;
-      wild.bstats[sp] = 91;
-      wild.bstats[sa] = 95;
-      wild.bstats[sd] = 77;
+    wild.data[wild.pos_a][0] = ogwild.species; //species
+    wild.data[wild.pos_a][2] = user.tid; //tid
+    wild.data[wild.pos_a][3] = user.sid; //sid
+    wild.data[wild.pos_a][4] = ogwild.xp1; //xp1
+    wild.data[wild.pos_a][5] = ogwild.xp2; //xp2
+    wild.data[wild.pos_a][6] = ogwild.frab; //ability and friendship concatenated
+    wild.data[wild.pos_a][7] = w_language; //language
 
-      wild.data[wild.pos_a][0] = 0x01DF; //species
-      wild.data[wild.pos_a][2] = user.tid; //tid
-      wild.data[wild.pos_a][3] = user.sid; //sid
-      wild.data[wild.pos_a][4] = 0x1F40; //xp1 (depends also on version/level)
-      wild.data[wild.pos_a][6] = 0x1A46; //ability and friendship concatenated
-      wild.data[wild.pos_a][7] = w_language; //language
+    wild.data[wild.pos_b][0] = ogwild.moves[0]; //move 1
+    wild.data[wild.pos_b][1] = ogwild.moves[1]; //move 2
+    wild.data[wild.pos_b][2] = ogwild.moves[2]; //move 3
+    wild.data[wild.pos_b][3] = ogwild.moves[3]; //move 4
+    wild.data[wild.pos_b][4] = ogwild.pp1and2; //pp1and2
+    wild.data[wild.pos_b][5] = ogwild.pp3and4; //pp3and4
+    wild.data[wild.pos_b][8] = wild.iv1;
+    wild.data[wild.pos_b][9] = wild.iv2;
+    wild.data[wild.pos_b][12] = 0x0004; //genderless
 
-      wild.data[wild.pos_b][0] = 0x0054; //thundershock
-      wild.data[wild.pos_b][1] = 0x006D; //confuse ray
-      wild.data[wild.pos_b][2] = 0x00FD; //uproar
-      wild.data[wild.pos_b][3] = 0x0068; //doubleteam
-      wild.data[wild.pos_b][4] = 0x0A1E; //pp1and2
-      wild.data[wild.pos_b][5] = 0x0F0A; //pp3and4
-      wild.data[wild.pos_b][8] = wild.iv1;
-      wild.data[wild.pos_b][9] = wild.iv2;
-      wild.data[wild.pos_b][12] = 0x0004; //genderless
+    wild.data[wild.pos_c][0] = ogwild.name[0];
+    wild.data[wild.pos_c][1] = ogwild.name[1];
+    wild.data[wild.pos_c][2] = ogwild.name[2];
+    wild.data[wild.pos_c][3] = ogwild.name[3];
+    wild.data[wild.pos_c][4] = ogwild.name[4];
+    wild.data[wild.pos_c][5] = ogwild.name[5];
+    wild.data[wild.pos_c][6] = ogwild.name[6];
+    wild.data[wild.pos_c][7] = ogwild.name[7];
+    wild.data[wild.pos_c][8] = ogwild.name[8];
+    wild.data[wild.pos_c][9] = ogwild.name[9];
+    wild.data[wild.pos_c][10] = ogwild.name[10];
+    wild.data[wild.pos_c][11] = w_version; //version
 
-      if (user.language == 3) { //fr
-        wild.data[wild.pos_c][0] = 0x0137; //M
-        wild.data[wild.pos_c][1] = 0x0139; //O
-        wild.data[wild.pos_c][2] = 0x013E; //T
-        wild.data[wild.pos_c][3] = 0x0133; //I
-        wild.data[wild.pos_c][4] = 0x013D; //S
-        wild.data[wild.pos_c][5] = 0x0137; //M
-        wild.data[wild.pos_c][6] = 0x012B; //A
-        wild.data[wild.pos_c][7] = 0xffff; //terminator
-      }
-      else if (user.language == 1) { //jp
-        wild.data[wild.pos_c][0] = 0x009E; //RO
-        wild.data[wild.pos_c][1] = 0x0079; //TO
-        wild.data[wild.pos_c][2] = 0x0091; //MU
-        wild.data[wild.pos_c][3] = 0xffff; //terminator
-      }
-      else if (user.language == 8) { //ko
-        wild.data[wild.pos_c][0] = 0x06C0; //RO
-        wild.data[wild.pos_c][1] = 0x0BFA; //TO
-        wild.data[wild.pos_c][2] = 0x0759; //MU
-        wild.data[wild.pos_c][3] = 0xffff; //terminator
-      }
-      else { //en, it, ge, sp
-        wild.data[wild.pos_c][0] = 0x013C; //R
-        wild.data[wild.pos_c][1] = 0x0139; //O
-        wild.data[wild.pos_c][2] = 0x013E; //T
-        wild.data[wild.pos_c][3] = 0x0139; //O
-        wild.data[wild.pos_c][4] = 0x0137; //M
-        wild.data[wild.pos_c][5] = 0xffff; //terminator
-      }
+    wild.data[wild.pos_d][13] = 0x0400; //pokeball
+    wild.data[wild.pos_d][14] = ogwild.level; //level
 
-      wild.data[wild.pos_c][11] = w_version; //version
-
-      wild.data[wild.pos_d][13] = 0x0400; //pokeball
-      wild.data[wild.pos_d][14] = 0x0014; //level
-    }
-    else { //for Diamond and Pearl, init with Giratina
-      wild.bstats[hp] = 150;
-      wild.bstats[at] = 100;
-      wild.bstats[df] = 120;
-      wild.bstats[sp] = 90;
-      wild.bstats[sa] = 100;
-      wild.bstats[sd] = 120;
-
-      wild.data[wild.pos_a][0] = 0x01E7; //species
-      wild.data[wild.pos_a][2] = user.tid; //tid
-      wild.data[wild.pos_a][3] = user.sid; //sid
-      wild.data[wild.pos_a][4] = 0x8ACE; //xp1 (depends also on version/level)
-      wild.data[wild.pos_a][5] = 0x0006; //xp1 (depends also on version/level)
-      wild.data[wild.pos_a][6] = 0x2E00; //ability and friendship concatenated
-      wild.data[wild.pos_a][7] = w_language; //language
-
-      wild.data[wild.pos_b][0] = 0x01D3; //shadow force
-      wild.data[wild.pos_b][1] = 0x0179; //heal block
-      wild.data[wild.pos_b][2] = 0x019E; //earth power
-      wild.data[wild.pos_b][3] = 0x00A3; //slash
-      wild.data[wild.pos_b][4] = 0x0F05; //pp1and2
-      wild.data[wild.pos_b][5] = 0x140A; //pp3and4
-      wild.data[wild.pos_b][8] = wild.iv1;
-      wild.data[wild.pos_b][9] = wild.iv2;
-      wild.data[wild.pos_b][12] = 0x0004; //genderless
-
-      if (user.language == 1) { //jp
-        wild.data[wild.pos_c][0] = 0x005F; //GI
-        wild.data[wild.pos_c][1] = 0x009A; //RA
-        wild.data[wild.pos_c][2] = 0x0077; //TE
-        wild.data[wild.pos_c][3] = 0x0054; //i
-        wild.data[wild.pos_c][4] = 0x007B; //NA
-        wild.data[wild.pos_c][5] = 0xffff; //terminator
-      }
-      else if (user.language == 8) { //ko, wrong
-        wild.data[wild.pos_c][0] = 0x06C0; //RO
-        wild.data[wild.pos_c][1] = 0x0BFA; //TO
-        wild.data[wild.pos_c][2] = 0x0759; //MU
-        wild.data[wild.pos_c][3] = 0xffff; //terminator
-      }
-      else { //en, fr, it, ge, sp
-        wild.data[wild.pos_c][0] = 0x0131; //G
-        wild.data[wild.pos_c][1] = 0x0133; //I
-        wild.data[wild.pos_c][2] = 0x013C; //R
-        wild.data[wild.pos_c][3] = 0x012B; //A
-        wild.data[wild.pos_c][4] = 0x013E; //T
-        wild.data[wild.pos_c][5] = 0x0133; //I
-        wild.data[wild.pos_c][6] = 0x0138; //N
-        wild.data[wild.pos_c][7] = 0x012B; //A
-        wild.data[wild.pos_c][8] = 0xffff; //terminator
-      }
-
-      wild.data[wild.pos_c][11] = w_version; //version
-
-      wild.data[wild.pos_d][13] = 0x0400; //pokeball
-      wild.data[wild.pos_d][14] = 0x0046; //level
-    }
-
-    wild.cond[2] = wild.data[wild.pos_d][14]; //level
-    wild.cond[3] = IvToStat(&wild, hp);
+    wild.cond[2] = ogwild.level; //level again
+    wild.cond[3] = IvToStat(&wild, &ogwild, hp);
     wild.cond[4] = wild.cond[3]; //current hp = max hp
-    wild.cond[5] = IvToStat(&wild, at);
-    wild.cond[6] = IvToStat(&wild, df);
-    wild.cond[7] = IvToStat(&wild, sp);
-    wild.cond[8] = IvToStat(&wild, sa);
-    wild.cond[9] = IvToStat(&wild, sd);
+    wild.cond[5] = IvToStat(&wild, &ogwild, at);
+    wild.cond[6] = IvToStat(&wild, &ogwild, df);
+    wild.cond[7] = IvToStat(&wild, &ogwild, sp);
+    wild.cond[8] = IvToStat(&wild, &ogwild, sa);
+    wild.cond[9] = IvToStat(&wild, &ogwild, sd);
 
     wild.cond[12] = w_language; //language again
     wild.cond[13] = 0xff00 + (w_version >> 8); //version variation
@@ -551,15 +556,6 @@ int main()
     // wild.cond[27] = 0;
     wild.cond[28] = 0xffff;
     wild.cond[29] = 0xffff;
-
-    /* DEBUG PKMN DATA */
-    // printf("%04X\n", wild.checksum);
-    // for (int i=0; i<BLOCKS; i++){
-    //   for (int j=0; j<BLOCK_SIZE; j++){
-    //     printf("%04X ", wild.data[i][j]);
-    //   }
-    //   printf("\n");
-    // }
 
     SetCheckum(&wild);
     Encrypt(&wild);
@@ -637,6 +633,8 @@ int main()
     SetBlocks(&seven);
     SetCheckum(&seven);
     Encrypt(&seven);
+
+    // DebugPkmnData(&seven);
 
     /* Is a bad egg or checksum was not skipped */
     wild.bef = seven.data[seven.pos_c][2];
