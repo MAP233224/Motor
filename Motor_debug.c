@@ -4,7 +4,7 @@
 
 /* BUILD (WINDOWS 10) */
 // >windres Motor.rc -O coff -o Motor.res< (to include the .ico)
-// >gcc -O3 Motor.c -o Motor Motor.res< (optimized mode)
+// >gcc -O3 Motor_debug.c -o Motor_debug Motor.res< (optimized mode)
 
 /* INCLUDE */
 
@@ -15,11 +15,11 @@
 
 /* TYPEDEF */
 
-typedef unsigned __int64 u64;
-typedef unsigned __int32 u32;
-typedef unsigned __int16 u16;
-typedef unsigned __int8 u8;
-typedef signed __int8 s8;
+typedef unsigned long u64;
+typedef unsigned int u32;
+typedef unsigned short u16;
+typedef unsigned char u8;
+typedef signed char s8;
 
 /* CONSTANTS */
 
@@ -245,9 +245,9 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
   return (bool)(((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8);
 }
 
-u32 RngNext(u32 state) {
+void RngNext(u32 *state) {
   /* General purpose LCRNG, return the next state */
-  return state * 0x41C64E6D + 0x6073;
+  *state = *state * 0x41C64E6D + 0x6073;
 }
 
 u32 Rng_32(u32 state, u16 iter) {
@@ -286,22 +286,17 @@ void Encrypt(Pkmn *pkmn) {
     u32 pkmn_c_state = Rng_32(pkmn->checksum, RngPosOfBlock(pkmn->pos_c));
     u32 pkmn_d_state = Rng_32(pkmn->checksum, RngPosOfBlock(pkmn->pos_d));
     for (u8 i = 0; i < BLOCK_SIZE; i++) {
-        // pkmn->data[pkmn->pos_a][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_a) + i);
-        // pkmn->data[pkmn->pos_b][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_b) + i);
-        // pkmn->data[pkmn->pos_c][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_c) + i);
-        // pkmn->data[pkmn->pos_d][i] ^= Rng_t16(pkmn->checksum, RngPosOfBlock(pkmn->pos_d) + i);
         pkmn->data[pkmn->pos_a][i] ^= (pkmn_a_state >> 16);
         pkmn->data[pkmn->pos_b][i] ^= (pkmn_b_state >> 16);
         pkmn->data[pkmn->pos_c][i] ^= (pkmn_c_state >> 16);
         pkmn->data[pkmn->pos_d][i] ^= (pkmn_d_state >> 16);
-        pkmn_a_state = RngNext(pkmn_a_state);
-        pkmn_b_state = RngNext(pkmn_b_state);
-        pkmn_c_state = RngNext(pkmn_c_state);
-        pkmn_d_state = RngNext(pkmn_d_state);
+        RngNext(&pkmn_a_state);
+        RngNext(&pkmn_b_state);
+        RngNext(&pkmn_c_state);
+        RngNext(&pkmn_d_state);
     }
     for (u8 i = 0; i < COND_SIZE; i++) {
-        // pkmn->cond[i] ^= Rng_t16(pkmn->pid, i+1);
-        pkmn_cond_state = RngNext(pkmn_cond_state);
+        RngNext(&pkmn_cond_state);
         pkmn->cond[i] ^= (pkmn_cond_state >> 16);
     }
 }
@@ -459,14 +454,14 @@ int main()
   u32 pid_list[PIDS_MAX] = {}; //0 init
   u32 results = 0;
 
-  u32 seed = user.seed; //copy, advanced in the main loop
+  u32 seed = user.seed; //copy, advanced in the main loop (is a copy really necessary?)
 
   clock_t begin = clock(); //timer starts
 
   /* Main search loop */
   for (u32 frame = 0; frame < user.frames; frame++){
 
-    if (frame != 0) { seed = RngNext(seed); } //advance the RNG everytime, except on the 0th frame
+    if (frame != 0) { RngNext(&seed); } //advance the RNG everytime, except on the 0th frame
 
     Pkmn wild = {0}; //0 init
     Pkmn seven = {0}; //0 init
