@@ -172,7 +172,7 @@ void MethodJSeedToPID(u32 seed, Pkmn* pkmn) {
 }
 
 void Method1SeedToPID(u32 seed, Pkmn* pkmn) {
-	/* Calculate PID, Nature and IVs according to Method 1 from a given seed � UNUSED */
+	/* Calculate PID, Nature and IVs according to Method 1 from a given seed – UNUSED */
 	u32 state = seed;
 	pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
 	pkmn->nature = pkmn->pid % 25;
@@ -298,9 +298,7 @@ int main()
 	printf("> TID = %u\n> SID = %u\n", user.tid, user.sid);
 	printf("> Seed 0x%08X\n", user.seed);
 	printf("> ASLR 0x%08X\n", user.aslr);
-	printf("> Searching through %u frames for %s holding %s knowing %s...\n\n", user.frames, strspec, stritem, strmove);
-	printf("Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
-	printf("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	printf("> Searching through %u frames for %s holding %s knowing %s...\n", user.frames, strspec, stritem, strmove);
 
 	u32 pid_list[PIDS_MAX] = {0}; //0 init
 	u32 results = 0; //0 init
@@ -582,10 +580,6 @@ int main()
 		fprintf(fp, "0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		fprintf(fp, "%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
 		fprintf(fp, "%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
-		/* And to console */
-		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
-		printf("%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
-		printf("%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
 
 		results++;
 	}
@@ -595,7 +589,7 @@ int main()
 	clock_t end = clock(); //end timer
 	double time_spent = ((double)end - (double)begin) / CLOCKS_PER_SEC; //calculate time elapsed since start of search
 	fprintf(fp, "\nFound %u results in %.1f seconds.\n", results, time_spent);
-	printf("\nFound %u results in %.1f seconds.\n", results, time_spent);
+	printf("\n%u results compiled to %s in %.1f seconds.\n", results, strfilename, time_spent);
 	fclose(fp); //close file
 	u8 exit;
 	scanf("%s", &exit); //scan to halt execution
