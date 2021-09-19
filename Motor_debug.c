@@ -6,17 +6,11 @@
 // >windres Motor.rc -O coff -o Motor.res< (to include the .ico)
 // >gcc -O3 Motor_debug.c -o Motor_debug Motor.res< (optimized mode)
 
-/* INCLUDE */
-
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-
 #include "common.h"
-
-
-/* FUNCTIONS */
 
 void DebugPkmnData(Pkmn* pkmn) {
 	/* Prints out the raw data of the chosen pkmn */
@@ -73,7 +67,7 @@ void SetBlocks(Pkmn* pkmn) {
 	pkmn->pos_a = (Perms[pkmn->order] & 0xf000) >> 12;
 	pkmn->pos_b = (Perms[pkmn->order] & 0x0f00) >> 8;
 	pkmn->pos_c = (Perms[pkmn->order] & 0x00f0) >> 4;
-	pkmn->pos_d = (Perms[pkmn->order] & 0x000f);
+	pkmn->pos_d = Perms[pkmn->order] & 0x000f;
 }
 
 u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
@@ -177,10 +171,7 @@ void Method1SeedToPID(u32 seed, Pkmn* pkmn) {
 	pkmn->iv2 = ivsum >> 16;
 }
 
-/* MAIN */
-
-int main()
-{
+int main() {
 
 	User user = { 0 }; //0 init
 
@@ -273,7 +264,8 @@ int main()
 
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
-	user.aslr = Aslrs[user.language][user.version>>1]; //depends on language and version. Right shift version by 1 because DP share the same value.
+	u8 grouped_version = user.version>>1; //fuse Diamond and Pearl together
+	user.aslr = Aslrs[user.language][grouped_version]; //depends on language and version. Right shift version by 1 because DP share the same value.
 
 	FILE* fp; //declare file object
 	u8* strfilename = "Results_debug.txt"; //name of the file
@@ -405,36 +397,18 @@ int main()
 			else { seven.cond[i] = wild.cond[i - RS_OFF - BLOCK_SIZE]; }
 		}
 
-		/* Initialize Seven */
-		if (user.version == 2) { //platinum
-			seven.data[seven.pos_a][0] = (user.aslr + LOC_BEG_OPP_PARTY_PL) & 0xffff;
-			seven.data[seven.pos_a][1] = (user.aslr + LOC_BEG_OPP_PARTY_PL) >> 16;
-			seven.data[seven.pos_a][2] = (user.aslr + LOC_END_OPP_PARTY_PL) & 0xffff;
-			seven.data[seven.pos_a][3] = (user.aslr + LOC_END_OPP_PARTY_PL) >> 16;
-			seven.data[seven.pos_a][4] = 0x0000;
-			seven.data[seven.pos_a][5] = 0x0005;
-			seven.data[seven.pos_a][6] = 0xe000;
-			seven.data[seven.pos_a][7] = 0xfa00;
-			seven.data[seven.pos_a][8] = 0xfc00;
-			seven.data[seven.pos_a][9] = 0x4000;
-			seven.data[seven.pos_a][10] = 0x3a05;
-			seven.data[seven.pos_a][11] = 0x0800;
-		}
-		else { //dp
-			seven.data[seven.pos_a][0] = (user.aslr + LOC_BEG_OPP_PARTY_DP) & 0xffff;
-			seven.data[seven.pos_a][1] = (user.aslr + LOC_BEG_OPP_PARTY_DP) >> 16;
-			seven.data[seven.pos_a][2] = (user.aslr + LOC_END_OPP_PARTY_DP) & 0xffff;
-			seven.data[seven.pos_a][3] = (user.aslr + LOC_END_OPP_PARTY_DP) >> 16;
-			seven.data[seven.pos_a][4] = ogwild.sv[0];
-			seven.data[seven.pos_a][5] = ogwild.sv[1];
-			seven.data[seven.pos_a][6] = ogwild.sv[2];
-			seven.data[seven.pos_a][7] = ogwild.sv[3];
-			seven.data[seven.pos_a][8] = ogwild.sv[4];
-			seven.data[seven.pos_a][9] = ogwild.sv[5];
-			seven.data[seven.pos_a][10] = ogwild.sv[6];
-			seven.data[seven.pos_a][11] = ogwild.sv[7];
-		}
-
+		seven.data[seven.pos_a][0] = (user.aslr + LocBegOppParty[grouped_version]) & 0xffff;
+		seven.data[seven.pos_a][1] = (user.aslr + LocBegOppParty[grouped_version]) >> 16;
+		seven.data[seven.pos_a][2] = (user.aslr + LocEndOppParty[grouped_version]) & 0xffff;
+		seven.data[seven.pos_a][3] = (user.aslr + LocEndOppParty[grouped_version]) >> 16;
+		seven.data[seven.pos_a][4] = ogwild.sv[0];
+		seven.data[seven.pos_a][5] = ogwild.sv[1];
+		seven.data[seven.pos_a][6] = ogwild.sv[2];
+		seven.data[seven.pos_a][7] = ogwild.sv[3];
+		seven.data[seven.pos_a][8] = ogwild.sv[4];
+		seven.data[seven.pos_a][9] = ogwild.sv[5];
+		seven.data[seven.pos_a][10] = ogwild.sv[6];
+		seven.data[seven.pos_a][11] = ogwild.sv[7];
 		seven.data[seven.pos_a][12] = 0x0006;
 		seven.data[seven.pos_a][13] = 0x0000;
 		seven.data[seven.pos_a][14] = 0x0001;
@@ -456,9 +430,6 @@ int main()
 		SetBlocks(&seven);
 		SetCheckum(&seven);
 		Encrypt(&seven);
-
-		/* Arceus, azelf, uxie, darkrai... – encrypt once more? */
-		//Encrypt(&seven);
 
 		// DebugPkmnData(&seven);
 
