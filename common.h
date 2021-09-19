@@ -19,11 +19,6 @@ typedef signed char s8;
 #define STATS (6)
 #define MOVES_MAX (4)
 
-#define LOC_BEG_OPP_PARTY_PL (0x58864) //Platinum
-#define LOC_END_OPP_PARTY_PL (0x593C4) //Platinum
-#define LOC_BEG_OPP_PARTY_DP (0x4C7B0) //Diamond & Pearl
-#define LOC_END_OPP_PARTY_DP (0x4D310) //Diamond & Pearl
-
 #define RS_OFF (4) //misalignment between wild and seven
 #define PIDS_MAX (1060) //calculated from a previous program that found the highest possible occidentary
 
@@ -31,11 +26,10 @@ u8 Languages[LANGUAGES][3] = { "_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "
 
 u8 Versions[VERSIONS][9] = { "Diamond", "Pearl", "Platinum" }; //versions
 
+u32 LocBegOppParty[VERSIONS-1] = {0x4C7B0, 0x58864}; //offsets, DP then Pt
+u32 LocEndOppParty[VERSIONS-1] = {0x4D310, 0x593C4}; //offsets, DP then Pt
+
 u32 Aslrs[LANGUAGES][VERSIONS - 1] = { {0, 0}, {0x02271A24, 0}, {0x0226D300, 0x0227116C}, {0x0226D5FC, 0x02271460}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0} }; //ASLR to match with language and version
-
-u8 Orders[BLOCK_PERM][BLOCKS] = { {0, 1, 2, 3}, {0, 1, 3, 2}, {0, 2, 1, 3}, {0, 2, 3, 1}, {0, 3, 1, 2}, {0, 3, 2, 1}, {1, 0, 2, 3}, {1, 0, 3, 2}, {1, 2, 0, 3}, {1, 2, 3, 0}, {1, 3, 0, 2}, {1, 3, 2, 0}, {2, 0, 1, 3}, {2, 0, 3, 1}, {2, 1, 0, 3}, {2, 1, 3, 0}, {2, 3, 0, 1}, {2, 3, 1, 0}, {3, 0, 1, 2}, {3, 0, 2, 1}, {3, 1, 0, 2}, {3, 1, 2, 0}, {3, 2, 0, 1}, {3, 2, 1, 0} }; //all 24 ABCD block permutations. UNUSED in Motor_debug.exe
-
-// u16 Perms[BLOCK_PERM] = { 0x0123, 0x0132, 0x0213, 0x0231, 0x0312, 0x0321, 0x1023, 0x1032, 0x1203, 0x1230, 0x1302, 0x1320, 0x2013, 0x2031, 0x2103, 0x2130, 0x2301, 0x2310, 0x3012, 0x3021, 0x3102, 0x3120, 0x3201, 0x3210 }; //all 24 ABCD block permutations
 
 u16 Perms[BLOCK_PERM] = { 0x0123, 0x0132, 0x0213, 0x0312, 0x0231, 0x0321, 0x1023, 0x1032, 0x2013, 0x3012, 0x2031, 0x3021, 0x1203, 0x1302, 0x2103, 0x3102, 0x2301, 0x3201, 0x1230, 0x1320, 0x2130, 0x3120, 0x2310, 0x3210 };  //all 24 ABCD block permutations (inverse)
 
@@ -82,7 +76,7 @@ Original dp_selfe = { 0, 0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0,
 Original dp_tobutz = { 0x01E2, 0, 50, {75, 125, 70, 115, 70, 125}, 0x625A, 0x0002, 0x1A8C, {0x005D, 0x00FD, 0x00F8, 0x01A1}, 0x0A19, 0x140F, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0} };
 
 Original pt_giratina = { 0, 0, 47, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0} }; //origin or altered?
-Original pt_rotom = { 0x01DF, 0, 20, {50, 50, 77, 91, 95, 77}, 0x1F40, 0, 0x1A46, {0x0054, 0x006D, 0x00FD, 0x0068}, 0x0A1E, 0x0F0A, {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xffff, 0, 0, 0, 0, 0}, {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0} };
+Original pt_rotom = { 0x01DF, 0, 20, {50, 50, 77, 91, 95, 77}, 0x1F40, 0, 0x1A46, {0x0054, 0x006D, 0x00FD, 0x0068}, 0x0A1E, 0x0F0A, {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xffff, 0, 0, 0, 0, 0}, {0x0000, 0x0005, 0xe000, 0xfa00, 0xfc00, 0x4000, 0x3a05, 0x0800} };
 Original pt_uxie = { 0, 0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0} };
 Original pt_azelf = { 0, 0, 50, {0, 0, 0, 0, 0, 0}, 0, 0, 0, {0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0} };
 
