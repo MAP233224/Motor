@@ -6,17 +6,11 @@
 // >windres Motor.rc -O coff -o Motor.res< (to include the .ico)
 // >gcc -O3 Motor.c -o Motor Motor.res< (optimized mode)
 
-/* INCLUDE */
-
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-
 #include "common.h"
-
-
-/* FUNCTIONS */
 
 void ScanValue(u8 message[], u32* value, u8 format[], u64 max) {
 	/* General purpose safe scan. Instruction message, value to change, string format and max value */
@@ -49,20 +43,13 @@ u8 BlockOrder(u32 pid) {
 	return ((pid & 0x3E000) >> 13) % BLOCK_PERM;
 }
 
-u8 PositionOfBlock(u8 perm, u8 block) {
-	/* Return the positional index of a block (0, 1, 2 or 3) given the permutation index. */
-	u8 i = 0;
-	while (block != Orders[perm][i]) { i++; }
-	return i;
-}
-
 void SetBlocks(Pkmn* pkmn) {
 	/* Get the order of each block from the PID and set them in the correct permutation */
 	pkmn->order = BlockOrder(pkmn->pid);
-	pkmn->pos_a = PositionOfBlock(pkmn->order, 0);
-	pkmn->pos_b = PositionOfBlock(pkmn->order, 1);
-	pkmn->pos_c = PositionOfBlock(pkmn->order, 2);
-	pkmn->pos_d = 6 - pkmn->pos_a - pkmn->pos_b - pkmn->pos_c; //finds the missing index without having to look for it in the Orders array
+	pkmn->pos_a = (Perms[pkmn->order] & 0xf000) >> 12;
+	pkmn->pos_b = (Perms[pkmn->order] & 0x0f00) >> 8;
+	pkmn->pos_c = (Perms[pkmn->order] & 0x00f0) >> 4;
+	pkmn->pos_d = Perms[pkmn->order] & 0x000f;
 }
 
 u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
@@ -153,10 +140,7 @@ void MethodJSeedToPID(u32 seed, Pkmn* pkmn) {
 	pkmn->iv2 = ivsum >> 16;
 }
 
-/* MAIN */
-
-int main()
-{
+int main() {
 
 	User user = { 0 }; //0 init
 
@@ -249,7 +233,8 @@ int main()
 
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
-	user.aslr = Aslrs[user.language][user.version>>1]; //depends on language and version. Right shift version by 1 because DP share the same value.
+	u8 grouped_version = user.version>>1; //fuse Diamond and Pearl together
+	user.aslr = Aslrs[user.language][grouped_version]; //depends on language and version. Right shift version by 1 because DP share the same value.
 
 	FILE* fp; //declare file object
 	u8* strfilename = "Results.txt"; //name of the file
@@ -379,42 +364,22 @@ int main()
 			else { seven.cond[i] = wild.cond[i - RS_OFF - BLOCK_SIZE]; }
 		}
 
-		if (user.version == 2) { //platinum
-			seven.data[seven.pos_a][0] = (user.aslr + LOC_BEG_OPP_PARTY_PL) & 0xffff;
-			seven.data[seven.pos_a][1] = (user.aslr + LOC_BEG_OPP_PARTY_PL) >> 16;
-			seven.data[seven.pos_a][2] = (user.aslr + LOC_END_OPP_PARTY_PL) & 0xffff;
-			seven.data[seven.pos_a][3] = (user.aslr + LOC_END_OPP_PARTY_PL) >> 16;
-			seven.data[seven.pos_a][4] = 0;
-			seven.data[seven.pos_a][5] = 0x0005;
-			seven.data[seven.pos_a][6] = 0xe000;
-			seven.data[seven.pos_a][7] = 0xfa00;
-			seven.data[seven.pos_a][8] = 0xfc00;
-			seven.data[seven.pos_a][9] = 0x4000;
-			seven.data[seven.pos_a][10] = 0x3a05;
-			seven.data[seven.pos_a][11] = 0x0800;
-			seven.data[seven.pos_a][12] = 0x0006;
-			seven.data[seven.pos_a][13] = 0;
-			seven.data[seven.pos_a][14] = 0x0001;
-			seven.data[seven.pos_a][15] = 0;
-		}
-		else { //dp
-			seven.data[seven.pos_a][0] = (user.aslr + LOC_BEG_OPP_PARTY_DP) & 0xffff;
-			seven.data[seven.pos_a][1] = (user.aslr + LOC_BEG_OPP_PARTY_DP) >> 16;
-			seven.data[seven.pos_a][2] = (user.aslr + LOC_END_OPP_PARTY_DP) & 0xffff;
-			seven.data[seven.pos_a][3] = (user.aslr + LOC_END_OPP_PARTY_DP) >> 16;
-			seven.data[seven.pos_a][4] = 0x3377;
-			seven.data[seven.pos_a][5] = 0x1463;
-			seven.data[seven.pos_a][6] = 0x9631;
-			seven.data[seven.pos_a][7] = 0x7779;
-			seven.data[seven.pos_a][8] = 0x3377;
-			seven.data[seven.pos_a][9] = 0x1463;
-			seven.data[seven.pos_a][10] = 0x7605;
-			seven.data[seven.pos_a][11] = 0x7777;
-			seven.data[seven.pos_a][12] = 0x0006;
-			seven.data[seven.pos_a][13] = 0;
-			seven.data[seven.pos_a][14] = 0x0001;
-			seven.data[seven.pos_a][15] = 0;
-		}
+		seven.data[seven.pos_a][0] = (user.aslr + LocBegOppParty[grouped_version]) & 0xffff;
+		seven.data[seven.pos_a][1] = (user.aslr + LocBegOppParty[grouped_version]) >> 16;
+		seven.data[seven.pos_a][2] = (user.aslr + LocEndOppParty[grouped_version]) & 0xffff;
+		seven.data[seven.pos_a][3] = (user.aslr + LocEndOppParty[grouped_version]) >> 16;
+		seven.data[seven.pos_a][4] = ogwild.sv[0];
+		seven.data[seven.pos_a][5] = ogwild.sv[1];
+		seven.data[seven.pos_a][6] = ogwild.sv[2];
+		seven.data[seven.pos_a][7] = ogwild.sv[3];
+		seven.data[seven.pos_a][8] = ogwild.sv[4];
+		seven.data[seven.pos_a][9] = ogwild.sv[5];
+		seven.data[seven.pos_a][10] = ogwild.sv[6];
+		seven.data[seven.pos_a][11] = ogwild.sv[7];
+		seven.data[seven.pos_a][12] = 0x0006;
+		seven.data[seven.pos_a][13] = 0x0000;
+		seven.data[seven.pos_a][14] = 0x0001;
+		seven.data[seven.pos_a][15] = 0x0000;
 
 		seven.data[seven.pos_c][0] = wild.pid % 65536;
 		seven.data[seven.pos_c][1] = wild.pid >> 16;
