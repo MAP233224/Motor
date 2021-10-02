@@ -16,8 +16,9 @@ Each user will need to provide several things to the application:
 
 Once all of these parameters have been entered, the application will go through each seed and output every successful hit.  
 It will provide the Seed on which it found the Pokémon on, alongside several other characteristics (Level, Item, Ability, Moves, ...).  
+Performance wise, a full search of the 4,294,967,295 possible RNG states takes about 30 minutes to complete on my i5-7300HQ CPU.  
 
-This glitch is not guaranteed to work on console and is still being troubleshot on emulator (crashes sometimes before showing the battle menu, sometimes at the end of the battle).  
+This glitch is not guaranteed to work all the way through on console and is still being troubleshot on emulator (crashes sometimes before showing the battle menu, sometimes at the end of the battle).  
 You can however perform it on Desmume 0.9.11 by editing Motor.lua and modifying your Seed, your TID and your SID.  
 You'll be required to have a save file with a full party of 6 Pokémon, all knocked out, for the glitch to work.  
 The most common way to get to this state is with the Pomeg Glitch.  
