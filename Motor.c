@@ -2,35 +2,58 @@
 /*       Motor.c by MAP       */
 /******************************/
 
-/* BUILD (WINDOWS 10) */
-// >windres Motor.rc -O coff -o Motor.res< (to include the .ico)
-// >gcc -O3 Motor.c -o Motor Motor.res< (optimized mode)
-
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include "common.h"
 
-void ScanValue(u8 message[], u32* value, u8 format[], u64 max) {
+// #define DEBUG (1) //comment out to disable DEBUG features
+
+void ScanValue(u8* message, u32* value, u8* format, u64 max) {
 	/* General purpose safe scan. Instruction message, value to change, string format and max value */
 	do {
 		printf("%s", message);
 		u8 userInput[32];
-		fgets(userInput, 16, stdin);
-		if (strlen(userInput) == 0 || strlen(userInput) > 15) {
+		fgets(userInput, STRING_LENGTH_MAX, stdin);
+		if (strlen(userInput) == 0 || strlen(userInput) >= STRING_LENGTH_MAX) {
+			#ifdef DEBUG
+				printf("DEBUG: Invalid strlen()\n");
+			#endif
 			continue;
 		}
 		if (sscanf(userInput, format, value) != 1) {
-			*value = max + 1;
+			#ifdef DEBUG
+				printf("DEBUG: Invalid sscanf()\n");
+			#endif
+			*value = max + 1; //doesn't work for seed, puts it at 0 and becomes valid
 			continue;
 		}
 	} while (*value > max);
 }
 
+void CreateProfile(User* user) {
+	/* Scan for user info and ask if you want to save this new profile */
+	u32 save;
+	ScanValue("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ", &user->version, "%u", 2);
+	ScanValue("Enter your Language (1=jp, 2=en, 3=fr, 4=it, 5=ge, 7=sp, 8=ko): ", &user->language, "%u", 8);
+	ScanValue("Enter your TID (0 to 65535): ", &user->tid, "%u", 0xffff);
+	ScanValue("Enter your SID (0 to 65535): ", &user->sid, "%u", 0xffff);
+	ScanValue("Save those user settings? (0=no, 1=yes) ", &save, "%u", 1);
+	if (save) {
+		FILE* new_profile;
+		new_profile = fopen("Profile.txt", "w+");
+		fprintf(new_profile, "%u\n", user->version);
+		fprintf(new_profile, "%u\n", user->language);
+		fprintf(new_profile, "%u\n", user->tid);
+		fprintf(new_profile, "%u\n", user->sid);
+		fclose(new_profile);
+	}
+}
+
 u8 GetNatureId(u32 pid) {
 	/* Get the ID of the Nature (from 0 to 24), provided the PID. */
-	return pid % 25;
+	return pid % NATURES_MAX;
 }
 
 u8 GetFormId(u8 form) {
@@ -40,7 +63,7 @@ u8 GetFormId(u8 form) {
 
 u8 BlockOrder(u32 pid) {
 	/* Get the index of the block permutation of a given PID (from 0 to 23) */
-	return ((pid & 0x3E000) >> 13) % BLOCK_PERM;
+	return ((pid & 0x3E000) >> 13) % BLOCK_PERMS;
 }
 
 void SetBlocks(Pkmn* pkmn) {
@@ -53,47 +76,53 @@ void SetBlocks(Pkmn* pkmn) {
 }
 
 u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
-	/* Calculate and return the new value of a stat after the Nature modifier is applied.*/
-	s8 m = NatureStatModifiers[nature][stat_index];
-	return stat_value * (10 + m) / 10;
+	/* Return the new value of a stat after the Nature modifier is applied.*/
+	return stat_value * (10 + NatureStatModifiers[nature][stat_index]) / 10;
 }
 
 u16 IvToStat(Pkmn* pkmn, Original* wild, u8 stat) {
-	/* Calculate the value of a stat based on the IV, Base Stat, Nature and Level. */
+	/* Return the value of a stat based on the IV, Base Stat, Nature and Level. */
 	if (stat == 0) { return (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + wild->level + 10; }
-	return StatNatureModifier(pkmn->nature, stat - 1, (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + 5); //ignore for hp (index 0), hence the -1
+	return StatNatureModifier(pkmn->nature, stat - 1, (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + 5); //ignore for hp (index 0), hence the stat-1
 }
 
 void SetCheckum(Pkmn* pkmn) {
-	/* Sets the checksum of a Pkmn by summing all of its block data. */
+	/* Set the checksum of a Pkmn by summing all of its block data. */
 	for (u8 i = 0; i < BLOCK_SIZE; i++) {
 		pkmn->checksum += pkmn->data[pkmn->pos_a][i] + pkmn->data[pkmn->pos_b][i] + pkmn->data[pkmn->pos_c][i] + pkmn->data[pkmn->pos_d][i];
 	}
 }
 
-bool IsBadEgg(u16 badeggflag) {
+bool IsBadEgg(u16 badegg) {
 	/* Check if the bad egg flag is set by looking at bit 2 of the "bad egg" 16-bit word. */
-	return (bool)(badeggflag & 4);
+	return (badegg & 4) == 4;
 }
 
-bool IsEgg(u16 eggflag) {
+bool IsEgg(u16 egg) {
 	/* Check if the egg flag is set by looking at bit 30 of the "iv2" 16-bit word. */
-	return (bool)(eggflag & 0x4000);
+	return (egg & 0x4000) == 0x4000;
 }
 
-bool IsFatefulEncounter(u16 fateflag) {
+bool IsFatefulEncounter(u16 fate) {
 	/* Check if the fateful encounter bit is set. */
-	return (bool)(fateflag & 1);
+	return fate & 1;
 }
 
-bool SkippedCheckum(u16 badeggflag) {
+bool SkippedCheckum(u16 badegg) {
 	/* Check if the checksum was skipped by looking at bit 0 and 1 of the "bad egg" 16-bit word. */
-	return (bool)((badeggflag & 1) && (badeggflag & 2));
+	return (badegg & 3) == 3;
 }
 
 bool IsShiny(u32 pid, u16 tid, u16 sid) {
 	/* Check if a pkmn is shiny by xoring its pid (top and bottom 16 bits), tid and sid */
-	return (bool)(((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8);
+	return ((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8;
+}
+
+u8* GetString(u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* oob) {
+	/* Get string in array corresponding to val, bounds and zero check */
+	if (val >= max) return oob;
+	if (val == 0) return zero;
+	return array[val];
 }
 
 u32 RngNext(u32* state) {
@@ -127,18 +156,43 @@ void GetIVs(Pkmn* pkmn) {
 	pkmn->ivs[sd] = (pkmn->iv2 >> 10) & 31;
 }
 
-void MethodJSeedToPID(u32 seed, Pkmn* pkmn) {
+void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 	/* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize) from a given seed */
-	u32 state = seed;
-	pkmn->nature = (RngNext(&state)>>16) / 0x0A3E;
-	do { pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000); } while (pkmn->pid % 25 != pkmn->nature); //roll PID until the 2 natures are the same
-	pkmn->iv1 = RngNext(&state) >> 16;
-	pkmn->iv2 = RngNext(&state) >> 16;
-	GetIVs(pkmn);
-	u32 ivsum = (pkmn->ivs[hp] << 0) | (pkmn->ivs[at] << 5) | (pkmn->ivs[df] << 10) | (pkmn->ivs[sp] << 15) | (pkmn->ivs[sa] << 20) | (pkmn->ivs[sd] << 25);
-	pkmn->iv1 = ivsum & 0xffff;
-	pkmn->iv2 = ivsum >> 16;
+	pkmn->nature = (RngNext(&state) >> 16) / 0x0A3E;
+	do { pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000); } while (pkmn->pid % NATURES_MAX != pkmn->nature); //roll PID until the 2 natures are the same
+	pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
+	pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
+	pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
+	pkmn->iv2 >>= 1;
 }
+
+#ifdef DEBUG
+	void Method1SeedToPID(u32 state, Pkmn* pkmn) {
+		/* Calculate PID, Nature and IVs according to Method 1 from a given seed 窶� UNUSED */
+		pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
+		pkmn->nature = pkmn->pid % NATURES_MAX;
+		pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
+		pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
+		pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
+		pkmn->iv2 >>= 1;
+	}
+
+	void DebugPkmnData(Pkmn* pkmn) {
+		/* Prints out the raw data of the chosen pkmn */
+		printf("%04X\n", pkmn->checksum);
+		for (int i = 0; i < BLOCKS; i++) {
+			for (int j = 0; j < BLOCK_SIZE; j++) {
+				printf("%04X ", pkmn->data[i][j]);
+				if (j % 8 == 7) { printf("\n"); }
+			}
+		}
+		for (int i = 0; i < COND_SIZE; i++) {
+			printf("%04X ", pkmn->cond[i]);
+			if (i % 8 == 7) { printf("\n"); }
+		}
+		printf("\n");
+	}
+#endif
 
 int main() {
 
@@ -150,34 +204,24 @@ int main() {
 	if (use_saved) { //use saved user profile from Profile.txt
 		FILE* profile;
 		profile = fopen("Profile.txt", "r"); //read only
-		fscanf(profile, "%u", &user.version);
-		fscanf(profile, "%u", &user.language);
-		fscanf(profile, "%u", &user.tid);
-		fscanf(profile, "%u", &user.sid);
-		fclose(profile);
-	}
-	else { //console scan for version, language, tid and sid
-		ScanValue("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ", &user.version, "%u", 2);
-		ScanValue("Enter your Language (1=jp, 2=en, 3=fr, 4=it, 5=ge, 7=sp, 8=ko): ", &user.language, "%u", 8);
-		ScanValue("Enter your TID (0 to 65535): ", &user.tid, "%u", 0xffff);
-		ScanValue("Enter your SID (0 to 65535): ", &user.sid, "%u", 0xffff);
-		u32 save_user;
-		ScanValue("Save those user settings? (0=no, 1=yes) ", &save_user, "%u", 1);
-		if (save_user) { //Erases previous and saves new user profile
-			FILE* save_profile;
-			save_profile = fopen("Profile.txt", "w+");
-			fprintf(save_profile, "%u\n", user.version);
-			fprintf(save_profile, "%u\n", user.language);
-			fprintf(save_profile, "%u\n", user.tid);
-			fprintf(save_profile, "%u\n", user.sid);
-			fclose(save_profile);
+		if (profile == NULL) {
+			printf("Profile.txt not found in the program's directory. Please create a new profile:\n\n");
+			CreateProfile(&user);
+		}
+		else { //read the existing profile info
+			fscanf(profile, "%u", &user.version);
+			fscanf(profile, "%u", &user.language);
+			fscanf(profile, "%u", &user.tid);
+			fscanf(profile, "%u", &user.sid);
+			fclose(profile);
 		}
 	}
+	else { CreateProfile(&user); }
 
-	/* PICK THE ORIGINAL WILD HERE (depending on version, language, pkmn) */
+	/* Pick the original wild */
 	u32 og;
 	Original ogwild;
-	if (user.version == 2) { //platinum
+	if (user.version == 2) { //platinum, english
 		ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Uxie, 2=Azelf, 3=Rotom): ", &og, "%u", 3);
 		switch (og) {
 			case 0: ogwild = pt_giratina; break;
@@ -211,8 +255,8 @@ int main() {
 		}
 	}
 
-	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES + 1);
-	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS + 1);
+	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX + 1);
+	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS_MAX + 1);
 	ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
 	ScanValue("Enter your Seed (32 bit, hex): 0x", &user.seed, "%x", 0xffffffff);
 	ScanValue("How many frames to search through (32 bit, dec): ", &user.frames, "%u", 0xffffffff);
@@ -224,7 +268,7 @@ int main() {
 	u8* stritem = Items[user.item];
 	u8* strmove;
 	if (user.move == 0) { strmove = "anything"; }
-	else if (user.move > MOVES) {
+	else if (user.move > MOVES_MAX) {
 		u8 buffer[8];
 		sprintf(buffer, "0x%04X", user.move);
 		strmove = buffer;
@@ -233,12 +277,21 @@ int main() {
 
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
-	u8 grouped_version = user.version>>1; //fuse Diamond and Pearl together
+	u8 grouped_version = user.version >> 1; //fuse Diamond and Pearl together
 	user.aslr = Aslrs[user.language][grouped_version]; //depends on language and version. Right shift version by 1 because DP share the same value.
 
 	FILE* fp; //declare file object
-	u8* strfilename = "Results.txt"; //name of the file
-	fp = fopen(strfilename, "w+"); //open/create file
+	u8 filename[4*STRING_LENGTH_MAX] = "Results_"; //Results file name, then append with profile info
+	#ifdef DEBUG
+		strcat(filename, "DEBUG_");
+	#endif
+	strcat(filename, strvers); strcat(filename, "_");
+	strcat(filename, strlang); strcat(filename, "_");
+	u8 strtidsid[STRING_LENGTH_MAX];
+	sprintf(strtidsid, "%05u_%05u", user.tid, user.sid);
+	strcat(filename, strtidsid);
+	strcat(filename, ".txt");
+	fp = fopen(filename, "w+"); //open/create file
 
 	fprintf(fp, "> %s (%s)\n", strvers, strlang);
 	fprintf(fp, "> TID = %u\n> SID = %u\n", user.tid, user.sid);
@@ -298,14 +351,14 @@ int main() {
 		wild.data[wild.pos_a][6] = ogwild.frab; //ability and friendship concatenated
 		wild.data[wild.pos_a][7] = w_language; //language
 
-		for (u8 i = 0; i < MOVES_MAX; i++) wild.data[wild.pos_b][i] = ogwild.moves[i]; //4 moves
+		for (u8 i = 0; i < OWN_MOVES_MAX; i++) { wild.data[wild.pos_b][i] = ogwild.moves[i]; }//4 moves
 		wild.data[wild.pos_b][4] = ogwild.pp1and2; //pp1and2
 		wild.data[wild.pos_b][5] = ogwild.pp3and4; //pp3and4
 		wild.data[wild.pos_b][8] = wild.iv1;
 		wild.data[wild.pos_b][9] = wild.iv2;
 		wild.data[wild.pos_b][12] = 0x0004; //genderless
 
-		for (u8 i = 0; i < 11; i++) wild.data[wild.pos_c][i] = ogwild.name[i]; //11 characters for the name
+		for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = ogwild.name[i]; } //11 characters for the name
 		wild.data[wild.pos_c][11] = w_version; //version
 
 		wild.data[wild.pos_d][13] = 0x0400; //pokeball
@@ -322,17 +375,7 @@ int main() {
 
 		wild.cond[12] = w_language; //language again
 		wild.cond[13] = 0xff00 | (w_version >> 8); //version variation
-		wild.cond[14] = 0xffff;
-		wild.cond[15] = 0xffff;
-		wild.cond[16] = 0xffff;
-		wild.cond[17] = 0xffff;
-		wild.cond[18] = 0xffff;
-		wild.cond[19] = 0xffff;
-		wild.cond[20] = 0xffff;
-		wild.cond[21] = 0xffff;
-		wild.cond[22] = 0xffff;
-		wild.cond[23] = 0xffff;
-		wild.cond[24] = 0xffff;
+		for (u8 i = 14; i < 25; i++) { wild.cond[i] = 0xffff; } //14 to 24 = 0xffff
 		// wild.cond[25] = 0;
 		wild.cond[26] = 0xffff;
 		// wild.cond[27] = 0;
@@ -342,40 +385,35 @@ int main() {
 		SetCheckum(&wild);
 		Encrypt(&wild);
 
+		// DebugPkmnData(&wild);
+
 		/* Initialize Seven */
 		seven.pid = 0x00005544;
 		seven.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
 		SetBlocks(&seven);
 
 		/* Simulating the stack overflow */
-		for (u8 i = 0; i < BLOCK_SIZE - RS_OFF; i++) { //ABCD blocks part 1
+		for (u8 i = 0; i < BLOCK_SIZE - STACK_OFFSET; i++) { //ABCD blocks part 1
 			for (u8 j = 1; j < BLOCKS; j++) { //only need to start from j=1 bc block A is taken care of later.
-				seven.data[j][i + RS_OFF] = wild.data[j - 1][i]; //warning: negative index
+				seven.data[j][i + STACK_OFFSET] = wild.data[j - 1][i]; //warning: negative index
 			}
 		}
 		for (u8 i = 0; i < BLOCKS; i++) { //ABCD blocks part 2
 			for (u8 j = 0; j < BLOCKS - 2; j++) {
-				seven.data[j + 2][i] = wild.data[j][BLOCK_SIZE - RS_OFF + i];
+				seven.data[j + 2][i] = wild.data[j][BLOCK_SIZE - STACK_OFFSET + i];
 			}
 		}
 		for (u8 i = 0; i < COND_SIZE; i++) { //condition data
-			if (i < RS_OFF) { seven.cond[i] = wild.data[2][BLOCK_SIZE - RS_OFF + i]; }
-			else if (i < RS_OFF + BLOCK_SIZE) { seven.cond[i] = wild.data[3][i - RS_OFF]; }
-			else { seven.cond[i] = wild.cond[i - RS_OFF - BLOCK_SIZE]; }
+			if (i < STACK_OFFSET) { seven.cond[i] = wild.data[2][BLOCK_SIZE - STACK_OFFSET + i]; }
+			else if (i < STACK_OFFSET + BLOCK_SIZE) { seven.cond[i] = wild.data[3][i - STACK_OFFSET]; }
+			else { seven.cond[i] = wild.cond[i - STACK_OFFSET - BLOCK_SIZE]; }
 		}
 
 		seven.data[seven.pos_a][0] = (user.aslr + LocBegOppParty[grouped_version]) & 0xffff;
 		seven.data[seven.pos_a][1] = (user.aslr + LocBegOppParty[grouped_version]) >> 16;
 		seven.data[seven.pos_a][2] = (user.aslr + LocEndOppParty[grouped_version]) & 0xffff;
 		seven.data[seven.pos_a][3] = (user.aslr + LocEndOppParty[grouped_version]) >> 16;
-		seven.data[seven.pos_a][4] = ogwild.sv[0];
-		seven.data[seven.pos_a][5] = ogwild.sv[1];
-		seven.data[seven.pos_a][6] = ogwild.sv[2];
-		seven.data[seven.pos_a][7] = ogwild.sv[3];
-		seven.data[seven.pos_a][8] = ogwild.sv[4];
-		seven.data[seven.pos_a][9] = ogwild.sv[5];
-		seven.data[seven.pos_a][10] = ogwild.sv[6];
-		seven.data[seven.pos_a][11] = ogwild.sv[7];
+		for (u8 i = 0; i < 8; i++) { seven.data[seven.pos_a][i+4] = ogwild.sv[i]; } //special values of the ogwild
 		seven.data[seven.pos_a][12] = 0x0006;
 		seven.data[seven.pos_a][13] = 0x0000;
 		seven.data[seven.pos_a][14] = 0x0001;
@@ -388,6 +426,8 @@ int main() {
 
 		Encrypt(&seven);
 
+		// DebugPkmnData(&seven);
+
 		/* If the ball doesn't have a valid id the battle won't load */
 		u8 ballid = seven.data[seven.pos_d][13] >> 8;
 		if ((ballid > 16) || (ballid == 0)) { continue; } //might be more complex than that, some invalid Ball IDs load fine
@@ -395,6 +435,8 @@ int main() {
 		SetBlocks(&seven);
 		SetCheckum(&seven);
 		Encrypt(&seven);
+
+		// DebugPkmnData(&seven);
 
 		/* If it's a Bad Egg or Checksum was not skipped, continue */
 		wild.bef = seven.data[seven.pos_c][2];
@@ -408,21 +450,21 @@ int main() {
 		u8 f_ability;
 		u16 f_species, f_item, f_steps;
 		if (wild.pos_a == 3) {
-			f_species = seven.cond[RS_OFF];
-			f_item = seven.cond[RS_OFF + 1];
-			f_ability = seven.cond[RS_OFF + 6] >> 8;
-			f_steps = seven.cond[RS_OFF + 6] & 0xff;
+			f_species = seven.cond[STACK_OFFSET];
+			f_item = seven.cond[STACK_OFFSET + 1];
+			f_ability = seven.cond[STACK_OFFSET + 6] >> 8;
+			f_steps = seven.cond[STACK_OFFSET + 6] & 0xff;
 		}
 		else {
-			f_species = seven.data[wild.pos_a + 1][RS_OFF];
-			f_item = seven.data[wild.pos_a + 1][RS_OFF + 1];
-			f_ability = seven.data[wild.pos_a + 1][RS_OFF + 6] >> 8;
-			f_steps = seven.data[wild.pos_a + 1][RS_OFF + 6] & 0xff;
+			f_species = seven.data[wild.pos_a + 1][STACK_OFFSET];
+			f_item = seven.data[wild.pos_a + 1][STACK_OFFSET + 1];
+			f_ability = seven.data[wild.pos_a + 1][STACK_OFFSET + 6] >> 8;
+			f_steps = seven.data[wild.pos_a + 1][STACK_OFFSET + 6] & 0xff;
 		}
 
 		/* Species check */
 		if (user.species == 0) { //user didn't specify a species
-			if (f_species >= SPECIES) { continue; } //any valid species
+			if (f_species >= SPECIES_MAX) { continue; } //any valid species
 		}
 		else if (f_species != user.species) { continue; } //match user.species
 
@@ -431,65 +473,47 @@ int main() {
 
 		/* Get final moveset, egg steps, form id and fateful encounter flag */
 		u16 fate;
-		u16 moves[MOVES_MAX];
+		u16 moves[OWN_MOVES_MAX];
 
 		if (wild.pos_b > 1) { //pos_b is either 2 or 3
-			for (u8 i = 0; i < MOVES_MAX; i++) { moves[i] = seven.cond[RS_OFF + i]; }
-			fate = seven.cond[16 * (wild.pos_b == 3)]; //index of 0 or 16 depending on if pos_b is 2 or 3
-			wild.iv1 = seven.cond[RS_OFF + 8];
-			wild.iv2 = seven.cond[RS_OFF + 9];
+			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.cond[STACK_OFFSET + i]; }
+			fate = seven.cond[BLOCK_SIZE * (wild.pos_b == 3)]; //index of 0 or 16 depending on if pos_b is 2 or 3
+			wild.iv1 = seven.cond[STACK_OFFSET + 8];
+			wild.iv2 = seven.cond[STACK_OFFSET + 9];
 		}
 		else { //pos_b is either 0 or 1
-			for (u8 i = 0; i < MOVES_MAX; i++) { moves[i] = seven.data[wild.pos_b + 1][RS_OFF + i]; }
+			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[wild.pos_b + 1][STACK_OFFSET + i]; }
 			fate = seven.data[wild.pos_b + 2][0];
-			wild.iv1 = seven.data[wild.pos_b + 1][RS_OFF + 8];
-			wild.iv2 = seven.data[wild.pos_b + 1][RS_OFF + 9];
+			wild.iv1 = seven.data[wild.pos_b + 1][STACK_OFFSET + 8];
+			wild.iv2 = seven.data[wild.pos_b + 1][STACK_OFFSET + 9];
 		}
-
-		GetIVs(&wild);
-
-		/* Calculate steps to hatch if Egg, zero if not an Egg */
-		f_steps = IsEgg(wild.iv2) * (f_steps + 1) * 255;
 
 		/* Filter for a specific move */
 		if (user.move != 0) {
 			if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) { continue; }
 		}
 
-		/* Get final level */
-		u8 f_level = seven.cond[22] & 0xff;
+		GetIVs(&wild);
 
-		/* Get form id */
-		u8 form = GetFormId((u8)fate);
+		f_steps = IsEgg(wild.iv2) * (f_steps + 1) * 255; // steps to hatch if Egg, zero if not an Egg
+		u8 f_level = seven.cond[22] & 0xff; //final level
+		u8 form = GetFormId((u8)fate); //final form id
 
 		/* Fateful encounter string definition */
 		u8* fateful;
 		if (IsFatefulEncounter(fate)) { fateful = "Fateful"; }
 		else { fateful = "-------"; }
 
-		/* Species string format */
-		u8* str_f_species;
-		if (f_species >= SPECIES) { str_f_species = "Glitchmon"; } //invalid index after Arceus
-		else if (f_species == 0) { str_f_species = "DPBox"; } //the empty Pok�mon
-		else { str_f_species = Pokelist[f_species]; } //get Pok�mon name from index
-
-		/* Item string format */
-		u8* str_f_item;
-		if (f_item >= ITEMS) { str_f_item = "Glitch Item"; } //invalid index
-		else if (f_item == 0) { str_f_item = "None"; } //no item if index is 0
-		else { str_f_item = Items[f_item]; } //get item name from index
-
-		/* Ability string format */
-		u8* str_f_abi;
-		if (f_ability >= ABILITIES) { str_f_abi = "Glitch Ability"; } //invalid index
-		else if (f_ability == 0) { str_f_abi = "None"; } //no ability if index is 0
-		else { str_f_abi = Abilities[f_ability]; } //get ability name from index
+		/* Species, item and ability string format */
+		u8* str_f_species = GetString(f_species, Pokelist, SPECIES_MAX, "DPbox", "Glitchmon");
+		u8* str_f_item = GetString(f_item, Items, ITEMS_MAX, "None", "Glitch Item");
+		u8* str_f_abi = GetString(f_ability, Abilities, ABILITIES_MAX, "None", "Glitch Ability");
 
 		/* Moves string format */
-		u8 strmoves[MOVES_MAX][16] = {0};
-		for (u8 i = 0; i < MOVES_MAX; i++) {
-			if (moves[i] >= MOVES) {
-				u8 buffer[16];
+		u8 strmoves[OWN_MOVES_MAX][STRING_LENGTH_MAX] = {0};
+		for (u8 i = 0; i < OWN_MOVES_MAX; i++) {
+			if (moves[i] >= MOVES_MAX) {
+				u8 buffer[STRING_LENGTH_MAX];
 				sprintf(buffer, "0x%04X", moves[i]);
 				strcpy(strmoves[i], buffer);
 			}
@@ -516,8 +540,8 @@ int main() {
 
 	clock_t end = clock(); //end timer
 	double time_spent = ((double)end - (double)begin) / CLOCKS_PER_SEC; //calculate time elapsed since start of search
-	fprintf(fp, "\nFound %u results in %.1f seconds.\n", results, time_spent);
-	printf("\n%u results compiled to %s in %.1f seconds.\n", results, strfilename, time_spent);
+	fprintf(fp, "\nFound %u results in %.2f seconds.\n", results, time_spent);
+	printf("\n%u results compiled to %s in %.2f seconds.\n", results, filename, time_spent);
 	fclose(fp); //close file
 	u8 exit;
 	scanf("%s", &exit); //scan to halt execution
