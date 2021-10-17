@@ -6,10 +6,10 @@
 
 --------------------------------
 
-user_seed = 0xCA9D7ED6 --enter the seed you got from Motor.exe, press '5' to set it
-user_pointer = 0 --0x0227116c --automatically search for a specific ASLR
-user_tid = 2880 --enter a custom TID, press '3' to set it
-user_sid = 33456 --enter a custom SID, press '3' to set it
+user_seed = 0x9827B7AE --enter the seed you got from Motor.exe, press '5' to set it
+user_pointer = 0 --0x0227E14C --automatically search for a specific ASLR
+user_tid = 21025 --enter a custom TID, press '3' to set it
+user_sid = 45075 --enter a custom SID, press '3' to set it
 
 --------------------------------
 
@@ -19,9 +19,13 @@ MODES = {"Encrypted Wild Data", "Decrypted Battle Data", "Nothing"}
 tabl = {}
 -- {dp, plat} --
 RNG_OFF = {0xBDD88, 0xBDDD4}
-WILD_OFF = {0x4CD88, 0} --plat incorrect bc of other base detection method
-OG_WILD_OFF = {0x2B63C, 0} --plat incorrect bc of other base detection method
 TID_OFF = {0x288, 0x8C}
+OG_WILD_OFF = {0x2B63C, 0x28AE4}
+PKMN_BD_OFF = {0x48580, 0x475B8} -- +0xC0 to get the opponent
+WILD_OFF = {0x4CD88, 0x4BE5C}
+
+BASES = {{0x02107100, 0x02101EE0}, {0x02106FC0, 0x02101D40}, {0x02107140, 0x02101F20}, {0x021070A0, 0x02101EA0}, {0x02108818, 0x02101140}, {0x021045C0, 0x02102C40}, {0x02107160, 0x02101F40}}
+-- ge, en, fr, it, jp, ko, sp (need to change it later to conventional order)
 
 CHAR_W = 14
 CHAR_H = 10
@@ -40,10 +44,6 @@ MULTSPB = {
 
 BLOCKS = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA", "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA"}
 
-BASES = {{0x02107100, 0x02101EE0}, {0x02106FC0, 0x02101D40}, {0x02107140, 0x02101F20}, {0x021070A0, 0x02101EA0}, {0x02108818, 0x02101140}, {0x021045C0, 0x02102C40}, {0x02107160, 0x02101F40}}
--- dp then pt, in this order: ge, en, fr, it, jp, ko, sp (need to change it later to conventional order)
-
-PKMN_BD_OFF = {0x48580, 0x54598} -- +0xC0 to get the opponent
 CLIENT_NAME = {"Trainer", "Opponent"}
 
 LANG_ID = {0x44, 0x45, 0x46, 0x49, 0x4A, 0x4B, 0x53}
@@ -188,12 +188,12 @@ function DecryptDump(pkmn_loc)
   print("")
   for i=0, 0x3F do
     local offset = i*2
-    local omod = offset%32
+    local omod = (offset%32)/2
     local odiv = math.floor(i/16)-4
     local block_id = string.sub(BLOCKS[blockValue+1], odiv, odiv)
     local v_encrypted = memory.readword(pkmn_loc + 8 + offset)
     local v_decrypted = bit.bxor(v_encrypted, bit.rshift(prng, 16))
-    print(block_id.."_"..string.format("%.2X", omod).." = "..string.format("%.4X", v_decrypted))
+    print(block_id..string.format("[%.2d] = ", omod)..string.format("0x%.4X", v_decrypted))
     if (offset+2)%32==0 then
       print("")
     end
@@ -252,14 +252,22 @@ function GetBattleData()
   end
 end
 
+function PrintSizePkCnt()
+  local size = memory.readdword(pointer+WILD_OFF[version]-36)
+  local pkcntmax = memory.readdword(pointer+WILD_OFF[version]-8)
+  local pkcnt = memory.readdword(pointer+WILD_OFF[version]-4)
+  print(string.format("%.8x",size).." "..string.format("%.8x",pkcntmax).." "..string.format("%.8x",pkcnt))
+end
+
 function Controls()
   tabl = input.get()
   if tabl["0"] and not prev["0"] then ChangeMode() end
   if tabl["1"] and not prev["1"] then RngBackwards(1) end
   if tabl["2"] and not prev["2"] then RngForwards(1) end
   if tabl["3"] and not prev["3"] then SetTid() end
-  if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end
+  if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end --replace by og_wild_loc
   if tabl["5"] and not prev["5"] then SetRng() end
+  if tabl["7"] and not prev["7"] then PrintSizePkCnt() end
   if tabl["8"] and not prev["8"] then RngBackwards(16) end
   if tabl["9"] and not prev["9"] then RngForwards(16) end
   prev=tabl
@@ -278,7 +286,7 @@ function Main()
   frame_dist = GetSeedDistance(frame)
   GetTid()
   GetPkmnData()
-  gui.text(2+7*CHAR_W, -190, "("..(pointer-base)/4-0x598A8..")") --only eng dp accurate
+  --gui.text(2+7*CHAR_W, -190, "("..(pointer-base)/4-0x598A8..")") --only eng dp accurate
   gui.text(2, -190, "Base = "..string.format("%.8X",pointer))
   gui.text(2, -180, "Seed = "..string.format("%.8X",user_seed))
   gui.text(2, -170, "Dist = "..frame_dist)
