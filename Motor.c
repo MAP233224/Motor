@@ -118,6 +118,11 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
 	return ((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8;
 }
 
+bool IsValidPartyCount(u16 count) {
+	/* Check if the number of members in the opponent's party is valid. Determines crash at battle menu. */
+	return (count < 0x0037) || (count > 0x7fff);
+}
+
 u8* GetString(u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* oob) {
 	/* Get string in array corresponding to val, bounds and zero check */
 	if (val >= max) return oob;
@@ -234,8 +239,8 @@ int main() {
 	else { //dp
 		ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", 6);
 		if (og > 3) {
-			if (user.language == 3) { og += 7; } //french
-			else if (user.language == 5) { og += 14; } //german
+			if (user.language == 3) { og += OG_WILDS_MAX; } //french
+			else if (user.language == 5) { og += 2*OG_WILDS_MAX; } //german
 		}
 		switch (og) {
 			case 0: ogwild = dp_giratina; break;
@@ -285,6 +290,7 @@ int main() {
 	#ifdef DEBUG
 		strcat(filename, "DEBUG_");
 	#endif
+	strcat(filename, OgWilds[grouped_version][og%OG_WILDS_MAX]); strcat(filename, "_");
 	strcat(filename, strvers); strcat(filename, "_");
 	strcat(filename, strlang); strcat(filename, "_");
 	u8 strtidsid[STRING_LENGTH_MAX];
@@ -435,6 +441,8 @@ int main() {
 		SetBlocks(&seven);
 		SetCheckum(&seven);
 		Encrypt(&seven);
+
+		if (!IsValidPartyCount(seven.data[seven.pos_a][15])) { continue; } //battle menu crash
 
 		// DebugPkmnData(&seven);
 
