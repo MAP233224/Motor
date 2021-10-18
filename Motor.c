@@ -118,9 +118,9 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
 	return ((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8;
 }
 
-bool IsValidPartyCount(u16 count) {
+bool IsValidPartyCount(u32 count) {
 	/* Check if the number of members in the opponent's party is valid. Determines crash at battle menu. */
-	return (count < 0x0037) || (count > 0x7fff);
+	return (count < 0x00000037) || (count > 0x7fffffff);
 }
 
 u8* GetString(u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* oob) {
@@ -442,7 +442,8 @@ int main() {
 		SetCheckum(&seven);
 		Encrypt(&seven);
 
-		if (!IsValidPartyCount(seven.data[seven.pos_a][15])) { continue; } //battle menu crash
+		u32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
+		if (!IsValidPartyCount(partycount)) { continue;	} //battle menu crash
 
 		// DebugPkmnData(&seven);
 
