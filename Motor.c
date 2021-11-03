@@ -8,8 +8,6 @@
 #include <stdbool.h>
 #include "common.h"
 
-// #define DEBUG (1) //comment out to disable DEBUG features
-
 void ScanValue(u8* message, u32* value, u8* format, u64 max) {
 	/* General purpose safe scan. Instruction message, value to change, string format and max value */
 	do {
@@ -18,13 +16,13 @@ void ScanValue(u8* message, u32* value, u8* format, u64 max) {
 		fgets(userInput, STRING_LENGTH_MAX, stdin);
 		if (strlen(userInput) == 0 || strlen(userInput) >= STRING_LENGTH_MAX) {
 			#ifdef DEBUG
-				printf("DEBUG: Invalid strlen()\n");
+			printf("DEBUG: Invalid strlen()\n");
 			#endif
 			continue;
 		}
 		if (sscanf(userInput, format, value) != 1) {
 			#ifdef DEBUG
-				printf("DEBUG: Invalid sscanf()\n");
+			printf("DEBUG: Invalid sscanf()\n");
 			#endif
 			*value = max + 1; //doesn't work for seed, puts it at 0 and becomes valid
 			continue;
@@ -118,9 +116,9 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
 	return ((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8;
 }
 
-bool IsValidPartyCount(u32 count) {
+bool IsInvalidPartyCount(u32 count) {
 	/* Check if the number of members in the opponent's party is valid. Determines crash at battle menu. */
-	return (count < 0x00000037) || (count > 0x7fffffff);
+	return ((count > 0x00000036) && (count < 0x80000000));
 }
 
 u8* GetString(u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* oob) {
@@ -172,31 +170,31 @@ void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 }
 
 #ifdef DEBUG
-	void Method1SeedToPID(u32 state, Pkmn* pkmn) {
-		/* Calculate PID, Nature and IVs according to Method 1 from a given seed 窶� UNUSED */
-		pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
-		pkmn->nature = pkmn->pid % NATURES_MAX;
-		pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
-		pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
-		pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
-		pkmn->iv2 >>= 1;
-	}
+void Method1SeedToPID(u32 state, Pkmn* pkmn) {
+	/* Calculate PID, Nature and IVs according to Method 1 from a given seed */
+	pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
+	pkmn->nature = pkmn->pid % NATURES_MAX;
+	pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
+	pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
+	pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
+	pkmn->iv2 >>= 1;
+}
 
-	void DebugPkmnData(Pkmn* pkmn) {
-		/* Prints out the raw data of the chosen pkmn */
-		printf("%04X\n", pkmn->checksum);
-		for (int i = 0; i < BLOCKS; i++) {
-			for (int j = 0; j < BLOCK_SIZE; j++) {
-				printf("%04X ", pkmn->data[i][j]);
-				if (j % 8 == 7) { printf("\n"); }
-			}
+void DebugPkmnData(Pkmn* pkmn) {
+	/* Prints out the raw data of the chosen pkmn */
+	printf("%04X\n", pkmn->checksum);
+	for (int i = 0; i < BLOCKS; i++) {
+		for (int j = 0; j < BLOCK_SIZE; j++) {
+			printf("%04X ", pkmn->data[i][j]);
+			if (j % 8 == 7) { printf("\n"); }
 		}
-		for (int i = 0; i < COND_SIZE; i++) {
-			printf("%04X ", pkmn->cond[i]);
-			if (i % 8 == 7) { printf("\n"); }
-		}
-		printf("\n");
 	}
+	for (int i = 0; i < COND_SIZE; i++) {
+		printf("%04X ", pkmn->cond[i]);
+		if (i % 8 == 7) { printf("\n"); }
+	}
+	printf("\n");
+}
 #endif
 
 int main() {
@@ -288,7 +286,7 @@ int main() {
 	FILE* fp; //declare file object
 	u8 filename[4*STRING_LENGTH_MAX] = "Results_"; //Results file name, then append with profile info
 	#ifdef DEBUG
-		strcat(filename, "DEBUG_");
+	strcat(filename, "DEBUG_");
 	#endif
 	strcat(filename, OgWilds[grouped_version][og%OG_WILDS_MAX]); strcat(filename, "_");
 	strcat(filename, strvers); strcat(filename, "_");
@@ -443,7 +441,7 @@ int main() {
 		Encrypt(&seven);
 
 		u32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
-		if (!IsValidPartyCount(partycount)) { continue;	} //battle menu crash
+		if (IsInvalidPartyCount(partycount)) { continue; } //battle menu crash
 
 		// DebugPkmnData(&seven);
 
@@ -497,6 +495,9 @@ int main() {
 			wild.iv2 = seven.data[wild.pos_b + 1][STACK_OFFSET + 9];
 		}
 
+		Encrypt(&seven);
+		if (seven.data[wild.pos_b][0]>MOVES_MAX+2) { continue; } // Invalid first move of Seven causes a crash before battle menu
+
 		/* Filter for a specific move */
 		if (user.move != 0) {
 			if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) { continue; }
@@ -537,6 +538,12 @@ int main() {
 		if (IsShiny(wild.pid, user.tid, user.sid)) { shiny = "Shiny"; }
 		else { shiny = "-----"; }
 
+		#ifdef DEBUG
+		/* Print successful result to console */
+		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
+		printf("%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
+		printf("%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
+		#endif
 		/* Print successful result to file */
 		fprintf(fp, "0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		fprintf(fp, "%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
