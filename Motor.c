@@ -15,16 +15,16 @@ void ScanValue(u8* message, u32* value, u8* format, u64 max) {
 		u8 userInput[32];
 		fgets(userInput, STRING_LENGTH_MAX, stdin);
 		if (strlen(userInput) == 0 || strlen(userInput) >= STRING_LENGTH_MAX) {
-			#ifdef DEBUG
+#ifdef DEBUG
 			printf("DEBUG: Invalid strlen()\n");
-			#endif
+#endif
 			continue;
 		}
 		if (sscanf(userInput, format, value) != 1) {
-			#ifdef DEBUG
+#ifdef DEBUG
 			printf("DEBUG: Invalid sscanf()\n");
-			#endif
-			*value = max + 1; //doesn't work for seed, puts it at 0 and becomes valid
+#endif
+			* value = max + 1; //doesn't work for seed, puts it at 0 and becomes valid
 			continue;
 		}
 	} while (*value > max);
@@ -134,6 +134,13 @@ u32 RngNext(u32* state) {
 	return *state;
 }
 
+void RngJump16(u32* state) {
+	/* TODO: Find a math cheat to not have to go through the for loop */
+	for (u8 i = 0; i < BLOCK_SIZE; i++) {
+		RngNext(state);
+	}
+}
+
 void Encrypt(Pkmn* pkmn) {
 	/* Encrypt with XOR and LCRNG each 16-bit word of Pkmn data. */
 	/* First with the Checksum as the Seed/Key (for block data), then with the PID (for condition data). */
@@ -146,6 +153,15 @@ void Encrypt(Pkmn* pkmn) {
 	}
 	for (u8 i = 0; i < COND_SIZE; i++) {
 		pkmn->cond[i] ^= (RngNext(&pkmn_cond_state) >> 16);
+	}
+}
+
+void EncryptBlock(Pkmn* pkmn, u8 block) {
+	/* Encrypt only 1 ABCD block with XOR and LCRNG each 16-bit word of Pkmn data. */
+	u32 pkmn_data_state = pkmn->checksum;
+	for (u8 i = 0; i < BLOCKS; i++) {
+		if (i != block) { RngJump16(&pkmn_data_state); } //advance RNG 16 times but don't encrypt
+		else { for (u8 j = 0; j < BLOCK_SIZE; j++) { pkmn->data[i][j] ^= (RngNext(&pkmn_data_state) >> 16); } } //encrypt
 	}
 }
 
@@ -227,40 +243,38 @@ int main() {
 	if (user.version == 2) { //platinum, english
 		ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Uxie, 2=Azelf, 3=Rotom): ", &og, "%u", 3);
 		switch (og) {
-			case 0: ogwild = pt_giratina; break;
-			case 1: ogwild = pt_uxie; break;
-			case 2: ogwild = pt_azelf; break;
-			case 3: ogwild = pt_rotom; break;
-			default: ogwild = pt_rotom;
+		case 0: ogwild = pt_giratina; break;
+		case 1: ogwild = pt_uxie; break;
+		case 2: ogwild = pt_azelf; break;
+		case 3: ogwild = pt_rotom; break;
+		default: ogwild = pt_rotom;
 		}
 	}
 	else { //dp
 		ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", 6);
 		if (og > 3) {
 			if (user.language == 3) { og += OG_WILDS_MAX; } //french
-			else if (user.language == 5) { og += 2*OG_WILDS_MAX; } //german
+			else if (user.language == 5) { og += 2 * OG_WILDS_MAX; } //german
 		}
 		switch (og) {
-			case 0: ogwild = dp_giratina; break;
-			case 1: ogwild = dp_arceus; break;
-			case 2: ogwild = dp_shaymin; break;
-			case 3: ogwild = dp_darkrai; break;
-			case 4: ogwild = dp_uxie; break;
-			case 5: ogwild = dp_azelf; break;
-			case 6: ogwild = dp_rotom; break;
-			case 11: ogwild = dp_crehelf; break;
-			case 12: ogwild = dp_crefadet; break;
-			case 13: ogwild = dp_motisma; break;
-			case 18: ogwild = dp_selfe; break;
-			case 19: ogwild = dp_tobutz; break;
-			case 20: ogwild = dp_rotom; break;
-			default: ogwild = dp_giratina;
+		case 0: ogwild = dp_giratina; break;
+		case 1: ogwild = dp_arceus; break;
+		case 2: ogwild = dp_shaymin; break;
+		case 3: ogwild = dp_darkrai; break;
+		case 4: ogwild = dp_uxie; break;
+		case 5: ogwild = dp_azelf; break;
+		case 6: ogwild = dp_rotom; break;
+		case 11: ogwild = dp_crehelf; break;
+		case 12: ogwild = dp_crefadet; break;
+		case 13: ogwild = dp_motisma; break;
+		case 18: ogwild = dp_selfe; break;
+		case 19: ogwild = dp_tobutz; break;
+		case 20: ogwild = dp_rotom; break;
+		default: ogwild = dp_giratina;
 		}
 	}
 
-	#ifdef DEBUG
 	ScanValue("ASLR to use (0 to 3): ", &user.aslr, "%u", ASLR_MAX - 1);
-	#endif
 	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX + 1);
 	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS_MAX + 1);
 	ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
@@ -284,14 +298,14 @@ int main() {
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
 	u8 grouped_version = user.version >> 1; //fuse Diamond and Pearl together
-	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language and version. Right shift version by 1 because DP share the same value.
+	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language, version and user choice
 
 	FILE* fp; //declare file object
-	u8 filename[4*STRING_LENGTH_MAX] = "Results_"; //Results file name, then append with profile info
-	#ifdef DEBUG
+	u8 filename[4 * STRING_LENGTH_MAX] = "Results_"; //Results file name, then append with profile info
+#ifdef DEBUG
 	strcat(filename, "DEBUG_");
-	#endif
-	strcat(filename, OgWilds[grouped_version][og%OG_WILDS_MAX]); strcat(filename, "_");
+#endif
+	strcat(filename, OgWilds[grouped_version][og % OG_WILDS_MAX]); strcat(filename, "_");
 	strcat(filename, strvers); strcat(filename, "_");
 	strcat(filename, strlang); strcat(filename, "_");
 	u8 strtidsid[STRING_LENGTH_MAX];
@@ -314,7 +328,7 @@ int main() {
 	printf("> ASLR 0x%08X\n", user.aslr);
 	printf("> Searching through %u frames for %s holding %s knowing %s...\n", user.frames, strspec, stritem, strmove);
 
-	u32 pid_list[PIDS_MAX] = {0}; //0 init
+	u32 pid_list[PIDS_MAX] = { 0 }; //0 init
 	u32 results = 0; //0 init
 	u32 seed = user.seed; //copy to advance in the main loop
 
@@ -420,7 +434,7 @@ int main() {
 		seven.data[seven.pos_a][1] = (user.aslr + LocBegOppParty[grouped_version]) >> 16;
 		seven.data[seven.pos_a][2] = (user.aslr + LocEndOppParty[grouped_version]) & 0xffff;
 		seven.data[seven.pos_a][3] = (user.aslr + LocEndOppParty[grouped_version]) >> 16;
-		for (u8 i = 0; i < 8; i++) { seven.data[seven.pos_a][i+4] = ogwild.sv[i]; } //special values of the ogwild
+		for (u8 i = 0; i < 8; i++) { seven.data[seven.pos_a][i + 4] = ogwild.sv[i]; } //special values of the ogwild
 		seven.data[seven.pos_a][12] = 0x0006;
 		seven.data[seven.pos_a][13] = 0x0000;
 		seven.data[seven.pos_a][14] = 0x0001;
@@ -498,8 +512,8 @@ int main() {
 			wild.iv2 = seven.data[wild.pos_b + 1][STACK_OFFSET + 9];
 		}
 
-		Encrypt(&seven);
-		if (seven.data[wild.pos_b][0]>MOVES_MAX+2) { continue; } // Invalid first move of Seven causes a crash before battle menu
+		EncryptBlock(&seven, wild.pos_b); //optimized
+		if (seven.data[wild.pos_b][0] > MOVES_MAX + 2) { continue; } // Invalid first move of Seven causes a crash before battle menu
 
 		/* Filter for a specific move */
 		if (user.move != 0) {
@@ -523,7 +537,7 @@ int main() {
 		u8* str_f_abi = GetString(f_ability, Abilities, ABILITIES_MAX, "None", "Glitch Ability");
 
 		/* Moves string format */
-		u8 strmoves[OWN_MOVES_MAX][STRING_LENGTH_MAX] = {0};
+		u8 strmoves[OWN_MOVES_MAX][STRING_LENGTH_MAX] = { 0 };
 		for (u8 i = 0; i < OWN_MOVES_MAX; i++) {
 			if (moves[i] >= MOVES_MAX) {
 				u8 buffer[STRING_LENGTH_MAX];
@@ -541,12 +555,12 @@ int main() {
 		if (IsShiny(wild.pid, user.tid, user.sid)) { shiny = "Shiny"; }
 		else { shiny = "-----"; }
 
-		#ifdef DEBUG
+#ifdef DEBUG
 		/* Print successful result to console */
 		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		printf("%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
 		printf("%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
-		#endif
+#endif
 		/* Print successful result to file */
 		fprintf(fp, "0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		fprintf(fp, "%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
