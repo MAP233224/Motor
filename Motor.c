@@ -258,6 +258,9 @@ int main() {
 		}
 	}
 
+	#ifdef DEBUG
+	ScanValue("ASLR to use (0 to 3): ", &user.aslr, "%u", ASLR_MAX - 1);
+	#endif
 	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX + 1);
 	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS_MAX + 1);
 	ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
@@ -281,7 +284,7 @@ int main() {
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
 	u8 grouped_version = user.version >> 1; //fuse Diamond and Pearl together
-	user.aslr = Aslrs[user.language][grouped_version]; //depends on language and version. Right shift version by 1 because DP share the same value.
+	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language and version. Right shift version by 1 because DP share the same value.
 
 	FILE* fp; //declare file object
 	u8 filename[4*STRING_LENGTH_MAX] = "Results_"; //Results file name, then append with profile info
