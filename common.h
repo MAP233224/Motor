@@ -21,6 +21,7 @@ typedef signed char s8;
 #define STACK_OFFSET (4) //misalignment between wild and seven
 #define PIDS_MAX (1060) //calculated from a previous program that found the highest possible occidentary
 #define OG_WILDS_MAX (7)
+#define ASLR_MAX (4)
 
 u8 Languages[LANGUAGES_MAX][3] = { "_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko" }; //languages by index, 0 and 6 unassigned
 
@@ -29,7 +30,21 @@ u8 Versions[VERSIONS_MAX][9] = { "Diamond", "Pearl", "Platinum" }; //versions
 u32 LocBegOppParty[VERSIONS_MAX - 1] = {0x4C7B0, 0x4B884}; //offsets, DP then Pt
 u32 LocEndOppParty[VERSIONS_MAX - 1] = {0x4D310, 0x4C3E4}; //offsets, DP then Pt
 
-u32 Aslrs[LANGUAGES_MAX][VERSIONS_MAX - 1] = { {0, 0}, {0x02271A24, 0}, {0x0226D300, 0x0227E14C}, {0x0226D5FC, 0}, {0x0226D500, 0}, {0x0226D504, 0}, {0, 0}, {0x0226D604, 0}, {0, 0} }; //ASLR to match with language and version
+/* All valid menu ASLR (DP), last is a mirror of first */
+//en: 0x0226d2f8, 0x0226d2fc, 0x0226d300, 0x0226d304, 0x0226d308
+//fr: 0x0226D5F8, 0x0226D5FC, 0x0226D600, 0x0226D604, 0x0226D608
+
+u32 Aslrs[LANGUAGES_MAX][VERSIONS_MAX - 1][ASLR_MAX] = { //ASLR to match with language and version
+	{ {0x00000000, 0x00000000, 0x00000000, 0x00000000}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} }, //_0
+	{ {0x02271A24, 0x00000000, 0x00000000, 0x00000000}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} }, //jp
+	{ {0x0226D2F8, 0x0226D2FC, 0x0226D300, 0x0226D304}, {0x0227E14C, 0x00000000, 0x00000000, 0x00000000} }, //en
+	{ {0x0226D5F8, 0x0226D5FC, 0x0226D600, 0x0226D604}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} }, //fr
+	{ {0x0226D500, 0x00000000, 0x00000000, 0x00000000}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} }, //it
+	{ {0x0226D504, 0x00000000, 0x00000000, 0x00000000}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} }, //ge
+	{ {0x00000000, 0x00000000, 0x00000000, 0x00000000}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} }, //_6
+	{ {0x0226D604, 0x00000000, 0x00000000, 0x00000000}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} }, //sp
+	{ {0x00000000, 0x00000000, 0x00000000, 0x00000000}, {0x00000000, 0x00000000, 0x00000000, 0x00000000} } //ko
+};
 
 u16 Perms[BLOCK_PERMS] = { 0x0123, 0x0132, 0x0213, 0x0312, 0x0231, 0x0321, 0x1023, 0x1032, 0x2013, 0x3012, 0x2031, 0x3021, 0x1203, 0x1302, 0x2103, 0x3102, 0x2301, 0x3201, 0x1230, 0x1320, 0x2130, 0x3120, 0x2310, 0x3210 };  //all 24 ABCD block permutations (inverse)
 
