@@ -80,7 +80,7 @@ u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
 
 u16 IvToStat(Pkmn* pkmn, Original* wild, u8 stat) {
 	/* Return the value of a stat based on the IV, Base Stat, Nature and Level. */
-	if (stat == 0) { return (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + wild->level + 10; }
+	if (stat == 0) { return (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + wild->level + 10; } //hp
 	return StatNatureModifier(pkmn->nature, stat - 1, (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + 5); //ignore for hp (index 0), hence the stat-1
 }
 
@@ -117,7 +117,7 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
 }
 
 bool IsInvalidPartyCount(u32 count) {
-	/* Check if the number of members in the opponent's party is valid. Determines crash at battle menu. */
+	/* Check if the number of members in the opponent's party is invalid. Determines crash at battle menu. */
 	return ((count > 0x00000036) && (count < 0x80000000));
 }
 
@@ -157,7 +157,7 @@ void Encrypt(Pkmn* pkmn) {
 }
 
 void EncryptBlock(Pkmn* pkmn, u8 block) {
-	/* Encrypt only 1 ABCD block with XOR and LCRNG each 16-bit word of Pkmn data. */
+	/* Encrypt only 1 ABCD block of Pkmn data. */
 	u32 pkmn_data_state = pkmn->checksum;
 	for (u8 i = 0; i < BLOCKS; i++) {
 		if (i != block) { RngJump16(&pkmn_data_state); } //advance RNG 16 times but don't encrypt
@@ -512,8 +512,8 @@ int main() {
 			wild.iv2 = seven.data[wild.pos_b + 1][STACK_OFFSET + 9];
 		}
 
-		EncryptBlock(&seven, wild.pos_b); //optimized
-		if (seven.data[wild.pos_b][0] > MOVES_MAX + 2) { continue; } // Invalid first move of Seven causes a crash before battle menu
+		EncryptBlock(&seven, seven.pos_b); //optimized
+		if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; } // Invalid first move of Seven causes a crash before battle menu
 
 		/* Filter for a specific move */
 		if (user.move != 0) {
@@ -555,6 +555,10 @@ int main() {
 		if (IsShiny(wild.pid, user.tid, user.sid)) { shiny = "Shiny"; }
 		else { shiny = "-----"; }
 
+		/* Progression percentage indicator (slows down the search by 3%!!!) */
+		// u8 percent = 100 * (float)frame / (float)user.frames;
+		// printf("%03d%%\b\b\b\b", percent);
+
 #ifdef DEBUG
 		/* Print successful result to console */
 		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
@@ -574,6 +578,7 @@ int main() {
 	clock_t end = clock(); //end timer
 	double time_spent = ((double)end - (double)begin) / CLOCKS_PER_SEC; //calculate time elapsed since start of search
 	fprintf(fp, "\nFound %u results in %.2f seconds.\n", results, time_spent);
+	// printf("100%%");
 	printf("\n%u results compiled to %s in %.2f seconds.\n", results, filename, time_spent);
 	fclose(fp); //close file
 	u8 exit;
