@@ -555,10 +555,6 @@ int main() {
 		if (IsShiny(wild.pid, user.tid, user.sid)) { shiny = "Shiny"; }
 		else { shiny = "-----"; }
 
-		/* Progression percentage indicator (slows down the search by 3%!!!) */
-		// u8 percent = 100 * (float)frame / (float)user.frames;
-		// printf("%03d%%\b\b\b\b", percent);
-
 #ifdef DEBUG
 		/* Print successful result to console */
 		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
@@ -578,7 +574,6 @@ int main() {
 	clock_t end = clock(); //end timer
 	double time_spent = ((double)end - (double)begin) / CLOCKS_PER_SEC; //calculate time elapsed since start of search
 	fprintf(fp, "\nFound %u results in %.2f seconds.\n", results, time_spent);
-	// printf("100%%");
 	printf("\n%u results compiled to %s in %.2f seconds.\n", results, filename, time_spent);
 	fclose(fp); //close file
 	u8 exit;
