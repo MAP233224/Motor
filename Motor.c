@@ -156,15 +156,6 @@ void Encrypt(Pkmn* pkmn) {
 	}
 }
 
-void EncryptBlock(Pkmn* pkmn, u8 block) {
-	/* Encrypt only 1 ABCD block of Pkmn data. */
-	u32 pkmn_data_state = pkmn->checksum;
-	for (u8 i = 0; i < BLOCKS; i++) {
-		if (i != block) { RngJump16(&pkmn_data_state); } //advance RNG 16 times but don't encrypt
-		else { for (u8 j = 0; j < BLOCK_SIZE; j++) { pkmn->data[i][j] ^= (RngNext(&pkmn_data_state) >> 16); } } //encrypt
-	}
-}
-
 void GetIVs(Pkmn* pkmn) {
 	/* Decompose IVs */
 	pkmn->ivs[hp] = pkmn->iv1 & 31;
@@ -237,42 +228,9 @@ int main() {
 	}
 	else { CreateProfile(&user); }
 
-	/* Pick the original wild */
 	u32 og;
-	Original ogwild;
-	if (user.version == 2) { //platinum, english
-		ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Uxie, 2=Azelf, 3=Rotom): ", &og, "%u", 3);
-		switch (og) {
-		case 0: ogwild = pt_giratina; break;
-		case 1: ogwild = pt_uxie; break;
-		case 2: ogwild = pt_azelf; break;
-		case 3: ogwild = pt_rotom; break;
-		default: ogwild = pt_rotom;
-		}
-	}
-	else { //dp
-		ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", 6);
-		if (og > 3) {
-			if (user.language == 3) { og += OG_WILDS_MAX; } //french
-			else if (user.language == 5) { og += 2 * OG_WILDS_MAX; } //german
-		}
-		switch (og) {
-		case 0: ogwild = dp_giratina; break;
-		case 1: ogwild = dp_arceus; break;
-		case 2: ogwild = dp_shaymin; break;
-		case 3: ogwild = dp_darkrai; break;
-		case 4: ogwild = dp_uxie; break;
-		case 5: ogwild = dp_azelf; break;
-		case 6: ogwild = dp_rotom; break;
-		case 11: ogwild = dp_crehelf; break;
-		case 12: ogwild = dp_crefadet; break;
-		case 13: ogwild = dp_motisma; break;
-		case 18: ogwild = dp_selfe; break;
-		case 19: ogwild = dp_tobutz; break;
-		case 20: ogwild = dp_rotom; break;
-		default: ogwild = dp_giratina;
-		}
-	}
+	if (user.version == 2) { ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Uxie, 3=Azelf, 4=Rotom): ", &og, "%u", 3); } //platinum
+	else { ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", 6); } //dp
 
 	ScanValue("ASLR to use (0 to 3): ", &user.aslr, "%u", ASLR_MAX - 1);
 	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX + 1);
@@ -298,6 +256,7 @@ int main() {
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
 	u8 grouped_version = user.version >> 1; //fuse Diamond and Pearl together
+	Original ogwild = *OGW_LangVers[user.language][grouped_version][og];
 	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language, version and user choice
 
 	FILE* fp; //declare file object
@@ -343,6 +302,13 @@ int main() {
 		Pkmn seven = { 0 }; //0 init
 
 		MethodJSeedToPID(seed, &wild);
+
+		// #ifdef DEBUG /* RETIRE's PIDs */
+		// if ((wild.pid < 0x1E001700) && (wild.pid >= 0x1E001600)) { fprintf(fp, "PID: 0x%08x, Seed: 0x%08x\n", wild.pid, seed); continue; }
+		// else if ((wild.pid < 0x1D001700) && (wild.pid >= 0x1D001600)) { fprintf(fp, "PID: 0x%08x, Seed: 0x%08x\n", wild.pid, seed); continue; }
+		// else if ((wild.pid << 8) == 0x000CED00 ) { fprintf(fp, "PID: 0x%08x, Seed: 0x%08x\n", wild.pid, seed); continue; }
+		// else { continue; }
+		// #endif
 
 		/* Checking for duplicate PIDs if user specified it */
 		if (user.dupe == 0) {
@@ -404,14 +370,14 @@ int main() {
 		wild.cond[29] = 0xffff;
 
 		SetCheckum(&wild);
+		// DebugPkmnData(&wild);
 		Encrypt(&wild);
-
 		// DebugPkmnData(&wild);
 
 		/* Initialize Seven */
 		seven.pid = 0x00005544;
 		seven.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
-		SetBlocks(&seven);
+		SetBlocks(&seven); //always ACBD (0x0213)
 
 		/* Simulating the stack overflow */
 		for (u8 i = 0; i < BLOCK_SIZE - STACK_OFFSET; i++) { //ABCD blocks part 1
@@ -446,21 +412,20 @@ int main() {
 		seven.data[seven.pos_c][3] = wild.checksum;
 
 		Encrypt(&seven);
-
 		// DebugPkmnData(&seven);
+
+		if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; } //menu crash if 1st move of Seven is invalid
 
 		/* If the ball doesn't have a valid id the battle won't load */
 		u8 ballid = seven.data[seven.pos_d][13] >> 8;
 		if ((ballid > 16) || (ballid == 0)) { continue; } //might be more complex than that, some invalid Ball IDs load fine
 
-		SetBlocks(&seven);
 		SetCheckum(&seven);
 		Encrypt(&seven);
+		// DebugPkmnData(&seven);
 
 		u32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
 		if (IsInvalidPartyCount(partycount)) { continue; } //battle menu crash
-
-		// DebugPkmnData(&seven);
 
 		/* If it's a Bad Egg or Checksum was not skipped, continue */
 		wild.bef = seven.data[seven.pos_c][2];
@@ -473,17 +438,31 @@ int main() {
 		/* Get final species, item, ability and steps to hatch */
 		u8 f_ability;
 		u16 f_species, f_item, f_steps;
-		if (wild.pos_a == 3) {
+		switch (wild.pos_a) {
+			case 0: //C
+			f_species = seven.data[seven.pos_c][STACK_OFFSET];
+			f_item = seven.data[seven.pos_c][STACK_OFFSET + 1];
+			f_ability = seven.data[seven.pos_c][STACK_OFFSET + 6] >> 8;
+			f_steps = seven.data[seven.pos_c][STACK_OFFSET + 6] & 0xff;
+			break;
+			case 1: //B
+			f_species = seven.data[seven.pos_b][STACK_OFFSET];
+			f_item = seven.data[seven.pos_b][STACK_OFFSET + 1];
+			f_ability = seven.data[seven.pos_b][STACK_OFFSET + 6] >> 8;
+			f_steps = seven.data[seven.pos_b][STACK_OFFSET + 6] & 0xff;
+			break;
+			case 2: //D
+			f_species = seven.data[seven.pos_d][STACK_OFFSET];
+			f_item = seven.data[seven.pos_d][STACK_OFFSET + 1];
+			f_ability = seven.data[seven.pos_d][STACK_OFFSET + 6] >> 8;
+			f_steps = seven.data[seven.pos_d][STACK_OFFSET + 6] & 0xff;
+			break;
+			case 3: //cond
 			f_species = seven.cond[STACK_OFFSET];
 			f_item = seven.cond[STACK_OFFSET + 1];
 			f_ability = seven.cond[STACK_OFFSET + 6] >> 8;
 			f_steps = seven.cond[STACK_OFFSET + 6] & 0xff;
-		}
-		else {
-			f_species = seven.data[wild.pos_a + 1][STACK_OFFSET];
-			f_item = seven.data[wild.pos_a + 1][STACK_OFFSET + 1];
-			f_ability = seven.data[wild.pos_a + 1][STACK_OFFSET + 6] >> 8;
-			f_steps = seven.data[wild.pos_a + 1][STACK_OFFSET + 6] & 0xff;
+			break;
 		}
 
 		/* Species check */
@@ -498,22 +477,32 @@ int main() {
 		/* Get final moveset, egg steps, form id and fateful encounter flag */
 		u16 fate;
 		u16 moves[OWN_MOVES_MAX];
-
-		if (wild.pos_b > 1) { //pos_b is either 2 or 3
-			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.cond[STACK_OFFSET + i]; }
-			fate = seven.cond[BLOCK_SIZE * (wild.pos_b == 3)]; //index of 0 or 16 depending on if pos_b is 2 or 3
+		switch (wild.pos_b) {
+			case 0: //C
+			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[seven.pos_c][STACK_OFFSET + i]; }
+			wild.iv1 = seven.data[seven.pos_c][STACK_OFFSET + 8];
+			wild.iv2 = seven.data[seven.pos_c][STACK_OFFSET + 9];
+			fate = seven.data[seven.pos_d][0];
+			break;
+			case 1: //B
+			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[seven.pos_b][STACK_OFFSET + i]; }
+			wild.iv1 = seven.data[seven.pos_b][STACK_OFFSET + 8];
+			wild.iv2 = seven.data[seven.pos_b][STACK_OFFSET + 9];
+			fate = seven.cond[0];
+			break;
+			case 2: //D
+			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[seven.pos_d][STACK_OFFSET + i]; }
+			wild.iv1 = seven.data[seven.pos_d][STACK_OFFSET + 8];
+			wild.iv2 = seven.data[seven.pos_d][STACK_OFFSET + 9];
+			fate = seven.cond[BLOCK_SIZE];
+			break;
+			case 3: //cond
+			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.cond[STACK_OFFSET + BLOCK_SIZE + i]; }
 			wild.iv1 = seven.cond[STACK_OFFSET + 8];
 			wild.iv2 = seven.cond[STACK_OFFSET + 9];
+			fate = seven.cond[2*BLOCK_SIZE];
+			break;
 		}
-		else { //pos_b is either 0 or 1
-			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[wild.pos_b + 1][STACK_OFFSET + i]; }
-			fate = seven.data[wild.pos_b + 2][0];
-			wild.iv1 = seven.data[wild.pos_b + 1][STACK_OFFSET + 8];
-			wild.iv2 = seven.data[wild.pos_b + 1][STACK_OFFSET + 9];
-		}
-
-		EncryptBlock(&seven, seven.pos_b); //optimized
-		if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; } // Invalid first move of Seven causes a crash before battle menu
 
 		/* Filter for a specific move */
 		if (user.move != 0) {
