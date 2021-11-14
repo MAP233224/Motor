@@ -4,7 +4,7 @@
 
 --------------------------------
 
-user_seed = 0x3AFC7FBF --enter the seed you got from Motor.exe, press '5' to set it
+user_seed = 0x1704549B --enter the seed you got from Motor.exe, press '5' to set it
 user_pointer = 0 --automatically search for a specific ASLR
 user_tid = 21025 --enter a custom TID, press '3' to set it
 user_sid = 45075 --enter a custom SID, press '3' to set it
@@ -50,23 +50,23 @@ CLIENT_NAME = {"Trainer", "Opponent"}
 LANG_ID = {0x44, 0x45, 0x46, 0x49, 0x4A, 0x4B, 0x53}
 
 function IndexOf(array, value)
-  local index={}
-  for k,v in pairs(array) do index[v]=k end
-  return index[value]
+	local index={}
+	for k,v in pairs(array) do index[v]=k end
+	return index[value]
 end
 
 function GetGameInfo()
-  -- to do: set the global OFFs and LOCs to their corresponding values
-  local vers = memory.readdword(0x023FFE0C)
-  local id = bit.band(vers, 0xFF)
-  local lang = bit.band(bit.rshift(vers, 24), 0xFF)
-  lang=IndexOf(LANG_ID, lang)
-  local b=0
-  if id==0x41 then vers=1 -- Diamond & Pearl
-  elseif id==0x43 then vers=2 -- Platinum
-  else print("Invalid game!") return end
-  b = BASES[lang][vers]
-  return b, vers, lang
+	-- to do: set the global OFFs and LOCs to their corresponding values
+	local vers = memory.readdword(0x023FFE0C)
+	local id = bit.band(vers, 0xFF)
+	local lang = bit.band(bit.rshift(vers, 24), 0xFF)
+	lang=IndexOf(LANG_ID, lang)
+	local b=0
+	if id==0x41 then vers=1 -- Diamond & Pearl
+	elseif id==0x43 then vers=2 -- Platinum
+	else print("Invalid game!") return end
+	b = BASES[lang][vers]
+	return b, vers, lang
 end
 
 function GetPointer()
@@ -82,14 +82,14 @@ function SearchPointer()
 end
 
 function Mult32(a, b)
- local c = bit.rshift(a, 16)
- local d = a % 0x10000
- local e = bit.rshift(b, 16)
- local f = b % 0x10000
- local g = (c*f + d*e) % 0x10000
- local h = d*f
- local i = g * 0x10000 + h
- return i
+	local c = bit.rshift(a, 16)
+	local d = a % 0x10000
+	local e = bit.rshift(b, 16)
+	local f = b % 0x10000
+	local g = (c*f + d*e) % 0x10000
+	local h = d*f
+	local i = g * 0x10000 + h
+	return i
 end
 
 function GetBits(a, b, d)
@@ -97,8 +97,8 @@ function GetBits(a, b, d)
 end
 
 function GetBlockOrder(pid)
-  local id = (bit.band(pid, 0x3E000) / 8192) % 24
-  return BLOCKS[id+1]
+	local id = (bit.band(pid, 0x3E000) / 8192) % 24
+	return BLOCKS[id+1]
 end
 
 function GetSeedDistance(a)
@@ -237,10 +237,10 @@ function GetBattleData()
   		if i==1 or i==2 then color="red" --species
   		elseif i==39 or i==40 or i==77 or i==78 or i==81 or i==82 or i==127 or i==128 then color="yellow"
   		elseif i>2 and i<25 then color="yellow"
-      elseif i>44 and i<53 then color="yellow"
+		elseif i>44 and i<53 then color="yellow"
   		elseif i>84 and i<99 then	color="yellow"
   		elseif i>108 and i<113 then	color="yellow"
-      elseif i==54 then color="#44ffbb" -- friendship
+		elseif i==54 then color="#44ffbb" -- friendship
   		elseif i==37 or i==38 then color="orange" -- type
   		elseif i==121 then color="cyan" -- item
   		elseif i==122 then color="cyan" -- item
@@ -254,11 +254,11 @@ function GetBattleData()
 end
 
 function CopyPkmn(src, dst)
-  for i=0, PKMN_SIZE-1 do
-    local data = memory.readbyte(pointer+PARTY_OFF[version]+src*PKMN_SIZE+i)
-    memory.writebyte(pointer+PARTY_OFF[version]+dst*PKMN_SIZE+i, data)
-  end
-  print("Copied PKMN #"..src.." into PKMN #"..dst)
+	for i=0, PKMN_SIZE-1 do
+		local data = memory.readbyte(pointer+PARTY_OFF[version]+src*PKMN_SIZE+i)
+		memory.writebyte(pointer+PARTY_OFF[version]+dst*PKMN_SIZE+i, data)
+	end
+	print("Copied PKMN #"..src.." into PKMN #"..dst)
 end
 
 function PrintSizePartyCount()
@@ -269,42 +269,41 @@ function PrintSizePartyCount()
 end
 
 function Controls()
-  tabl = input.get()
-  if tabl["0"] and not prev["0"] then ChangeMode() end
-  if tabl["1"] and not prev["1"] then RngBackwards(1) end
-  if tabl["2"] and not prev["2"] then RngForwards(1) end
-  if tabl["3"] and not prev["3"] then SetTid() end
-  if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end
-  if tabl["5"] and not prev["5"] then SetRng() end
-  if tabl["7"] and not prev["7"] then CopyPkmn(0, 4) end -- use this as the debug function
-  if tabl["8"] and not prev["8"] then RngBackwards(16) end
-  if tabl["9"] and not prev["9"] then RngForwards(16) end
-  prev=tabl
+	tabl = input.get()
+	if tabl["0"] and not prev["0"] then ChangeMode() end
+	if tabl["1"] and not prev["1"] then RngBackwards(1) end
+	if tabl["2"] and not prev["2"] then RngForwards(1) end
+	if tabl["3"] and not prev["3"] then SetTid() end
+	if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end
+	if tabl["5"] and not prev["5"] then SetRng() end
+	if tabl["7"] and not prev["7"] then CopyPkmn(0, 5) end -- use this as the debug function
+	if tabl["8"] and not prev["8"] then RngBackwards(16) end
+	if tabl["9"] and not prev["9"] then RngForwards(16) end
+	prev=tabl
 end
 
 function Main()
-  base, version, language = GetGameInfo()
-  rng = 0
-  if language == 5 then rng = 0x021C65A8 --jp
-  else rng = base + RNG_OFF[version] end
-  pointer = GetPointer()
-  tid_loc = pointer + TID_OFF[version]
-  wild_loc = pointer + WILD_OFF[version]
-  battle_loc = pointer + PKMN_BD_OFF[version]
-  if language == 6 then --ko
-  	battle_loc = battle_loc + KOREAN_OFF
-  	wild_loc = wild_loc + KOREAN_OFF
-  end
-  Controls()
-  SearchPointer()
-  frame = GetRng()
-  frame_dist = GetSeedDistance(frame)
-  GetTid()
-  GetPkmnData()
-  --gui.text(2+7*CHAR_W, -190, "("..(pointer-base)/4-0x598A8..")") --only eng dp accurate
-  gui.text(2, -190, "Base = "..string.format("%.8X",pointer))
-  gui.text(2, -180, "Seed = "..string.format("%.8X",user_seed))
-  gui.text(2, -170, "Dist = "..frame_dist)
+	base, version, language = GetGameInfo()
+	rng = base + RNG_OFF[version]
+	if language == 5 and version == 1 then rng = rng + 8 end --jp dp quirk
+	pointer = GetPointer()
+	tid_loc = pointer + TID_OFF[version]
+	wild_loc = pointer + WILD_OFF[version]
+	battle_loc = pointer + PKMN_BD_OFF[version]
+	if language == 6 then --ko
+		battle_loc = battle_loc + KOREAN_OFF
+		wild_loc = wild_loc + KOREAN_OFF
+	end
+	Controls()
+	SearchPointer()
+	frame = GetRng()
+	frame_dist = GetSeedDistance(frame)
+	GetTid()
+	GetPkmnData()
+	--gui.text(2+7*CHAR_W, -190, "("..(pointer-base)/4-0x598A8..")") --only eng dp accurate
+	gui.text(2, -190, "Base = "..string.format("%.8X",pointer))
+	gui.text(2, -180, "Seed = "..string.format("%.8X",user_seed))
+	gui.text(2, -170, "Dist = "..frame_dist)
 end
 
 gui.register(Main)
