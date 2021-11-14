@@ -301,13 +301,6 @@ int main() {
 
 		MethodJSeedToPID(seed, &wild);
 
-		// #ifdef DEBUG /* RETIRE's PIDs */
-		// if ((wild.pid < 0x1E001700) && (wild.pid >= 0x1E001600)) { fprintf(fp, "PID: 0x%08x, Seed: 0x%08x\n", wild.pid, seed); continue; }
-		// else if ((wild.pid < 0x1D001700) && (wild.pid >= 0x1D001600)) { fprintf(fp, "PID: 0x%08x, Seed: 0x%08x\n", wild.pid, seed); continue; }
-		// else if ((wild.pid << 8) == 0x000CED00 ) { fprintf(fp, "PID: 0x%08x, Seed: 0x%08x\n", wild.pid, seed); continue; }
-		// else { continue; }
-		// #endif
-
 		/* Checking for duplicate PIDs if user specified it */
 		if (user.dupe == 0) {
 			bool duplicate = false;
