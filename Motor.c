@@ -225,12 +225,12 @@ int main() {
 	else { CreateProfile(&user); }
 
 	u32 og;
-	if (user.version == 2) { ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Uxie, 3=Azelf, 4=Rotom): ", &og, "%u", 3); } //platinum
-	else { ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", 6); } //dp
+	if (user.version == 2) { ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Dialga, 3=Palkia, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //platinum
+	else { ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //dp
 
 	ScanValue("ASLR to use (0~11 for jp, 0~4 for ko, 0~3 otherwise): ", &user.aslr, "%u", ASLR_GROUPS_MAX - 1); //replace 3 by NELEMS(aslr_lang_vers)
-	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX + 1);
-	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS_MAX + 1);
+	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX - 1);
+	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS_MAX - 1);
 	ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
 	ScanValue("Enter your Seed (32 bit, hex): 0x", &user.seed, "%x", 0xffffffff);
 	ScanValue("How many frames to search through (32 bit, dec): ", &user.frames, "%u", 0xffffffff);
@@ -288,8 +288,17 @@ int main() {
 	u32 results = 0; //0 init
 	u32 seed = user.seed; //copy to advance in the main loop
 	if (user.language==8) { user.aslr+=0x44; } //korean offset
+	u8 alternate_form = 0;
+	if (user.version==2 && og==0) { alternate_form = 8; } //Giratina Origin
 
 	clock_t begin = clock(); //timer starts
+
+	/* DEBUG: print unique aslr groups */
+	// for (u32 aslr = 0x0227d4e0; aslr<=0x0227d5e0; aslr+=4){
+	// user.aslr=aslr;
+	// if (frame==0) {printf("%u\n", wild.pid&0xff); continue;}
+	// else {continue;}
+	// }
 
 	/* Main search loop */
 	for (u32 frame = 0; frame < user.frames; frame++) {
@@ -334,7 +343,7 @@ int main() {
 		wild.data[wild.pos_b][5] = ogwild.pp3and4; //pp3and4
 		wild.data[wild.pos_b][8] = wild.iv1;
 		wild.data[wild.pos_b][9] = wild.iv2;
-		wild.data[wild.pos_b][12] = 0x0004; //genderless
+		wild.data[wild.pos_b][12] = 0x0004 + alternate_form; //genderless
 
 		for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = ogwild.name[i]; } //11 characters for the name
 		wild.data[wild.pos_c][11] = w_version; //version
