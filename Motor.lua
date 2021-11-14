@@ -6,8 +6,8 @@
 
 --------------------------------
 
-user_seed = 0x9827B7AE --enter the seed you got from Motor.exe, press '5' to set it
-user_pointer = 0 --0x0227E14C --automatically search for a specific ASLR
+user_seed = 0x3AFC7FBF --enter the seed you got from Motor.exe, press '5' to set it
+user_pointer = 0 --automatically search for a specific ASLR
 user_tid = 21025 --enter a custom TID, press '3' to set it
 user_sid = 45075 --enter a custom SID, press '3' to set it
 
@@ -19,13 +19,16 @@ MODES = {"Encrypted Wild Data", "Decrypted Battle Data", "Nothing"}
 tabl = {}
 -- {dp, plat} --
 RNG_OFF = {0xBDD88, 0xBDDD4}
-TID_OFF = {0x288, 0x8C}
-OG_WILD_OFF = {0x2B63C, 0x28AE4}
-PKMN_BD_OFF = {0x48580, 0x475B8} -- +0xC0 to get the opponent
-WILD_OFF = {0x4CD88, 0x4BE5C}
+TID_OFF = {0x288, 0x8C} -- -KOREAN_OFF
+PARTY_OFF = {0x2AC, 0xB4}
+PKMN_BD_OFF = {0x48580, 0x475B8} -- +0xC0 to get the opponent, +KOREAN_OFF
+WILD_OFF = {0x4CD88, 0x4BE5C} -- +KOREAN_OFF
+KOREAN_OFF = 0x44
 
 BASES = {{0x02107100, 0x02101EE0}, {0x02106FC0, 0x02101D40}, {0x02107140, 0x02101F20}, {0x021070A0, 0x02101EA0}, {0x02108818, 0x02101140}, {0x021045C0, 0x02102C40}, {0x02107160, 0x02101F40}}
 -- ge, en, fr, it, jp, ko, sp (need to change it later to conventional order)
+
+PKMN_SIZE = 0xEC
 
 CHAR_W = 14
 CHAR_H = 10
@@ -65,7 +68,7 @@ function GetGameInfo()
   elseif id==0x43 then vers=2 -- Platinum
   else print("Invalid game!") return end
   b = BASES[lang][vers]
-  return b, vers
+  return b, vers, lang
 end
 
 function GetPointer()
@@ -102,21 +105,21 @@ end
 
 function GetSeedDistance(a)
 	local test = user_seed
-  local distseed = 0
-  for j=0,31,1 do
+ 	local distseed = 0
+ 	for j=0,31,1 do
 		if GetBits(a, j, 1) ~= GetBits(test, j, 1) then
 			test = Mult32(test, MULTSPA[j+1]) + MULTSPB[j+1]
 			distseed = distseed + bit.lshift(1,j)
 			if j==31 then distseed = distseed + 0x100000000 end
 		end
-  end
+  	end
 	if distseed>0x7FFFFFFF then distseed = distseed - 0xFFFFFFFF end
 	return distseed
 end
 
 function GetRng()
 	local seed = memory.readdword(rng)
-  return seed
+	return seed
 end
 
 function SetRng()
@@ -125,11 +128,11 @@ function SetRng()
 end
 
 function RngBackwards(f)
-  for i=1, f, 1 do
-    local state = memory.readdword(rng)
-    state = Mult32(state, 0xEEB9EB65) + 0xA3561A1
-    memory.writedword(rng, bit.band(state))
-  end
+	for i=1, f, 1 do
+		local state = memory.readdword(rng)
+		state = Mult32(state, 0xEEB9EB65) + 0xA3561A1
+		memory.writedword(rng, bit.band(state))
+	end
 end
 
 function RngForwards(f)
@@ -229,7 +232,7 @@ end
 
 function GetBattleData()
   for client=1,2,1 do
-  	local range = memory.readbyterange(pointer+PKMN_BD_OFF[version]+(client-1)*0xC0, 0x80)
+  	local range = memory.readbyterange(battle_loc+(client-1)*0xC0, 0x80)
   	for i,v in ipairs(range) do
   		local x = ((i-1)%8)*CHAR_W
   		local y = math.floor((i-1)/8)*CHAR_H
@@ -252,11 +255,19 @@ function GetBattleData()
   end
 end
 
-function PrintSizePkCnt()
+function CopyPkmn(src, dst)
+  for i=0, PKMN_SIZE-1 do
+    local data = memory.readbyte(pointer+PARTY_OFF[version]+src*PKMN_SIZE+i)
+    memory.writebyte(pointer+PARTY_OFF[version]+dst*PKMN_SIZE+i, data)
+  end
+  print("Copied PKMN #"..src.." into PKMN #"..dst)
+end
+
+function PrintSizePartyCount()
   local size = memory.readdword(pointer+WILD_OFF[version]-36)
-  local pkcntmax = memory.readdword(pointer+WILD_OFF[version]-8)
-  local pkcnt = memory.readdword(pointer+WILD_OFF[version]-4)
-  print(string.format("%.8x",size).." "..string.format("%.8x",pkcntmax).." "..string.format("%.8x",pkcnt))
+  local pcm = memory.readdword(pointer+WILD_OFF[version]-8)
+  local pc = memory.readdword(pointer+WILD_OFF[version]-4)
+  print(string.format("%.8x",size).." "..string.format("%.8x",pcm).." "..string.format("%.8x",pc))
 end
 
 function Controls()
@@ -265,21 +276,27 @@ function Controls()
   if tabl["1"] and not prev["1"] then RngBackwards(1) end
   if tabl["2"] and not prev["2"] then RngForwards(1) end
   if tabl["3"] and not prev["3"] then SetTid() end
-  if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end --replace by og_wild_loc
+  if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end
   if tabl["5"] and not prev["5"] then SetRng() end
-  if tabl["7"] and not prev["7"] then PrintSizePkCnt() end
+  if tabl["7"] and not prev["7"] then CopyPkmn(0, 4) end -- use this as the debug function
   if tabl["8"] and not prev["8"] then RngBackwards(16) end
   if tabl["9"] and not prev["9"] then RngForwards(16) end
   prev=tabl
 end
 
 function Main()
-  base, version = GetGameInfo()
-  rng = base + RNG_OFF[version]
+  base, version, language = GetGameInfo()
+  rng = 0
+  if language == 5 then rng = 0x021C65A8 --jp
+  else rng = base + RNG_OFF[version] end
   pointer = GetPointer()
   tid_loc = pointer + TID_OFF[version]
   wild_loc = pointer + WILD_OFF[version]
-  og_wild_loc = pointer + OG_WILD_OFF[version]
+  battle_loc = pointer + PKMN_BD_OFF[version]
+  if language == 6 then --ko
+  	battle_loc = battle_loc + KOREAN_OFF
+  	wild_loc = wild_loc + KOREAN_OFF
+  end
   Controls()
   SearchPointer()
   frame = GetRng()
