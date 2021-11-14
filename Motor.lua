@@ -2,8 +2,6 @@
 --      Motor.lua by MAP      --
 --------------------------------
 
--- Note: Only works for DP (en, fr, it, ge, sp) for now
-
 --------------------------------
 
 user_seed = 0x3AFC7FBF --enter the seed you got from Motor.exe, press '5' to set it
@@ -19,10 +17,10 @@ MODES = {"Encrypted Wild Data", "Decrypted Battle Data", "Nothing"}
 tabl = {}
 -- {dp, plat} --
 RNG_OFF = {0xBDD88, 0xBDDD4}
-TID_OFF = {0x288, 0x8C} -- -KOREAN_OFF
+TID_OFF = {0x288, 0x8C}
 PARTY_OFF = {0x2AC, 0xB4}
-PKMN_BD_OFF = {0x48580, 0x475B8} -- +0xC0 to get the opponent, +KOREAN_OFF
-WILD_OFF = {0x4CD88, 0x4BE5C} -- +KOREAN_OFF
+PKMN_BD_OFF = {0x48580, 0x475B8} -- +0xC0 to get the opponent
+WILD_OFF = {0x4CD88, 0x4BE5C}
 KOREAN_OFF = 0x44
 
 BASES = {{0x02107100, 0x02101EE0}, {0x02106FC0, 0x02101D40}, {0x02107140, 0x02101F20}, {0x021070A0, 0x02101EA0}, {0x02108818, 0x02101140}, {0x021045C0, 0x02102C40}, {0x02107160, 0x02101F40}}
