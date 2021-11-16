@@ -224,9 +224,13 @@ int main() {
 	}
 	else { CreateProfile(&user); }
 
+	u8 grouped_version = user.version >> 1; //fuse Diamond and Pearl together
+
 	u32 og;
-	if (user.version == 2) { ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Dialga, 3=Palkia, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //platinum
-	else { ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Shaymin, 3=Darkrai, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //dp
+	do {
+		if (user.version == 2) { ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Dialga, 3=Palkia, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //platinum
+		else { ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //dp
+	} while (OGW_LangVers[user.language][grouped_version][og]==NULL);
 
 	ScanValue("ASLR to use (0~11 for jp, 0~4 for ko, 0~3 otherwise): ", &user.aslr, "%u", ASLR_GROUPS_MAX - 1); //replace 3 by NELEMS(aslr_lang_vers)
 	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX - 1);
@@ -251,7 +255,6 @@ int main() {
 
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
-	u8 grouped_version = user.version >> 1; //fuse Diamond and Pearl together
 	Original ogwild = *OGW_LangVers[user.language][grouped_version][og];
 	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language, version and user choice
 	if (user.aslr==0) { printf("\nWARNING: Invalid ASLR, the results will not be possible.\n"); }
@@ -465,14 +468,11 @@ int main() {
 			break;
 		}
 
-		/* Species check */
-		if (user.species == 0) { //user didn't specify a species
-			if (f_species >= SPECIES_MAX) { continue; } //any valid species
-		}
-		else if (f_species != user.species) { continue; } //match user.species
-
-		/* Filter for specific item */
-		if (user.item != 0 && f_item != user.item) { continue; }
+		/* Species filter */
+		if (f_species >= SPECIES_MAX) { continue; } //if species isn't valid
+		if (user.species != 0 && f_species != user.species) { continue; } //if user specified a species but it isn't the current one
+		/* Item filter */
+		if (user.item != 0 && f_item != user.item) { continue; } //if user specified an item but it isn't the current one
 
 		/* Get final moveset, egg steps, form id and fateful encounter flag */
 		u16 fate;
@@ -506,7 +506,7 @@ int main() {
 
 		/* Filter for a specific move */
 		if (user.move != 0) {
-			if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) { continue; }
+			if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) { continue; } //if user specified a move but none of the 4 current ones match
 		}
 
 		GetIVs(&wild);
