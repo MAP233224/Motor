@@ -4,10 +4,10 @@
 
 --------------------------------
 
-user_seed = 0x1704549B --enter the seed you got from Motor.exe, press '5' to set it
+user_seed = 0xD8335F60 --enter the seed you got from Motor.exe, press '5' to set it
 user_pointer = 0 --automatically search for a specific ASLR
-user_tid = 21025 --enter a custom TID, press '3' to set it
-user_sid = 45075 --enter a custom SID, press '3' to set it
+user_tid = 4119 --enter a custom TID, press '3' to set it
+user_sid = 58808 --enter a custom SID, press '3' to set it
 
 --------------------------------
 
@@ -254,11 +254,24 @@ function GetBattleData()
 end
 
 function CopyPkmn(src, dst)
-	for i=0, PKMN_SIZE-1 do
-		local data = memory.readbyte(pointer+PARTY_OFF[version]+src*PKMN_SIZE+i)
-		memory.writebyte(pointer+PARTY_OFF[version]+dst*PKMN_SIZE+i, data)
+	local partycount = memory.readbyte(pointer+PARTY_OFF[version]-4)
+	if dst == 6 then --special case, the whole party becomes the src pkmn
+		memory.writebyte(pointer+PARTY_OFF[version]-4, 6) --set the party size to 6
+		for dst=0, 5 do
+			for i=0, PKMN_SIZE-1 do
+				local data = memory.readbyte(pointer+PARTY_OFF[version]+src*PKMN_SIZE+i)
+				memory.writebyte(pointer+PARTY_OFF[version]+dst*PKMN_SIZE+i, data)
+			end
+		end
+	print("Filled the whole party with PKMN #"..src)
+	else
+		if partycount <= dst then memory.writebyte(pointer+PARTY_OFF[version]-4, dst+1) end --checks if party size is smaller than dst slot
+		for i=0, PKMN_SIZE-1 do
+			local data = memory.readbyte(pointer+PARTY_OFF[version]+src*PKMN_SIZE+i)
+			memory.writebyte(pointer+PARTY_OFF[version]+dst*PKMN_SIZE+i, data)
+		end
+		print("Copied PKMN #"..src.." into PKMN #"..dst)
 	end
-	print("Copied PKMN #"..src.." into PKMN #"..dst)
 end
 
 function PrintSizePartyCount()
@@ -276,7 +289,7 @@ function Controls()
 	if tabl["3"] and not prev["3"] then SetTid() end
 	if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end
 	if tabl["5"] and not prev["5"] then SetRng() end
-	if tabl["7"] and not prev["7"] then CopyPkmn(0, 5) end -- use this as the debug function
+	if tabl["7"] and not prev["7"] then CopyPkmn(0, 6) end -- use this as the debug function
 	if tabl["8"] and not prev["8"] then RngBackwards(16) end
 	if tabl["9"] and not prev["9"] then RngForwards(16) end
 	prev=tabl
