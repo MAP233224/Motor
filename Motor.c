@@ -232,7 +232,10 @@ int main() {
 		else { ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //dp
 	} while (OGW_LangVers[user.language][grouped_version][og]==NULL);
 
-	ScanValue("ASLR to use (0~11 for jp, 0~4 for ko, 0~3 otherwise): ", &user.aslr, "%u", ASLR_GROUPS_MAX - 1); //replace 3 by NELEMS(aslr_lang_vers)
+	do {
+		ScanValue("ASLR to use (0~11 for jp, 0~4 for ko, 0~3 otherwise): ", &user.aslr, "%u", ASLR_GROUPS_MAX - 1);
+	} while (Aslrs[user.language][grouped_version][user.aslr]==0);
+
 	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX - 1);
 	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS_MAX - 1);
 	ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
@@ -257,7 +260,6 @@ int main() {
 	u16 w_language = user.language << 8; //convert for use in pkmn data
 	Original ogwild = *OGW_LangVers[user.language][grouped_version][og];
 	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language, version and user choice
-	if (user.aslr==0) { printf("\nWARNING: Invalid ASLR, the results will not be possible.\n"); }
 
 	FILE* fp; //declare file object
 	u8 filename[4 * STRING_LENGTH_MAX] = "Results_"; //Results file name, then append with profile info
