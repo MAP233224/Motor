@@ -35,8 +35,8 @@
 		<h3>[In-game requirements]</h3>
 		<p>In general:</p>
 		<ul>
-			<li>A PKMN with Fly/Teleport</li>
-			<li>A Master Ball to catch the corrupt wild (the catch rate is botched because of the HP max sometimes being smaller than the HP current, so it is possible to get a 100% catch rate by just throwing a regular Poké Ball but I don't recommend it, and you only get 1 turn to catch the corrupt wild)</li>
+			<li>A Pokémon with Fly/Teleport</li>
+			<li>A Master Ball to catch the corrupt wild (the catch rate is botched because of <em>hp_max</em> sometimes being smaller than <em>hp_current</em>, so it is possible to get a 100% catch rate by just throwing a regular Poké Ball but I don't recommend it, and you only get 1 turn to catch the corrupt wild)</li>
 		</ul>
 		<p>For the RNG manipulation:</p>
 		<ul>
@@ -107,16 +107,21 @@
 
 		<h3>[Performing the Battle Corruption Glitch]</h3>
 		<ul>
-			<li>Pick a date/time setup (with the help of <a href="https://github.com/" target="_blank">PokéFinder</a>) for the seed given by ReverseSeed.</li>
-			<li>Important: don't fiddle with the microphone, the touch screen or the buttons when launching the game (white loading screen) while doing the RNG manip, it'll make the ASLR inconsistent.</li>
-			<li>If you hit the correct seed (and do the subsequent frame advances) but don't get your result in battle, it means you got the wrong ASLR, so you need to use a different date/time setup.</li>
-			<li>If you get the correct Pokémon to show up, go straight into BAG -> POKé BALLS -> Master Ball.</li>
+			<li>Pick a date/time setup (with the help of <a href="https://github.com/Admiral-Fish/PokeFinder/releases" target="_blank">PokéFinder</a>) for the seed given by ReverseSeed.</li>
+			<li>Important: when launching the game for the RNG manipulation (white loading screen), don't fiddle with the microphone, the touch screen or the buttons; it'll make the ASLR inconsistent.</li>
+			<li>If you hit the correct seed and do the correct amount of frame advances with Chatot but don't get your result in battle, it means you got the wrong ASLR, so you need to use a different date/time setup. Pro tip: usually you can just pick a time with one minute prior and one second later, or vice-versa, the seed will be the same. You can verify this with Pokéfinder if you're unsure.</li>
+			<li>If you get the correct Pokémon to show up (congrats!), go straight to BAG > POKé BALLS > Master Ball. Watching the Moves or Party will crash.</li>
 			<li>Once caught, give it a nickname to set a terminator character in its name and make it valid.</li>
 		</ul>
 		<p class="nb">The most common failure points are: infinite black loading screen, crash before battle menu, crash when resuming to the overworld, any status update on turn 0 that transforms the corrupt wild into a Bad Egg and crashes on dex entry.</p>
 
-		<h3>[Special Emulator mention]</h3>
-		<p>Along with Motor's executable, you can download "Motor.lua" which contains several useful functions allowing you to perform the Battle Corruption Glitch a lot more reliably in the Desmume emulator.</p>
+		<h3>[On emulator]</h3>
+		<p>Along with Motor's executable, you can download "Motor.lua" which contains several useful functions allowing you to perform the Battle Corruption Glitch a lot more reliably in the Desmume emulator, version 0.9.11.</p>
+		<p>Functions included:</p>
+		<ul>
+			<li>Searching for a specific ASLR</li>
+			<li></li>
+		</ul>
 
 		<h3>[Further reading: technical breakdown of the glitch]</h3>
 		<p>If you want to know more :)</p>
