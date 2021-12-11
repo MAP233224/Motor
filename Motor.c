@@ -130,13 +130,6 @@ u32 RngNext(u32* state) {
 	return *state;
 }
 
-void RngJump16(u32* state) {
-	/* TODO: Find a math cheat to not have to go through the for loop */
-	for (u8 i = 0; i < BLOCK_SIZE; i++) {
-		RngNext(state);
-	}
-}
-
 void Encrypt(Pkmn* pkmn) {
 	/* Encrypt with XOR and LCRNG each 16-bit word of Pkmn data. */
 	/* First with the Checksum as the Seed/Key (for block data), then with the PID (for condition data). */
