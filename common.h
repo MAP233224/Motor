@@ -27,6 +27,8 @@ typedef signed char s8;
 #define PIDS_MAX (1060) //calculated from a previous program that found the highest possible occidentary
 #define OG_WILDS_MAX (9)
 #define ASLR_GROUPS_MAX (12)
+#define KOREAN_OFFSET (0x44)
+#define HEAPID_MAX (0x5C)
 
 u8 Languages[LANGUAGES_MAX][3] = { "_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko" }; //languages by index, 0 and 6 unassigned
 
