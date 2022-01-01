@@ -165,19 +165,9 @@ void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 	pkmn->iv2 >>= 1;
 }
 
-#ifdef DEBUG
-void Method1SeedToPID(u32 state, Pkmn* pkmn) {
-	/* Calculate PID, Nature and IVs according to Method 1 from a given seed */
-	pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
-	pkmn->nature = pkmn->pid % NATURES_MAX;
-	pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
-	pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
-	pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
-	pkmn->iv2 >>= 1;
-}
-
 void DebugPkmnData(Pkmn* pkmn) {
 	/* Prints out the raw data of the chosen pkmn */
+	#ifdef DEBUG
 	printf("%04X\n", pkmn->checksum);
 	for (int i = 0; i < BLOCKS; i++) {
 		for (int j = 0; j < BLOCK_SIZE; j++) {
@@ -190,8 +180,8 @@ void DebugPkmnData(Pkmn* pkmn) {
 		if (i % 8 == 7) { printf("\n"); }
 	}
 	printf("\n");
+	#endif
 }
-#endif
 
 int main() {
 
@@ -285,9 +275,9 @@ int main() {
 	u32 pid_list[PIDS_MAX] = { 0 }; //0 init
 	u32 results = 0; //0 init
 	u32 seed = user.seed; //copy to advance in the main loop
-	if (user.language==8) { user.aslr+=0x44; } //korean offset
+	if (user.language == 8) { user.aslr += KOREAN_OFFSET; } //RAM thing
 	u8 alternate_form = 0;
-	if (user.version==2 && og==0) { alternate_form = 8; } //Giratina Origin
+	if (user.version == 2 && og == 0) { alternate_form = 8; } //Giratina Origin
 
 	clock_t begin = clock(); //timer starts
 
@@ -416,11 +406,13 @@ int main() {
 
 		/* If the ball doesn't have a valid id the battle won't load */
 		u8 ballid = seven.data[seven.pos_d][13] >> 8;
-		if ((ballid > 16) || (ballid == 0)) { continue; } //might be more complex than that, some invalid Ball IDs load fine
+		if ((ballid > 16) || (ballid == 0)) { continue; } //might be more complex, some invalid Ball IDs load fine (on console? Need testing)
 
 		SetCheckum(&seven);
 		Encrypt(&seven);
 		// DebugPkmnData(&seven);
+
+		if ((seven.data[seven.pos_a][10]&0xff) < HEAPID_MAX) { continue; } //return to overworld crash
 
 		u32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
 		if (IsInvalidPartyCount(partycount)) { continue; } //battle menu crash
@@ -468,6 +460,7 @@ int main() {
 		if (user.species != 0 && f_species != user.species) { continue; } //if user specified a species but it isn't the current one
 		/* Item filter */
 		if (user.item != 0 && f_item != user.item) { continue; } //if user specified an item but it isn't the current one
+		//possibily that we're getting fucked here with SOME glitch items
 
 		/* Get final moveset, egg steps, form id and fateful encounter flag */
 		u16 fate;
