@@ -34,6 +34,7 @@ void CreateProfile(User* user) {
 	ScanValue("Enter your TID (0 to 65535): ", &user->tid, "%u", 0xffff);
 	ScanValue("Enter your SID (0 to 65535): ", &user->sid, "%u", 0xffff);
 	ScanValue("Save those user settings? (0=no, 1=yes) ", &save, "%u", 1);
+	printf("\n");
 	if (save) {
 		FILE* new_profile;
 		new_profile = fopen("Profile.txt", "w+");
@@ -87,11 +88,6 @@ void SetCheckum(Pkmn* pkmn) {
 	}
 }
 
-bool IsBadEgg(u16 badegg) {
-	/* Check if the bad egg flag is set by looking at bit 2 of the "bad egg" 16-bit word. */
-	return (badegg & 4) == 4;
-}
-
 bool IsEgg(u16 egg) {
 	/* Check if the egg flag is set by looking at bit 30 of the "iv2" 16-bit word. */
 	return (egg & 0x4000) == 0x4000;
@@ -100,11 +96,6 @@ bool IsEgg(u16 egg) {
 bool IsFatefulEncounter(u16 fate) {
 	/* Check if the fateful encounter bit is set. */
 	return fate & 1;
-}
-
-bool SkippedCheckum(u16 badegg) {
-	/* Check if the checksum was skipped by looking at bit 0 and 1 of the "bad egg" 16-bit word. */
-	return (badegg & 3) == 3;
 }
 
 bool IsShiny(u32 pid, u16 tid, u16 sid) {
@@ -117,11 +108,21 @@ bool IsInvalidPartyCount(u32 count) {
 	return ((count > 0x00000036) && (count < 0x80000000));
 }
 
-u8* GetString(u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* oob) {
-	/* Get string in array corresponding to val, bounds and zero check */
-	if (val >= max) return oob;
-	if (val == 0) return zero;
-	return array[val];
+void SetString(u8* dest, u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* format) {
+	/* Set dest string depending on val passed */
+	if (val >= max) { //Format val
+		u8 buffer[8];
+		sprintf(buffer, format, val);
+		strcpy(dest, buffer);
+		return;
+	}
+	if (val == 0) { //Set to zero string
+		strcpy(dest, zero);
+		return;
+	}
+	//Else, fetch from array of strings
+	strcpy(dest, array[val]);
+	return;
 }
 
 u32 RngNext(u32* state) {
@@ -185,7 +186,13 @@ void DebugPkmnData(Pkmn* pkmn) {
 
 int main() {
 
-	User user = { 0 }; //0 init
+	printf("Motor v1.3.7");
+	#ifdef DEBUG
+	printf(" (DEBUG)");
+	#endif
+	printf("\n\n");
+
+	static User user = { 0 }; //0 init
 
 	u32 use_saved;
 	ScanValue("Use saved profile (0=no, 1=yes): ", &use_saved, "%u", 1);
@@ -198,11 +205,12 @@ int main() {
 			CreateProfile(&user);
 		}
 		else { //read the existing profile info
-			fscanf(profile, "%u", &user.version);
-			fscanf(profile, "%u", &user.language);
-			fscanf(profile, "%u", &user.tid);
-			fscanf(profile, "%u", &user.sid);
+			(void)fscanf(profile, "%u", &user.version);
+			(void)fscanf(profile, "%u", &user.language);
+			(void)fscanf(profile, "%u", &user.tid);
+			(void)fscanf(profile, "%u", &user.sid);
 			fclose(profile);
+			printf("\n");
 		}
 	}
 	else { CreateProfile(&user); }
@@ -211,8 +219,12 @@ int main() {
 
 	u32 og;
 	do {
-		if (user.version == 2) { ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Dialga, 3=Palkia, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //platinum
-		else { ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom): ", &og, "%u", OG_WILDS_MAX - 1); } //dp
+		if (user.version == 2) { //platinum
+			ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Dialga, 3=Palkia, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1);
+		}
+		else { //dp
+			ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom): ", &og, "%u", OG_WILDS_MAX - 1);
+		}
 	} while (OGW_LangVers[user.language][grouped_version][og]==NULL);
 
 	do {
@@ -242,21 +254,20 @@ int main() {
 	u16 w_version = (user.version + 10) << 8; //convert for use in pkmn data
 	u16 w_language = user.language << 8; //convert for use in pkmn data
 	Original ogwild = *OGW_LangVers[user.language][grouped_version][og];
-	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language, version and user choice
 
 	FILE* fp; //declare file object
 	u8 filename[4 * STRING_LENGTH_MAX] = "Results_"; //Results file name, then append with profile info
 #ifdef DEBUG
 	strcat(filename, "DEBUG_");
 #endif
-	strcat(filename, OgWilds[grouped_version][og % OG_WILDS_MAX]); strcat(filename, "_");
-	strcat(filename, strvers); strcat(filename, "_");
-	strcat(filename, strlang); strcat(filename, "_");
-	u8 strtidsid[STRING_LENGTH_MAX];
-	sprintf(strtidsid, "%05u_%05u", user.tid, user.sid);
-	strcat(filename, strtidsid);
-	strcat(filename, ".txt");
+	strcat(filename, OgWilds[grouped_version][og % OG_WILDS_MAX]); strcat(filename, "_"); //Original Wild
+	u8 straslr[STRING_LENGTH_MAX]; sprintf(straslr, "%u", user.aslr); strcat(filename, straslr); strcat(filename, "_"); //ASLR
+	strcat(filename, strvers); strcat(filename, "_"); //Version
+	strcat(filename, strlang); strcat(filename, "_"); //Language
+	u8 strtidsid[STRING_LENGTH_MAX]; sprintf(strtidsid, "%05u_%05u", user.tid, user.sid); strcat(filename, strtidsid); strcat(filename, ".txt"); //TID, SID
 	fp = fopen(filename, "w+"); //open/create file
+
+	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language, version and user choice
 
 	fprintf(fp, "> %s (%s)\n", strvers, strlang);
 	fprintf(fp, "> TID = %u\n> SID = %u\n", user.tid, user.sid);
@@ -264,17 +275,21 @@ int main() {
 	fprintf(fp, "> ASLR 0x%08X\n", user.aslr);
 	fprintf(fp, "> Searched through %u frames for %s holding %s knowing %s\n\n", user.frames, strspec, stritem, strmove);
 	fprintf(fp, "Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
-	fprintf(fp, "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	fprintf(fp, "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
 	printf("\n> %s (%s)\n", strvers, strlang);
 	printf("> TID = %u\n> SID = %u\n", user.tid, user.sid);
 	printf("> Seed 0x%08X\n", user.seed);
 	printf("> ASLR 0x%08X\n", user.aslr);
 	printf("> Searching through %u frames for %s holding %s knowing %s...\n", user.frames, strspec, stritem, strmove);
+	#ifdef DEBUG
+	printf("\nSeed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
+	printf("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	#endif
 
-	u32 pid_list[PIDS_MAX] = { 0 }; //0 init
-	u32 results = 0; //0 init
-	u32 seed = user.seed; //copy to advance in the main loop
+	static u32 pid_list[PIDS_MAX] = { 0 }; //0 init
+	static u32 results = 0; //0 init
+	static u32 seed; seed = user.seed; //copy to advance in the main loop
 	if (user.language == 8) { user.aslr += KOREAN_OFFSET; } //RAM thing
 	u8 alternate_form = 0;
 	if (user.version == 2 && og == 0) { alternate_form = 8; } //Giratina Origin
@@ -367,7 +382,7 @@ int main() {
 		seven.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
 		SetBlocks(&seven); //always ACBD (0x0213)
 
-		/* Simulating the stack overflow */
+		/* Simulating the buffer overflow */
 		for (u8 i = 0; i < BLOCK_SIZE - STACK_OFFSET; i++) { //ABCD blocks part 1
 			for (u8 j = 1; j < BLOCKS; j++) { //only need to start from j=1 bc block A is taken care of later.
 				seven.data[j][i + STACK_OFFSET] = wild.data[j - 1][i]; //warning: negative index
@@ -406,23 +421,21 @@ int main() {
 
 		/* If the ball doesn't have a valid id the battle won't load */
 		u8 ballid = seven.data[seven.pos_d][13] >> 8;
-		if ((ballid > 16) || (ballid == 0)) { continue; } //might be more complex, some invalid Ball IDs load fine (on console? Need testing)
+		if (ballid > 20) { continue; } //might be more complex, some invalid Ball IDs load fine (on console? Need testing)
 
 		SetCheckum(&seven);
 		Encrypt(&seven);
 		// DebugPkmnData(&seven);
 
-		if ((seven.data[seven.pos_a][10]&0xff) < HEAPID_MAX) { continue; } //return to overworld crash
+		if ((seven.data[seven.pos_a][10] & 0xff) < HEAPID_MAX) { continue; } //return to overworld crash; 36%
 
 		u32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
 		if (IsInvalidPartyCount(partycount)) { continue; } //battle menu crash
 
 		/* If it's a Bad Egg or Checksum was not skipped, continue */
-		wild.bef = seven.data[seven.pos_c][2];
-		if (IsBadEgg(wild.bef)) { continue; }
-		if (!SkippedCheckum(wild.bef)) { continue; }
+		if ((seven.data[seven.pos_c][2] & 7) != 3) { continue; }
 
-		wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16); //don't actually need the top part I think
+		wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16);
 		SetBlocks(&wild);
 
 		/* Get final species, item, ability and steps to hatch */
@@ -460,7 +473,6 @@ int main() {
 		if (user.species != 0 && f_species != user.species) { continue; } //if user specified a species but it isn't the current one
 		/* Item filter */
 		if (user.item != 0 && f_item != user.item) { continue; } //if user specified an item but it isn't the current one
-		//possibily that we're getting fucked here with SOME glitch items
 
 		/* Get final moveset, egg steps, form id and fateful encounter flag */
 		u16 fate;
@@ -508,40 +520,28 @@ int main() {
 		if (IsFatefulEncounter(fate)) { fateful = "Fateful"; }
 		else { fateful = "-------"; }
 
-		/* Species, item and ability string format */
-		u8* str_f_species = GetString(f_species, Pokelist, SPECIES_MAX, "DPbox", "Glitchmon");
-		u8* str_f_item = GetString(f_item, Items, ITEMS_MAX, "None", "Glitch Item");
-		u8* str_f_abi = GetString(f_ability, Abilities, ABILITIES_MAX, "None", "Glitch Ability");
-
-		/* Moves string format */
-		u8 strmoves[OWN_MOVES_MAX][STRING_LENGTH_MAX] = { 0 };
-		for (u8 i = 0; i < OWN_MOVES_MAX; i++) {
-			if (moves[i] >= MOVES_MAX) {
-				u8 buffer[STRING_LENGTH_MAX];
-				sprintf(buffer, "0x%04X", moves[i]);
-				strcpy(strmoves[i], buffer);
-			}
-			else {
-				u8* buffer = Moves[moves[i]];
-				strcpy(strmoves[i], buffer);
-			}
-		}
+		/* Species, item, ability and moves string format */
+		u8 str_f_species[STRING_LENGTH_MAX], str_f_item[STRING_LENGTH_MAX], str_f_abi[STRING_LENGTH_MAX], str_moves[OWN_MOVES_MAX][STRING_LENGTH_MAX];
+		SetString(str_f_species, f_species, Pokelist, SPECIES_MAX, "DPbox", "0x%04X");
+		SetString(str_f_item, f_item, Items, ITEMS_MAX, "None", "0x%04X");
+		SetString(str_f_abi, f_ability, Abilities, ABILITIES_MAX, "None", "0x%02X");
+		for (u8 i = 0; i < OWN_MOVES_MAX; i++) { SetString(str_moves[i], moves[i], Moves, MOVES_MAX, "None", "0x%04X"); }
 
 		/* Get shinyness */
 		u8* shiny;
 		if (IsShiny(wild.pid, user.tid, user.sid)) { shiny = "Shiny"; }
 		else { shiny = "-----"; }
 
-#ifdef DEBUG
+		#ifdef DEBUG
 		/* Print successful result to console */
 		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		printf("%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
-		printf("%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
-#endif
+		printf("%s, %s, %s, %s\n", str_moves[0], str_moves[1], str_moves[2], str_moves[3]);
+		#endif
 		/* Print successful result to file */
 		fprintf(fp, "0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		fprintf(fp, "%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
-		fprintf(fp, "%s, %s, %s, %s\n", strmoves[0], strmoves[1], strmoves[2], strmoves[3]);
+		fprintf(fp, "%s, %s, %s, %s\n", str_moves[0], str_moves[1], str_moves[2], str_moves[3]);
 
 		results++;
 	}
@@ -554,6 +554,6 @@ int main() {
 	printf("\n%u results compiled to %s in %.2f seconds.\n", results, filename, time_spent);
 	fclose(fp); //close file
 	u8 exit;
-	scanf("%s", &exit); //scan to halt execution
+	(void)scanf("%s", &exit); //scan to halt execution
 	return 0;
 }
