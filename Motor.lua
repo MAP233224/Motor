@@ -4,10 +4,10 @@
 
 --------------------------------
 
-user_seed = 0xD8335F60 --enter the seed you got from Motor.exe, press '5' to set it
+user_seed = 0x741DCC1F  --enter the seed you got from Motor.exe, press '5' to set it
 user_pointer = 0 --automatically search for a specific ASLR
-user_tid = 4119 --enter a custom TID, press '3' to set it
-user_sid = 58808 --enter a custom SID, press '3' to set it
+user_tid = 34033 --enter a custom TID, press '3' to set it
+user_sid = 60800 --enter a custom SID, press '3' to set it
 
 --------------------------------
 
@@ -24,6 +24,7 @@ WILD_OFF = {0x4CD88, 0x4BE5C}
 KOREAN_OFF = 0x44
 
 BASES = {{0x02107100, 0x02101EE0}, {0x02106FC0, 0x02101D40}, {0x02107140, 0x02101F20}, {0x021070A0, 0x02101EA0}, {0x02108818, 0x02101140}, {0x021045C0, 0x02102C40}, {0x02107160, 0x02101F40}}
+ZERO_ASLR = {{0x0226D4A0, 0}, {0x0226D260, 0}, {0x0226D5E0, 0}, {0x0226D440, 0}, {0x02271940, 0}, {0x02274B00, 0}, {0x0226d600, 0}}
 -- ge, en, fr, it, jp, ko, sp (need to change it later to conventional order)
 
 PKMN_SIZE = 0xEC
@@ -48,6 +49,27 @@ BLOCKS = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD"
 CLIENT_NAME = {"Trainer", "Opponent"}
 
 LANG_ID = {0x44, 0x45, 0x46, 0x49, 0x4A, 0x4B, 0x53}
+
+function DumpItemIndex()
+	local file = io.open("ii_pearl_eng", "wb")
+	local b = 0 --byte to be written to file
+	for i=0,65536,1 do
+		local n = i%8
+		local e = memory.readword(0x020F85B4+i*8)
+		if e>0x92C3 then
+			-- file:write("0x"..string.format("%.4X", i)..": 0x"..string.format("%.4X", e).."\n")
+			b = bit.bor(b,bit.lshift(1, n))
+		else
+			b = bit.bor(b,bit.lshift(0, n))
+		end
+		if n==7 then
+			file:write(string.char(b))
+			b = 0
+		end
+	end
+	io.close(file)
+	print("Dump successful!")
+end
 
 function IndexOf(array, value)
 	local index={}
@@ -79,6 +101,10 @@ function SearchPointer()
 		emu.reset()
 		print("Searching for pointer "..string.format("%.8X", user_pointer))
 	end
+end
+
+function GetAslrIndex()
+	return (pointer - ZERO_ASLR[language][version]) / 4
 end
 
 function Mult32(a, b)
@@ -274,12 +300,12 @@ function CopyPkmn(src, dst)
 	end
 end
 
-function PrintSizePartyCount()
-  local size = memory.readdword(pointer+WILD_OFF[version]-36)
-  local pcm = memory.readdword(pointer+WILD_OFF[version]-8)
-  local pc = memory.readdword(pointer+WILD_OFF[version]-4)
-  print(string.format("%.8x",size).." "..string.format("%.8x",pcm).." "..string.format("%.8x",pc))
-end
+-- function PrintSizePartyCount()
+--   local size = memory.readdword(pointer+WILD_OFF[version]-36)
+--   local pcm = memory.readdword(pointer+WILD_OFF[version]-8)
+--   local pc = memory.readdword(pointer+WILD_OFF[version]-4)
+--   print(string.format("%.8x",size).." "..string.format("%.8x",pcm).." "..string.format("%.8x",pc))
+-- end
 
 function Controls()
 	tabl = input.get()
@@ -289,7 +315,8 @@ function Controls()
 	if tabl["3"] and not prev["3"] then SetTid() end
 	if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end
 	if tabl["5"] and not prev["5"] then SetRng() end
-	if tabl["7"] and not prev["7"] then CopyPkmn(0, 6) end -- use this as the debug function
+	-- if tabl["6"] and not prev["6"] then DumpItemIndex() end -- use this as the debug function
+	if tabl["7"] and not prev["7"] then CopyPkmn(0, 6) end
 	if tabl["8"] and not prev["8"] then RngBackwards(16) end
 	if tabl["9"] and not prev["9"] then RngForwards(16) end
 	prev=tabl
@@ -300,6 +327,7 @@ function Main()
 	rng = base + RNG_OFF[version]
 	if language == 5 and version == 1 then rng = rng + 8 end --jp dp quirk
 	pointer = GetPointer()
+	aslr_index = GetAslrIndex()
 	tid_loc = pointer + TID_OFF[version]
 	wild_loc = pointer + WILD_OFF[version]
 	battle_loc = pointer + PKMN_BD_OFF[version]
@@ -313,9 +341,8 @@ function Main()
 	frame_dist = GetSeedDistance(frame)
 	GetTid()
 	GetPkmnData()
-	--gui.text(2+7*CHAR_W, -190, "("..(pointer-base)/4-0x598A8..")") --only eng dp accurate
-	gui.text(2, -190, "Base = "..string.format("%.8X",pointer))
-	gui.text(2, -180, "Seed = "..string.format("%.8X",user_seed))
+	gui.text(2, -190, "Base = 0x"..string.format("%.8X",pointer).."("..aslr_index..")")
+	gui.text(2, -180, "Seed = 0x"..string.format("%.8X",user_seed))
 	gui.text(2, -170, "Dist = "..frame_dist)
 end
 
