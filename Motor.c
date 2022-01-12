@@ -104,6 +104,7 @@ bool IsShiny(u32 pid, u16 tid, u16 sid) {
 }
 
 bool IsInvalidPartyCount(u32 count) {
+	//TODO: use s32 instead of u32 and only check if greater than 54
 	/* Check if the number of members in the opponent's party is invalid. Determines crash at battle menu. */
 	return ((count > 0x00000036) && (count < 0x80000000));
 }
@@ -120,8 +121,7 @@ void SetString(u8* dest, u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* ze
 		strcpy(dest, zero);
 		return;
 	}
-	//Else, fetch from array of strings
-	strcpy(dest, array[val]);
+	strcpy(dest, array[val]); //Else, fetch from array of strings
 	return;
 }
 
@@ -131,16 +131,18 @@ u32 RngNext(u32* state) {
 	return *state;
 }
 
-void Encrypt(Pkmn* pkmn) {
-	/* Encrypt with XOR and LCRNG each 16-bit word of Pkmn data. */
-	/* First with the Checksum as the Seed/Key (for block data), then with the PID (for condition data). */
+void EncryptBlocks(Pkmn* pkmn) {
+	/* Encrypt with XOR and LCRNG each 16-bit word of Pkmn block data. */
 	u32 pkmn_data_state = pkmn->checksum;
-	u32 pkmn_cond_state = pkmn->pid;
-	for (u8 i = 0; i < BLOCKS; i++) {
-		for (u8 j = 0; j < BLOCK_SIZE; j++) {
-			pkmn->data[i][j] ^= (RngNext(&pkmn_data_state) >> 16);
-		}
+	u16* data = (u16*)pkmn->data; //speed hack
+	for (u8 i = 0; i < BLOCKS * BLOCK_SIZE; i++) {
+		data[i] ^= (RngNext(&pkmn_data_state) >> 16);
 	}
+}
+
+void EncryptCondition(Pkmn* pkmn) {
+	/* Encrypt with XOR and LCRNG each 16-bit word of Pkmn condition data. */
+	u32 pkmn_cond_state = pkmn->pid;
 	for (u8 i = 0; i < COND_SIZE; i++) {
 		pkmn->cond[i] ^= (RngNext(&pkmn_cond_state) >> 16);
 	}
@@ -296,13 +298,6 @@ int main() {
 
 	clock_t begin = clock(); //timer starts
 
-	/* DEBUG: print unique aslr groups */
-	// for (u32 aslr = 0x0227d4e0; aslr<=0x0227d5e0; aslr+=4){
-	// user.aslr=aslr;
-	// if (frame==0) {printf("%u\n", wild.pid&0xff); continue;}
-	// else {continue;}
-	// }
-
 	/* Main search loop */
 	for (u32 frame = 0; frame < user.frames; frame++) {
 
@@ -374,7 +369,8 @@ int main() {
 
 		SetCheckum(&wild);
 		// DebugPkmnData(&wild);
-		Encrypt(&wild);
+		EncryptBlocks(&wild);
+		EncryptCondition(&wild);
 		// DebugPkmnData(&wild);
 
 		/* Initialize Seven */
@@ -385,7 +381,7 @@ int main() {
 		/* Simulating the buffer overflow */
 		for (u8 i = 0; i < BLOCK_SIZE - STACK_OFFSET; i++) { //ABCD blocks part 1
 			for (u8 j = 1; j < BLOCKS; j++) { //only need to start from j=1 bc block A is taken care of later.
-				seven.data[j][i + STACK_OFFSET] = wild.data[j - 1][i]; //warning: negative index
+				seven.data[j][i + STACK_OFFSET] = wild.data[j - 1][i];
 			}
 		}
 		for (u8 i = 0; i < BLOCKS; i++) { //ABCD blocks part 2
@@ -393,10 +389,12 @@ int main() {
 				seven.data[j + 2][i] = wild.data[j][BLOCK_SIZE - STACK_OFFSET + i];
 			}
 		}
-		for (u8 i = 0; i < COND_SIZE; i++) { //condition data
-			if (i < STACK_OFFSET) { seven.cond[i] = wild.data[2][BLOCK_SIZE - STACK_OFFSET + i]; }
-			else if (i < STACK_OFFSET + BLOCK_SIZE) { seven.cond[i] = wild.data[3][i - STACK_OFFSET]; }
-			else { seven.cond[i] = wild.cond[i - STACK_OFFSET - BLOCK_SIZE]; }
+
+		{ //Condition data	
+			u8 i = 0;
+			for (; i < STACK_OFFSET; i++) { seven.cond[i] = wild.data[2][BLOCK_SIZE - STACK_OFFSET + i]; } //part 1
+			for (; i < STACK_OFFSET + BLOCK_SIZE; i++) { seven.cond[i] = wild.data[3][i - STACK_OFFSET]; } //part 2
+			for (; i < COND_SIZE; i++) { seven.cond[i] = wild.cond[i - STACK_OFFSET - BLOCK_SIZE]; } //part 3
 		}
 
 		seven.data[seven.pos_a][0] = (user.aslr + LocBegOppParty[grouped_version]) & 0xffff;
@@ -414,7 +412,7 @@ int main() {
 		seven.data[seven.pos_c][2] = wild.bef;
 		seven.data[seven.pos_c][3] = wild.checksum;
 
-		Encrypt(&seven);
+		EncryptBlocks(&seven); //don't need to encrypt condition
 		// DebugPkmnData(&seven);
 
 		if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; } //menu crash if 1st move of Seven is invalid
@@ -424,7 +422,7 @@ int main() {
 		if (ballid > 20) { continue; } //might be more complex, some invalid Ball IDs load fine (on console? Need testing)
 
 		SetCheckum(&seven);
-		Encrypt(&seven);
+		EncryptBlocks(&seven); //don't need to encrypt condition
 		// DebugPkmnData(&seven);
 
 		if ((seven.data[seven.pos_a][10] & 0xff) < HEAPID_MAX) { continue; } //return to overworld crash; 36%
