@@ -143,7 +143,7 @@ void EncryptBlocks(Pkmn* pkmn) {
 void EncryptCondition(Pkmn* pkmn) {
 	/* Encrypt with XOR and LCRNG each 16-bit word of Pkmn condition data. */
 	u32 pkmn_cond_state = pkmn->pid;
-	for (u8 i = 0; i < COND_SIZE; i++) {
+	for (u8 i = 0; i < COND_SIZE_S; i++) {
 		pkmn->cond[i] ^= (RngNext(&pkmn_cond_state) >> 16);
 	}
 }
@@ -168,30 +168,12 @@ void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 	pkmn->iv2 >>= 1;
 }
 
-void DebugPkmnData(Pkmn* pkmn) {
-	/* Prints out the raw data of the chosen pkmn */
-	#ifdef DEBUG
-	printf("%04X\n", pkmn->checksum);
-	for (int i = 0; i < BLOCKS; i++) {
-		for (int j = 0; j < BLOCK_SIZE; j++) {
-			printf("%04X ", pkmn->data[i][j]);
-			if (j % 8 == 7) { printf("\n"); }
-		}
-	}
-	for (int i = 0; i < COND_SIZE; i++) {
-		printf("%04X ", pkmn->cond[i]);
-		if (i % 8 == 7) { printf("\n"); }
-	}
-	printf("\n");
-	#endif
-}
-
 int main() {
 
-	printf("Motor v1.3.7");
-	#ifdef DEBUG
+	printf("Motor v1.4.0");
+#ifdef DEBUG
 	printf(" (DEBUG)");
-	#endif
+#endif
 	printf("\n\n");
 
 	static User user = { 0 }; //0 init
@@ -227,11 +209,11 @@ int main() {
 		else { //dp
 			ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom): ", &og, "%u", OG_WILDS_MAX - 1);
 		}
-	} while (OGW_LangVers[user.language][grouped_version][og]==NULL);
+	} while (OGW_LangVers[user.language][grouped_version][og] == NULL);
 
 	do {
 		ScanValue("ASLR to use (0~11 for jp, 0~4 for ko, 0~3 otherwise): ", &user.aslr, "%u", ASLR_GROUPS_MAX - 1);
-	} while (Aslrs[user.language][grouped_version][user.aslr]==0);
+	} while (Aslrs[user.language][grouped_version][user.aslr] == 0);
 
 	ScanValue("Search for a species (0=no, species_id=yes): ", &user.species, "%u", SPECIES_MAX - 1);
 	ScanValue("Search for an item (0=no, item_id=yes): ", &user.item, "%u", ITEMS_MAX - 1);
@@ -284,10 +266,10 @@ int main() {
 	printf("> Seed 0x%08X\n", user.seed);
 	printf("> ASLR 0x%08X\n", user.aslr);
 	printf("> Searching through %u frames for %s holding %s knowing %s...\n", user.frames, strspec, stritem, strmove);
-	#ifdef DEBUG
+#ifdef DEBUG
 	printf("\nSeed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
 	printf("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
-	#endif
+#endif
 
 	static u32 pid_list[PIDS_MAX] = { 0 }; //0 init
 	static u32 results = 0; //0 init
@@ -368,10 +350,8 @@ int main() {
 		wild.cond[29] = 0xffff;
 
 		SetCheckum(&wild);
-		// DebugPkmnData(&wild);
 		EncryptBlocks(&wild);
 		EncryptCondition(&wild);
-		// DebugPkmnData(&wild);
 
 		/* Initialize Seven */
 		seven.pid = 0x00005544;
@@ -379,23 +359,9 @@ int main() {
 		SetBlocks(&seven); //always ACBD (0x0213)
 
 		/* Simulating the buffer overflow */
-		for (u8 i = 0; i < BLOCK_SIZE - STACK_OFFSET; i++) { //ABCD blocks part 1
-			for (u8 j = 1; j < BLOCKS; j++) { //only need to start from j=1 bc block A is taken care of later.
-				seven.data[j][i + STACK_OFFSET] = wild.data[j - 1][i];
-			}
-		}
-		for (u8 i = 0; i < BLOCKS; i++) { //ABCD blocks part 2
-			for (u8 j = 0; j < BLOCKS - 2; j++) {
-				seven.data[j + 2][i] = wild.data[j][BLOCK_SIZE - STACK_OFFSET + i];
-			}
-		}
-
-		{ //Condition data	
-			u8 i = 0;
-			for (; i < STACK_OFFSET; i++) { seven.cond[i] = wild.data[2][BLOCK_SIZE - STACK_OFFSET + i]; } //part 1
-			for (; i < STACK_OFFSET + BLOCK_SIZE; i++) { seven.cond[i] = wild.data[3][i - STACK_OFFSET]; } //part 2
-			for (; i < COND_SIZE; i++) { seven.cond[i] = wild.cond[i - STACK_OFFSET - BLOCK_SIZE]; } //part 3
-		}
+		u16* wild_data = (u16*)(&wild.data);
+		u16* seven_data = (u16*)(&seven.data[1][STACK_OFFSET]);
+		for (u8 i = 0; i < (BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S; i++) { seven_data[i] = wild_data[i]; }
 
 		seven.data[seven.pos_a][0] = (user.aslr + LocBegOppParty[grouped_version]) & 0xffff;
 		seven.data[seven.pos_a][1] = (user.aslr + LocBegOppParty[grouped_version]) >> 16;
@@ -407,13 +373,12 @@ int main() {
 		seven.data[seven.pos_a][14] = 0x0001;
 		seven.data[seven.pos_a][15] = 0x0000;
 
-		seven.data[seven.pos_c][0] = wild.pid % 65536;
+		seven.data[seven.pos_c][0] = wild.pid & 0xffff;
 		seven.data[seven.pos_c][1] = wild.pid >> 16;
 		seven.data[seven.pos_c][2] = wild.bef;
 		seven.data[seven.pos_c][3] = wild.checksum;
 
-		EncryptBlocks(&seven); //don't need to encrypt condition
-		// DebugPkmnData(&seven);
+		EncryptBlocks(&seven); //don't need to encrypt condition, seven.pid doesn't change
 
 		if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; } //menu crash if 1st move of Seven is invalid
 
@@ -422,8 +387,7 @@ int main() {
 		if (ballid > 20) { continue; } //might be more complex, some invalid Ball IDs load fine (on console? Need testing)
 
 		SetCheckum(&seven);
-		EncryptBlocks(&seven); //don't need to encrypt condition
-		// DebugPkmnData(&seven);
+		EncryptBlocks(&seven);
 
 		if ((seven.data[seven.pos_a][10] & 0xff) < HEAPID_MAX) { continue; } //return to overworld crash; 36%
 
@@ -436,35 +400,11 @@ int main() {
 		wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16);
 		SetBlocks(&wild);
 
-		/* Get final species, item, ability and steps to hatch */
-		u8 f_ability;
-		u16 f_species, f_item, f_steps;
-		switch (wild.pos_a) {
-			case 0: //C
-			f_species = seven.data[seven.pos_c][STACK_OFFSET];
-			f_item = seven.data[seven.pos_c][STACK_OFFSET + 1];
-			f_ability = seven.data[seven.pos_c][STACK_OFFSET + 6] >> 8;
-			f_steps = seven.data[seven.pos_c][STACK_OFFSET + 6] & 0xff;
-			break;
-			case 1: //B
-			f_species = seven.data[seven.pos_b][STACK_OFFSET];
-			f_item = seven.data[seven.pos_b][STACK_OFFSET + 1];
-			f_ability = seven.data[seven.pos_b][STACK_OFFSET + 6] >> 8;
-			f_steps = seven.data[seven.pos_b][STACK_OFFSET + 6] & 0xff;
-			break;
-			case 2: //D
-			f_species = seven.data[seven.pos_d][STACK_OFFSET];
-			f_item = seven.data[seven.pos_d][STACK_OFFSET + 1];
-			f_ability = seven.data[seven.pos_d][STACK_OFFSET + 6] >> 8;
-			f_steps = seven.data[seven.pos_d][STACK_OFFSET + 6] & 0xff;
-			break;
-			case 3: //cond
-			f_species = seven.cond[STACK_OFFSET];
-			f_item = seven.cond[STACK_OFFSET + 1];
-			f_ability = seven.cond[STACK_OFFSET + 6] >> 8;
-			f_steps = seven.cond[STACK_OFFSET + 6] & 0xff;
-			break;
-		}
+		/* Get final species, item, ability and steps to hatch - array oob method */
+		u16 f_species = seven.data[1 + wild.pos_a][STACK_OFFSET];
+		u16 f_item = seven.data[1 + wild.pos_a][STACK_OFFSET + 1];
+		u16 f_steps = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] & 0xff;
+		u8 f_ability = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] >> 8;
 
 		/* Species filter */
 		if (f_species >= SPECIES_MAX) { continue; } //if species isn't valid
@@ -472,37 +412,14 @@ int main() {
 		/* Item filter */
 		if (user.item != 0 && f_item != user.item) { continue; } //if user specified an item but it isn't the current one
 
-		/* Get final moveset, egg steps, form id and fateful encounter flag */
-		u16 fate;
+		/* Get final moveset, IVs, Egg steps, Form ID and Fateful Encounter flag */
 		u16 moves[OWN_MOVES_MAX];
-		switch (wild.pos_b) {
-			case 0: //C
-			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[seven.pos_c][STACK_OFFSET + i]; }
-			wild.iv1 = seven.data[seven.pos_c][STACK_OFFSET + 8];
-			wild.iv2 = seven.data[seven.pos_c][STACK_OFFSET + 9];
-			fate = seven.data[seven.pos_d][0];
-			break;
-			case 1: //B
-			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[seven.pos_b][STACK_OFFSET + i]; }
-			wild.iv1 = seven.data[seven.pos_b][STACK_OFFSET + 8];
-			wild.iv2 = seven.data[seven.pos_b][STACK_OFFSET + 9];
-			fate = seven.cond[0];
-			break;
-			case 2: //D
-			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[seven.pos_d][STACK_OFFSET + i]; }
-			wild.iv1 = seven.data[seven.pos_d][STACK_OFFSET + 8];
-			wild.iv2 = seven.data[seven.pos_d][STACK_OFFSET + 9];
-			fate = seven.cond[BLOCK_SIZE];
-			break;
-			case 3: //cond
-			for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.cond[STACK_OFFSET + BLOCK_SIZE + i]; }
-			wild.iv1 = seven.cond[STACK_OFFSET + 8];
-			wild.iv2 = seven.cond[STACK_OFFSET + 9];
-			fate = seven.cond[2*BLOCK_SIZE];
-			break;
-		}
+		for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[1 + wild.pos_b][STACK_OFFSET + i]; }
+		wild.iv1 = seven.data[1 + wild.pos_b][STACK_OFFSET + 8];
+		wild.iv2 = seven.data[1 + wild.pos_b][STACK_OFFSET + 9];
+		u16 fate = seven.data[3 + wild.pos_b][0];
 
-		/* Filter for a specific move */
+		/* Filter for a specific move (user choice) */
 		if (user.move != 0) {
 			if ((moves[0] != user.move) && (moves[1] != user.move) && (moves[2] != user.move) && (moves[3] != user.move)) { continue; } //if user specified a move but none of the 4 current ones match
 		}
@@ -530,12 +447,12 @@ int main() {
 		if (IsShiny(wild.pid, user.tid, user.sid)) { shiny = "Shiny"; }
 		else { shiny = "-----"; }
 
-		#ifdef DEBUG
+#ifdef DEBUG
 		/* Print successful result to console */
 		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		printf("%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
 		printf("%s, %s, %s, %s\n", str_moves[0], str_moves[1], str_moves[2], str_moves[3]);
-		#endif
+#endif
 		/* Print successful result to file */
 		fprintf(fp, "0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, fateful, shiny);
 		fprintf(fp, "%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
