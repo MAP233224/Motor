@@ -1,6 +1,6 @@
 # Motor
 This application has been designed to help players of Pokémon Diamond, Pearl and Platinum perform the Battle Corruption Glitch.  
-This glitch allows players to catch any desired species in the place of some static encounters like Rotom in Old Chateau (Platinum) or Giratina in Turnback Cave (Diamond & Pearl). 
+This glitch allows players to catch any desired species in the place of some static encounters like Rotom in the Old Chateau or Giratina in Turnback Cave. 
 
 Each user will need to provide several things to the application:  
 
