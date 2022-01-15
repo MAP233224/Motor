@@ -14,7 +14,7 @@ Each user will need to provide several things to the application:
 
 Once all of these parameters have been entered, the application will go through each seed and output every successful hit.  
 It will provide the Seed on which it found the Pokémon on, alongside several other characteristics (Level, Item, Ability, Moves, ...).  
-Performance wise, a full search of the 4,294,967,295 possible RNG states takes about 30 minutes to complete on my i5-7300HQ CPU.  
+Performance wise, a full search of the 4,294,967,295 possible RNG states takes about 15 minutes to complete on my i5-11600K CPU.  
 
 You can also perform Battle Corruption easily on Desmume 0.9.11 by editing Motor.lua and modifying your Seed, your TID and your SID.  
 You'll be required to have a save file with a full party of 6 Pokémon, all knocked out, for the glitch to work.  
