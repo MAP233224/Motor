@@ -18,15 +18,13 @@ Once all of these parameters have been entered, the application will go through 
 It will provide the Seed on which it found the Pokémon on, alongside several other characteristics (Level, Item, Ability, Moves, ...).  
 Performance wise, a full search of the 4,294,967,295 possible RNG states takes about 30 minutes to complete on my i5-7300HQ CPU.  
 
-This glitch is not guaranteed to work all the way through on console and is still being troubleshot on emulator (crashes sometimes before showing the battle menu, sometimes at the end of the battle).  
-You can however perform it on Desmume 0.9.11 by editing Motor.lua and modifying your Seed, your TID and your SID.  
+You can also perform Battle Corruption easily on Desmume 0.9.11 by editing Motor.lua and modifying your Seed, your TID and your SID.  
 You'll be required to have a save file with a full party of 6 Pokémon, all knocked out, for the glitch to work.  
 The most common way to get to this state is with the Pomeg Glitch.  
 
-If you want to build the application yourself on Windows 10 with GCC, use these commands in Windows Shell:  
+If you want to build the application yourself on Windows with GCC, use these commands in Windows Shell:  
 ``windres Motor.rc -O coff -o Motor.res`` (to create the .res file and include the .ico in the final build)  
 ``gcc -O3 Motor.c -o Motor Motor.res`` (optimized mode flag -O3 helps search through seeds 4 times faster than without)  
 
 If you have any questions or issues regarding the application, direct them to me via Twitter @shinyhunter_map  
 If you want to thank me with a little extra, you can donate at https://ko-fi.com/map233224 <3
-
