@@ -4,7 +4,7 @@
 
 --------------------------------
 
-user_seed = 0x741DCC1F  --enter the seed you got from Motor.exe, press '5' to set it
+user_seed = 0x460E0EE2  --enter the seed you got from Motor.exe, press '5' to set it
 user_pointer = 0 --automatically search for a specific ASLR
 user_tid = 34033 --enter a custom TID, press '3' to set it
 user_sid = 60800 --enter a custom SID, press '3' to set it
@@ -49,27 +49,6 @@ BLOCKS = {"ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD"
 CLIENT_NAME = {"Trainer", "Opponent"}
 
 LANG_ID = {0x44, 0x45, 0x46, 0x49, 0x4A, 0x4B, 0x53}
-
-function DumpItemIndex()
-	local file = io.open("ii_pearl_eng", "wb")
-	local b = 0 --byte to be written to file
-	for i=0,65536,1 do
-		local n = i%8
-		local e = memory.readword(0x020F85B4+i*8)
-		if e>0x92C3 then
-			-- file:write("0x"..string.format("%.4X", i)..": 0x"..string.format("%.4X", e).."\n")
-			b = bit.bor(b,bit.lshift(1, n))
-		else
-			b = bit.bor(b,bit.lshift(0, n))
-		end
-		if n==7 then
-			file:write(string.char(b))
-			b = 0
-		end
-	end
-	io.close(file)
-	print("Dump successful!")
-end
 
 function IndexOf(array, value)
 	local index={}
@@ -300,13 +279,6 @@ function CopyPkmn(src, dst)
 	end
 end
 
--- function PrintSizePartyCount()
---   local size = memory.readdword(pointer+WILD_OFF[version]-36)
---   local pcm = memory.readdword(pointer+WILD_OFF[version]-8)
---   local pc = memory.readdword(pointer+WILD_OFF[version]-4)
---   print(string.format("%.8x",size).." "..string.format("%.8x",pcm).." "..string.format("%.8x",pc))
--- end
-
 function Controls()
 	tabl = input.get()
 	if tabl["0"] and not prev["0"] then ChangeMode() end
@@ -315,8 +287,8 @@ function Controls()
 	if tabl["3"] and not prev["3"] then SetTid() end
 	if tabl["4"] and not prev["4"] then DecryptDump(wild_loc) end
 	if tabl["5"] and not prev["5"] then SetRng() end
-	-- if tabl["6"] and not prev["6"] then DumpItemIndex() end -- use this as the debug function
-	if tabl["7"] and not prev["7"] then CopyPkmn(0, 6) end
+	if tabl["6"] and not prev["6"] then end --debug
+	if tabl["7"] and not prev["7"] then CopyPkmn(0, 2) CopyPkmn(0, 3) CopyPkmn(0, 4) CopyPkmn(0, 5) end
 	if tabl["8"] and not prev["8"] then RngBackwards(16) end
 	if tabl["9"] and not prev["9"] then RngForwards(16) end
 	prev=tabl
