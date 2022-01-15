@@ -448,8 +448,8 @@ int main() {
 		for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[1 + wild.pos_b][STACK_OFFSET + i]; }
 		wild.iv1 = seven.data[1 + wild.pos_b][STACK_OFFSET + 8];
 		wild.iv2 = seven.data[1 + wild.pos_b][STACK_OFFSET + 9];
-		u16 fate = seven.data[3 + wild.pos_b][0];
-
+		u16 fate = seven.data[3 + wild.pos_b][0]; //if (wild.pos_b==3) then fate = seven.cond[COND_SIZE_S-1]
+		
 		/* Move filter */
 		if (user.move != 0) {
 			/* If none of the 4 current ones match the user's move, continue search */
