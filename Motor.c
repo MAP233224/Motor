@@ -20,7 +20,7 @@ void ScanValue(u8* message, u32* value, u8* format, u64 max) {
 #ifdef DEBUG
 			printf("DEBUG: Invalid sscanf()\n");
 #endif
-			*value = max + 1; //doesn't work for seed, puts it at 0 and becomes valid
+			* value = max + 1; //doesn't work for seed, puts it at 0 and becomes valid
 			continue;
 		}
 	} while (*value > max);
@@ -448,8 +448,8 @@ int main() {
 		for (u8 i = 0; i < OWN_MOVES_MAX; i++) { moves[i] = seven.data[1 + wild.pos_b][STACK_OFFSET + i]; }
 		wild.iv1 = seven.data[1 + wild.pos_b][STACK_OFFSET + 8];
 		wild.iv2 = seven.data[1 + wild.pos_b][STACK_OFFSET + 9];
-		u16 fate = seven.data[3 + wild.pos_b][0]; //if (wild.pos_b==3) then fate = seven.cond[COND_SIZE_S-1]
-		
+		u16 fate = seven.data[2 + wild.pos_b][0];
+
 		/* Move filter */
 		if (user.move != 0) {
 			/* If none of the 4 current ones match the user's move, continue search */
