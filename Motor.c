@@ -4,7 +4,7 @@
 
 #include "common.h"
 
-void ScanValue(u8* message, u32* value, u8* format, u64 max) {
+static void ScanValue(u8* message, u32* value, u8* format, u64 max) {
 	/* General purpose safe scan. Instruction message, value to change, string format and max value */
 	do {
 		printf("%s", message);
@@ -26,7 +26,7 @@ void ScanValue(u8* message, u32* value, u8* format, u64 max) {
 	} while (*value > max);
 }
 
-void CreateProfile(User* user) {
+static void CreateProfile(User* user) {
 	/* Scan for user info and ask if you want to save this new profile */
 	u32 save_profile;
 	ScanValue("Enter your Version (0=Diamond, 1=Pearl, 2=Platinum): ", &user->version, "%u", 2);
@@ -46,22 +46,22 @@ void CreateProfile(User* user) {
 	}
 }
 
-u8 GetNatureId(u32 pid) {
+static u8 GetNatureId(u32 pid) {
 	/* Get the ID of the Nature (from 0 to 24), provided the PID. */
 	return pid % NATURES_MAX;
 }
 
-u8 GetFormId(u8 form) {
+static u8 GetFormId(u8 form) {
 	/* Get the form ID from the form byte */
 	return form >> 3;
 }
 
-u8 BlockOrder(u32 pid) {
+static u8 BlockOrder(u32 pid) {
 	/* Get the index of the block permutation of a given PID (from 0 to 23) */
 	return ((pid & 0x3E000) >> 13) % BLOCK_PERMS;
 }
 
-void SetBlocks(Pkmn* pkmn) {
+static void SetBlocks(Pkmn* pkmn) {
 	/* Get the order of each block from the PID and set them in the correct permutation */
 	/* r/iamverysmart */
 	pkmn->order = BlockOrder(pkmn->pid);
@@ -71,50 +71,50 @@ void SetBlocks(Pkmn* pkmn) {
 	pkmn->pos_d = Perms[pkmn->order] & 0x000f;
 }
 
-u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
+static u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
 	/* Return the new value of a stat after the Nature modifier is applied.*/
 	return stat_value * (10 + NatureStatModifiers[nature][stat_index]) / 10;
 }
 
-u16 IvToStat_HP(Pkmn* pkmn, Original* wild) {
+static u16 IvToStat_HP(Pkmn* pkmn, Original* wild) {
 	/* Return the value of the HP stat based on the IV, Base Stat and Level. */
 	return (2 * (wild->bstats[hp]) + pkmn->ivs[hp]) * wild->level / 100 + wild->level + 10;
 }
 
-u16 IvToStat(Pkmn* pkmn, Original* wild, u8 stat) {
+static u16 IvToStat(Pkmn* pkmn, Original* wild, u8 stat) {
 	/* Return the value of a stat based on the IV, Base Stat, Nature and Level. */
 	/* HP (index 0) is ignored, hence why "stat - 1" is passed as the stat_index */
 	return StatNatureModifier(pkmn->nature, stat - 1, (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + 5);
 }
 
-void SetCheckum(Pkmn* pkmn) {
+static void SetCheckum(Pkmn* pkmn) {
 	/* Set the checksum of a Pkmn by summing all of its Block data. */
 	for (u8 i = 0; i < BLOCK_SIZE; i++) {
 		pkmn->checksum += pkmn->data[pkmn->pos_a][i] + pkmn->data[pkmn->pos_b][i] + pkmn->data[pkmn->pos_c][i] + pkmn->data[pkmn->pos_d][i];
 	}
 }
 
-bool IsEgg(u16 egg) {
+static bool IsEgg(u16 egg) {
 	/* Check if the egg flag is set by looking at bit 30 of the "iv2" 16-bit word. */
 	return (egg & 0x4000) == 0x4000;
 }
 
-bool IsFatefulEncounter(u16 fate) {
+static bool IsFatefulEncounter(u16 fate) {
 	/* Check if the fateful encounter bit is set. */
 	return fate & 1;
 }
 
-bool IsShiny(u32 pid, u16 tid, u16 sid) {
+static bool IsShiny(u32 pid, u16 tid, u16 sid) {
 	/* Check if a Pkmn is shiny by XORing its PID (top and bottom 16 bits), TID and SID */
 	return ((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8;
 }
 
-bool IsInvalidPartyCount(u32 count) {
+static bool IsInvalidPartyCount(u32 count) {
 	/* Check if the number of members in the opponent's party is invalid. Determines crash at battle menu. */
 	return ((count > 0x00000036) && (count < 0x80000000));
 }
 
-void SetString(u8* dest, u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* format) {
+static void SetString(u8* dest, u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* format) {
 	/* Set dest string accoring to val */
 	//If val is greater than the length of array, format it and copy the new buffer string into dest string
 	if (val >= max) {
@@ -133,13 +133,13 @@ void SetString(u8* dest, u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* ze
 	return;
 }
 
-u32 RngNext(u32* state) {
+static u32 RngNext(u32* state) {
 	/* General purpose LCRNG, advance and return state */
 	*state = *state * 0x41C64E6D + 0x6073;
 	return *state;
 }
 
-void EncryptBlocks(Pkmn* pkmn) {
+static void EncryptBlocks(Pkmn* pkmn) {
 	/* LCRNG is seeded with the Checksum */
 	/* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
 	u32 state = pkmn->checksum;
@@ -149,7 +149,7 @@ void EncryptBlocks(Pkmn* pkmn) {
 	}
 }
 
-void EncryptCondition(Pkmn* pkmn) {
+static void EncryptCondition(Pkmn* pkmn) {
 	/* LCRNG is seeded with the PID */
 	/* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of Condition data */
 	/* It is not needed to encrypt the whole 50 16-bit words of Condition data, I stop at 33 to include the Fateful encounter flag */
@@ -159,7 +159,7 @@ void EncryptCondition(Pkmn* pkmn) {
 	}
 }
 
-void GetIVs(Pkmn* pkmn) {
+static void GetIVs(Pkmn* pkmn) {
 	/* Decompose IVs */
 	pkmn->ivs[hp] = pkmn->iv1 & 31;
 	pkmn->ivs[at] = (pkmn->iv1 >> 5) & 31;
@@ -169,7 +169,7 @@ void GetIVs(Pkmn* pkmn) {
 	pkmn->ivs[sd] = (pkmn->iv2 >> 10) & 31;
 }
 
-void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
+static void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 	/* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize) from a given state */
 	pkmn->nature = (RngNext(&state) >> 16) / 0x0A3E;
 	do { pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000); } while (pkmn->pid % NATURES_MAX != pkmn->nature); //roll PID until the 2 natures are the same
@@ -179,7 +179,7 @@ void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 	pkmn->iv2 >>= 1;
 }
 
-void DebugPkmnData(Pkmn* pkmn) {
+static void DebugPkmnData(Pkmn* pkmn) {
 	/* Prints out the raw data of a Pkmn */
 #ifdef DEBUG
 	printf("PID: %08X\n", pkmn->pid);
@@ -199,7 +199,7 @@ void DebugPkmnData(Pkmn* pkmn) {
 int main() {
 
 	/* Display program name and version */
-	printf("Motor v1.4.0");
+	printf("Motor v1.4.1");
 #ifdef DEBUG
 	printf(" (DEBUG)");
 #endif
