@@ -27,12 +27,11 @@ typedef uint64_t u64;
 #define OWN_MOVES_MAX		(4)		// Maximum number of moves a Pkmn can know at the same time
 #define STRING_LENGTH_MAX	(16)	// Utility: 
 #define STACK_OFFSET		(4)		// Misalignment between wild and seven
-#define PIDS_MAX			(1060)	// Highest amount of frames possible between 2 duplicate PIDs with Method J
-#define OG_WILDS_MAX		(9)		// OG_WILDS_MAX
+#define OG_WILDS_MAX		(11)	// OG_WILDS_MAX
 #define ASLR_GROUPS_MAX		(12)	// Number of ASLR groups (mirrors)
 #define KOREAN_OFFSET		(0x44)	// Korean RAM quirk
 #define HEAPID_MAX			(0x5C)	// Hardcoded game constant. Apparently 0x5B would work too?
-#define BALL_ID_MAX			(20)	//
+#define BALL_ID_MAX			(20)	// Deduced game constant.
 
 /* Strings of the available game languages by index, 0 and 6 are dummies */
 u8 Languages[LANGUAGES_MAX][3] = { "_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko" };
@@ -100,8 +99,8 @@ u8 Moves[MOVES_MAX][STRING_LENGTH_MAX] = { "None" , "Pound", "Karate Chop", "Dou
 
 /* Strings used for appending to Results.txt's file name */
 u8 OgWilds[VERSIONS_MAX - 1][OG_WILDS_MAX][STRING_LENGTH_MAX] = {
-	{ "Giratina", "Arceus", "Dialga", "Palkia", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom" }, //Diamond and Pearl
-	{ "Giratina-O", "Giratina-A", "Dialga", "Palkia", "Uxie", "Azelf", "Rotom", "OGW_PT_7", "OGW_PT_8" } //Platinum
+	{ "Giratina", "Arceus", "Dialga", "Palkia", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom", "Cresselia", "Mesprit"}, //Diamond and Pearl
+	{ "Giratina-O", "Giratina-A", "Dialga", "Palkia", "Uxie", "Azelf", "Rotom", "OGW_PT_7", "OGW_PT_8", "OGW_PT_9", "OGW_PT_10"} //Platinum
 };
 
 typedef struct {
@@ -134,8 +133,7 @@ typedef struct {
 	u32 item;
 	u32 move;
 	u32 aslr;
-	u32 dupe;
-	//Size: 44 bytes
+	//Size: 40 bytes
 } User;
 
 /* The original wild Pkmn's unique characteristics */
@@ -155,7 +153,8 @@ typedef struct {
 	//Size: 74 bytes
 } Original;
 
-/* Every static encounters */
+/* Static encounters */
+
 Original dp_giratina = { 0x01E7, 0, 70, {150, 100, 120, 90, 100, 120}, 0x8ACE, 0x0006, 0x2E00, {0x01D3, 0x0179, 0x019E, 0x00A3}, 0x0F05, 0x140A, {0x0131, 0x0133, 0x013C, 0x012B, 0x013E, 0x0133, 0x0138, 0x012B, 0xffff, 0, 0}, {0x3377, 0x1463, 0x9631, 0x7779, 0x3377, 0x1463, 0x7605, 0x7777} };
 Original dp_arceus = { 0x01ED, 0, 80, {120, 120, 120, 120, 120, 120}, 0xC400, 0x0009, 0x7900, {0x011F, 0x00F8, 0x0069, 0x003F}, 0x0F14, 0x050A, {0x012B, 0x013C, 0x012D, 0x012F, 0x013F, 0x013D, 0xFFFF, 0, 0, 0, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
 Original dp_shaymin = { 0x01EC, 0x009D, 30, {100, 100, 100, 100, 100, 100}, 0x5500, 0, 0x1E64, {0x006F, 0x0159, 0x0049, 0x00EB}, 0x1428, 0x050A, {0x013D, 0x0132, 0x012B, 0x0143, 0x0137, 0x0133, 0x0138, 0xFFFF, 0, 0, 0}, {0x6872, 0x6E61, 0x0061, 0x0000, 0x0000, 0x0000, 0x0005, 0x0000} };
@@ -188,6 +187,14 @@ Original dp_DIARUGA = { 0x01E3, 0, 47, {100, 120, 120, 90, 150, 100}, 0xFAF2, 0x
 Original dp_PARUKIA = { 0x01E4, 0, 47, {90, 120, 100, 100, 150, 120}, 0xFAF2, 0x0001, 0x2E00, {0x0160, 0x00F6, 0x0151, 0x01CC}, 0x0514, 0x050F, {0x0082, 0x009C, 0x005E, 0x0053, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, {0x10E4, 0x0000, 0x0217, 0x4300, 0x4652, 0x0000, 0x9D05, 0x0000} };
 Original dp_dialga_ko = { 0x01E3, 0, 47, {100, 120, 120, 90, 150, 100}, 0xFAF2, 0x0001, 0x2E00, {0x00E8, 0x00F6, 0x0151, 0x01CB}, 0x0523, 0x050F, {0x0626, 0x094A, 0x06D9, 0x0401, 0xFFFF, 0, 0, 0, 0, 0, 0}, {0x10E4, 0x0000, 0x0217, 0x4300, 0x4652, 0x0000, 0x9D05, 0x0000} };
 Original dp_palkia_ko = { 0x01E4, 0, 47, {90, 120, 100, 100, 150, 120}, 0xFAF2, 0x0001, 0x2E00, {0x0160, 0x00F6, 0x0151, 0x01CC}, 0x0514, 0x050F, {0x0C52, 0x04A0, 0x094A, 0xFFFF, 0, 0, 0, 0, 0, 0, 0}, {0x10E4, 0x0000, 0x0217, 0x4300, 0x4652, 0x0000, 0x9D05, 0x0000} };
+Original dp_cresselia = { 0x01E8, 0, 50, {120, 70, 120, 85, 75, 130}, 0x625A, 0x0002, 0x1A64, {0x0036, 0x003E, 0x00F8, 0x00A3}, 0x141E, 0x140F, {0x012D, 0x013C, 0x012F, 0x013D, 0x013D, 0x012F, 0x0136, 0x0133, 0x012B, 0xFFFF, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
+Original dp_KURESERIA = { 0x01E8, 0, 50, {120, 70, 120, 85, 75, 130}, 0x625A, 0x0002, 0x1A64, {0x0036, 0x003E, 0x00F8, 0x00A3}, 0x141E, 0x140F, {0x0060, 0x009D, 0x006C, 0x009B, 0x0053, 0xFFFF, 0, 0, 0, 0, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
+Original dp_cresselia_ko = { 0x01E8, 0, 50, {120, 70, 120, 85, 75, 130}, 0x625A, 0x0002, 0x1A64, {0x0036, 0x003E, 0x00F8, 0x00A3}, 0x141E, 0x140F, {0x0BBF, 0x06AB, 0x0884, 0x06FE, 0x094A, 0xFFFF, 0, 0, 0, 0, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
+Original dp_mesprit = { 0x01E1, 0, 50, {80, 105, 105, 80, 105, 105}, 0x625A, 0x0002, 0x1A8C, {0x005D, 0x017D, 0x00F8, 0x00CC}, 0x1E19, 0x140F, {0x0137, 0x012F, 0x013D, 0x013A, 0x013C, 0x0133, 0x013E, 0xFFFF, 0, 0, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
+Original dp_vesprit = { 0x01E1, 0, 50, {80, 105, 105, 80, 105, 105}, 0x625A, 0x0002, 0x1A8C, {0x005D, 0x017D, 0x00F8, 0x00CC}, 0x1E19, 0x140F, {0x0140, 0x012F, 0x013D, 0x013A, 0x013C, 0x0133, 0x013E, 0xFFFF, 0, 0, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
+Original dp_EMURITTO = { 0x01E1, 0, 50, {80, 105, 105, 80, 105, 105}, 0x625A, 0x0002, 0x1A8C, {0x005D, 0x017D, 0x00F8, 0x00CC}, 0x1E19, 0x140F, {0x0059, 0x0091, 0x009B, 0x0074, 0x0079, 0xFFFF, 0, 0, 0, 0, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
+Original dp_crefollet = { 0x01E1, 0, 50, {80, 105, 105, 80, 105, 105}, 0x625A, 0x0002, 0x1A8C, {0x005D, 0x017D, 0x00F8, 0x00CC}, 0x1E19, 0x140F, {0x012D, 0x013C, 0x012F, 0x0130, 0x0139, 0x0136, 0x0136, 0x012F, 0x013E, 0xFFFF, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
+Original dp_mesprit_ko = { 0x01E1, 0, 50, {80, 105, 105, 80, 105, 105}, 0x625A, 0x0002, 0x1A8C, {0x005D, 0x017D, 0x00F8, 0x00CC}, 0x1E19, 0x140F, {0x0987, 0x0687, 0x0A0C, 0x0C22, 0xFFFF, 0, 0, 0, 0, 0, 0}, {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565} };
 
 Original pt_giratina_o = { 0x01E7, 0, 47, {150, 120, 100, 100, 90, 120}, 0xFAF2, 0x0001, 0x1A00, {0x01D2, 0x00F6, 0x0151, 0x01D3}, 0x0505, 0x050F, {0x0131, 0x0133, 0x013C, 0x012B, 0x013E, 0x0133, 0x0138, 0x012B, 0xFFFF, 0, 0}, {0x0FFC, 0x1B99, 0x1A06, 0x0000, 0xFFA3, 0x0133, 0x2705, 0x2122} }; //origin
 Original pt_giratina_a = { 0x01E7, 0, 47, {150, 100, 120, 90, 100, 120}, 0xFAF2, 0x0001, 0x2E00, {0x01D2, 0x00F6, 0x0151, 0x01D3}, 0x0505, 0x050F, {0x0131, 0x0133, 0x013C, 0x012B, 0x013E, 0x0133, 0x0138, 0x012B, 0xFFFF, 0, 0}, {0x0290, 0x0000, 0x0000, 0x0000, 0x0004, 0x0000, 0x0005, 0x0000} }; //altered
@@ -204,13 +211,13 @@ Original pt_YUKUSHII = { 0x01E0, 0, 50, {75, 75, 130, 95, 75, 130}, 0x625A, 0x00
 // Original pt_rotom = { 0x01DF, 0, 20, {50, 50, 77, 91, 95, 77}, 0x1F40, 0, 0x1A46, {0x0054, 0x006D, 0x00FD, 0x0068}, 0x0A1E, 0x0F0A, {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xFFFF, 0, 0, 0, 0, 0}, {0x0000, 0x0005, 0xe000, 0xfa00, 0xfc00, 0x4000, 0x3a05, 0x0800} };
 
 Original* OGW_LangVers[LANGUAGES_MAX][VERSIONS_MAX - 1][OG_WILDS_MAX] = {
-	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //_0
-	{ {&dp_GIRATEiNA, &dp_ARUSEUSU, &dp_DIARUGA, &dp_PARUKIA, &dp_SHIeIMI, &dp_DAAKURAI, &dp_YUKUSHII, &dp_AGUNOMU, &dp_ROTOMU}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_YUKUSHII, &pt_azelf, &pt_rotom, NULL, NULL} }, //jp
-	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //en
-	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_crehelf, &dp_crefadet, &dp_motisma}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //fr
-	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //it
-	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_selfe, &dp_tobutz, &dp_rotom}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //ge
-	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //_6
-	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //sp
-	{ {&dp_giratina_ko, &dp_arceus_ko, &dp_dialga_ko, &dp_palkia_ko, &dp_shaymin_ko, &dp_darkrai_ko, &dp_uxie_ko, &dp_azelf_ko, &dp_rotom_ko}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} } //ko
+	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_cresselia, &dp_mesprit}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //_0
+	{ {&dp_GIRATEiNA, &dp_ARUSEUSU, &dp_DIARUGA, &dp_PARUKIA, &dp_SHIeIMI, &dp_DAAKURAI, &dp_YUKUSHII, &dp_AGUNOMU, &dp_ROTOMU, &dp_KURESERIA, &dp_EMURITTO}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_YUKUSHII, &pt_azelf, &pt_rotom, NULL, NULL} }, //jp
+	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_cresselia, &dp_mesprit}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //en
+	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_crehelf, &dp_crefadet, &dp_motisma, &dp_cresselia, &dp_crefollet}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //fr
+	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_cresselia, &dp_mesprit}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //it
+	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_selfe, &dp_tobutz, &dp_rotom, &dp_cresselia, &dp_mesprit}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //ge
+	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_cresselia, &dp_mesprit}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //_6
+	{ {&dp_giratina, &dp_arceus, &dp_dialga, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_cresselia, &dp_mesprit}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} }, //sp
+	{ {&dp_giratina_ko, &dp_arceus_ko, &dp_dialga_ko, &dp_palkia_ko, &dp_shaymin_ko, &dp_darkrai_ko, &dp_uxie_ko, &dp_azelf_ko, &dp_rotom_ko, &dp_cresselia_ko, &dp_mesprit_ko}, {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, NULL, NULL} } //ko
 };
