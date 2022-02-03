@@ -179,6 +179,17 @@ static void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 	pkmn->iv2 >>= 1;
 }
 
+static void Method1SeedToPID(u32 state, Pkmn* pkmn) {
+	/* Calculate PID, Nature and IVs according to Method 1 from a given seed */
+	for (u8 i = 0; i < 4; i++) { RngNext(&state); } //advance the RNG 4 times for roamers?
+	pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
+	pkmn->nature = pkmn->pid % NATURES_MAX;
+	pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
+	pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
+	pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
+	pkmn->iv2 >>= 1;
+}
+
 static void DebugPkmnData(Pkmn* pkmn) {
 	/* Prints out the raw data of a Pkmn */
 #ifdef DEBUG
@@ -199,7 +210,7 @@ static void DebugPkmnData(Pkmn* pkmn) {
 int main() {
 
 	/* Display program name and version */
-	printf("Motor v1.4.1");
+	printf("Motor v1.5.0");
 #ifdef DEBUG
 	printf(" (DEBUG)");
 #endif
@@ -236,7 +247,7 @@ int main() {
 			ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Dialga, 3=Palkia, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1);
 		}
 		else { //dp
-			ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom): ", &og, "%u", OG_WILDS_MAX - 1);
+			ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom, 9=Cresselia, 10=Mesprit): ", &og, "%u", OG_WILDS_MAX - 1);
 		}
 	} while (OGW_LangVers[user.language][grouped_version][og] == NULL);
 
@@ -249,7 +260,6 @@ int main() {
 	ScanValue("Search for a move (0=no, move_id=yes): ", &user.move, "%u", 0xffff);
 	ScanValue("Enter your Seed (32 bit, hex): 0x", &user.seed, "%x", 0xffffffff);
 	ScanValue("How many frames to search through (32 bit, dec): ", &user.frames, "%u", 0xffffffff);
-	ScanValue("Allow more seed options per result? (0=no, 1=yes): ", &user.dupe, "%u", 1);
 
 	u8* str_lang = Languages[user.language];
 	u8* str_vers = Versions[user.version];
@@ -300,12 +310,13 @@ int main() {
 	printf("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 #endif
 
-	u32 pid_list[PIDS_MAX] = { 0 };
 	u32 results = 0;
 	u32 seed = user.seed; //copy to advance in the main loop
 	if (user.language == 8) { user.aslr += KOREAN_OFFSET; } //RAM thing
 	u8 alternate_form = 0;
 	if (user.version == 2 && og == 0) { alternate_form = 8; } //Giratina Origin
+	u16 gender = 0x0004; //Genderless by default
+	if (ogwild.species == 0x01E8) { gender = 0x0002; } //Cresselia is always female
 
 	clock_t begin = clock(); //timer starts
 
@@ -317,25 +328,12 @@ int main() {
 		Pkmn wild = { 0 }; //0 init
 		Pkmn seven = { 0 }; //0 init
 
-		MethodJSeedToPID(seed, &wild);
-
-		/* Checking for duplicate PIDs if user specified it */
-		if (user.dupe == 0) {
-			bool duplicate = false;
-			for (u16 i = 0; i < PIDS_MAX; i++) {
-				if (pid_list[i] == wild.pid) {
-					duplicate = true;
-					break;
-				}
-				else if (pid_list[i] == 0) {
-					pid_list[i] = wild.pid; //insert the new pid
-					break;
-				}
-			}
-			if (frame % PIDS_MAX == PIDS_MAX - 1) { memset(pid_list, 0, sizeof(pid_list)); } //if filled, zero it out
-			if (duplicate) { continue; }
+		if (og < 9) {
+			MethodJSeedToPID(seed, &wild);
 		}
-
+		else {
+			Method1SeedToPID(seed, &wild); //roamers
+		}
 		SetBlocks(&wild);
 
 		/* Block A */
@@ -353,7 +351,7 @@ int main() {
 		wild.data[wild.pos_b][5] = ogwild.pp3and4; //pp3and4
 		wild.data[wild.pos_b][8] = wild.iv1;
 		wild.data[wild.pos_b][9] = wild.iv2;
-		wild.data[wild.pos_b][12] = 0x0004 | alternate_form; //0x0004 for genderless
+		wild.data[wild.pos_b][12] = gender | alternate_form;
 		/* Block C */
 		for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = ogwild.name[i]; } //11 characters for the name
 		wild.data[wild.pos_c][11] = w_version; //version
