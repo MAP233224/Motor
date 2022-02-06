@@ -109,9 +109,9 @@ static bool IsShiny(u32 pid, u16 tid, u16 sid) {
 	return ((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8;
 }
 
-static bool IsInvalidPartyCount(u32 count) {
+static bool IsInvalidPartyCount(s32 count) {
 	/* Check if the number of members in the opponent's party is invalid. Determines crash at battle menu. */
-	return ((count > 0x00000036) && (count < 0x80000000));
+	return count > 54;
 }
 
 static void SetString(u8* dest, u16 val, u8 array[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* format) {
@@ -179,17 +179,6 @@ static void MethodJSeedToPID(u32 state, Pkmn* pkmn) {
 	pkmn->iv2 >>= 1;
 }
 
-static void Method1SeedToPID(u32 state, Pkmn* pkmn) {
-	/* Calculate PID, Nature and IVs according to Method 1 from a given seed */
-	for (u8 i = 0; i < 4; i++) { RngNext(&state); } //advance the RNG 4 times for roamers?
-	pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
-	pkmn->nature = pkmn->pid % NATURES_MAX;
-	pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
-	pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
-	pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
-	pkmn->iv2 >>= 1;
-}
-
 static void DebugPkmnData(Pkmn* pkmn) {
 	/* Prints out the raw data of a Pkmn */
 #ifdef DEBUG
@@ -210,7 +199,7 @@ static void DebugPkmnData(Pkmn* pkmn) {
 int main() {
 
 	/* Display program name and version */
-	printf("Motor v1.5.0");
+	printf("Motor v1.4.2");
 #ifdef DEBUG
 	printf(" (DEBUG)");
 #endif
@@ -247,7 +236,7 @@ int main() {
 			ScanValue("Static PKMN you want to corrupt (0=Giratina-O, 1=Giratina-A, 2=Dialga, 3=Palkia, 4=Uxie, 5=Azelf, 6=Rotom): ", &og, "%u", OG_WILDS_MAX - 1);
 		}
 		else { //dp
-			ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom, 9=Cresselia, 10=Mesprit): ", &og, "%u", OG_WILDS_MAX - 1);
+			ScanValue("Static PKMN you want to corrupt (0=Giratina, 1=Arceus, 2=Dialga, 3=Palkia, 4=Shaymin, 5=Darkrai, 6=Uxie, 7=Azelf, 8=Rotom): ", &og, "%u", OG_WILDS_MAX - 1);
 		}
 	} while (OGW_LangVers[user.language][grouped_version][og] == NULL);
 
@@ -278,17 +267,21 @@ int main() {
 	u16 w_language = user.language << 8; //convert for use in pkmn data
 	Original ogwild = *OGW_LangVers[user.language][grouped_version][og];
 
-	FILE* fp; //declare file object
+	FILE* fp; //file pointer
 	u8 results_file_name[4 * STRING_LENGTH_MAX] = "Results_";
 #ifdef DEBUG
 	strcat(results_file_name, "DEBUG_");
 #endif
-	strcat(results_file_name, OgWilds[grouped_version][og % OG_WILDS_MAX]); strcat(results_file_name, "_"); //Original Wild
-	u8 straslr[STRING_LENGTH_MAX]; sprintf(straslr, "%u", user.aslr); strcat(results_file_name, straslr); strcat(results_file_name, "_"); //ASLR
-	strcat(results_file_name, str_vers); strcat(results_file_name, "_"); //Version
-	strcat(results_file_name, str_lang); strcat(results_file_name, "_"); //Language
-	u8 strtidsid[STRING_LENGTH_MAX]; sprintf(strtidsid, "%05u_%05u", user.tid, user.sid); strcat(results_file_name, strtidsid); strcat(results_file_name, ".txt"); //TID, SID
-	fp = fopen(results_file_name, "w+"); //open/create file
+	sprintf(results_file_name, "%s%s_%u_%s_%s_%05u_%05u.txt",
+		results_file_name,
+		OgWilds[grouped_version][og],
+		user.aslr,
+		str_vers,
+		str_lang,
+		user.tid,
+		user.sid
+	);
+	fp = fopen(results_file_name, "w+"); //create/overwrite Results file
 
 	user.aslr = Aslrs[user.language][grouped_version][user.aslr]; //depends on language, version and user choice
 
@@ -315,8 +308,6 @@ int main() {
 	if (user.language == 8) { user.aslr += KOREAN_OFFSET; } //RAM thing
 	u8 alternate_form = 0;
 	if (user.version == 2 && og == 0) { alternate_form = 8; } //Giratina Origin
-	u16 gender = 0x0004; //Genderless by default
-	if (ogwild.species == 0x01E8) { gender = 0x0002; } //Cresselia is always female
 
 	clock_t begin = clock(); //timer starts
 
@@ -328,12 +319,7 @@ int main() {
 		Pkmn wild = { 0 }; //0 init
 		Pkmn seven = { 0 }; //0 init
 
-		if (og < 9) {
-			MethodJSeedToPID(seed, &wild);
-		}
-		else {
-			Method1SeedToPID(seed, &wild); //roamers
-		}
+		MethodJSeedToPID(seed, &wild);
 		SetBlocks(&wild);
 
 		/* Block A */
@@ -351,7 +337,7 @@ int main() {
 		wild.data[wild.pos_b][5] = ogwild.pp3and4; //pp3and4
 		wild.data[wild.pos_b][8] = wild.iv1;
 		wild.data[wild.pos_b][9] = wild.iv2;
-		wild.data[wild.pos_b][12] = gender | alternate_form;
+		wild.data[wild.pos_b][12] = 0x0004 | alternate_form; //0x0004 for genderless
 		/* Block C */
 		for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = ogwild.name[i]; } //11 characters for the name
 		wild.data[wild.pos_c][11] = w_version; //version
@@ -420,7 +406,7 @@ int main() {
 		if (heapid < HEAPID_MAX) { continue; }
 
 		/* If partycount of Opponent 1 Party is invalid, the game will crash right before showing the battle menu */
-		u32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
+		s32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
 		if (IsInvalidPartyCount(partycount)) { continue; }
 
 		/* If the Bad Egg flag is set or the Fast Mode flags aren't set, the Pkmn will become a Bad Egg */
@@ -461,12 +447,8 @@ int main() {
 		u8 form = GetFormId((u8)fate);
 
 		/* Strings for a succesful result */
-		u8* str_fateful;
-		if (IsFatefulEncounter(fate)) { str_fateful = "Fateful"; }
-		else { str_fateful = "-------"; }
-		u8* str_shiny;
-		if (IsShiny(wild.pid, user.tid, user.sid)) { str_shiny = "Shiny"; }
-		else { str_shiny = "-----"; }
+		u8* str_fateful = IsFatefulEncounter(fate) ? "Fateful" : "-------";
+		u8* str_shiny = IsShiny(wild.pid, user.tid, user.sid) ? "Shiny" : "-----";
 		u8 str_f_species[STRING_LENGTH_MAX];
 		SetString(str_f_species, f_species, Pokelist, SPECIES_MAX, "DPbox", "0x%04X");
 		u8 str_f_item[STRING_LENGTH_MAX];
