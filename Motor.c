@@ -290,8 +290,8 @@ int main() {
 	fprintf(fp, "> Seed 0x%08X\n", user.seed);
 	fprintf(fp, "> ASLR 0x%08X\n", user.aslr);
 	fprintf(fp, "> Searched through %u frames for %s holding %s knowing %s\n\n", user.frames, str_species, str_item, str_move);
-	fprintf(fp, "Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
-	fprintf(fp, "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	fprintf(fp, "Seed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | Ball   | IVs               | Moves\n");
+	fprintf(fp, "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
 	printf("\n> %s (%s)\n", str_vers, str_lang);
 	printf("> TID = %u\n> SID = %u\n", user.tid, user.sid);
@@ -299,8 +299,8 @@ int main() {
 	printf("> ASLR 0x%08X\n", user.aslr);
 	printf("> Searching through %u frames for %s holding %s knowing %s...\n", user.frames, str_species, str_item, str_move);
 #ifdef DEBUG
-	printf("\nSeed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | IVs               | Moves\n");
-	printf("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	printf("\nSeed       | PID        | Level   | Species      | Form | Item           | Ability          | Hatch steps | Fateful | Shiny | Ball   | IVs               | Moves\n");
+	printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 #endif
 
 	u32 results = 0;
@@ -394,6 +394,13 @@ int main() {
 		/* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu */
 		if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; }
 
+		/* If the last 3 moves of Seven are invalid, the game will crash right before showing the battle menu (internat ASLR variation)*/
+		//if (seven.data[seven.pos_b][1] > MOVES_MAX + 2 ||
+		//	seven.data[seven.pos_b][2] > MOVES_MAX + 2 ||
+		//	seven.data[seven.pos_b][3] > MOVES_MAX + 2) { 
+		//	continue;
+		//}
+
 		/* If the ball doesn't have a valid ID the battle won't load */
 		u8 ballid = seven.data[seven.pos_d][13] >> 8;
 		if (ballid > BALL_ID_MAX) { continue; }
@@ -443,8 +450,13 @@ int main() {
 		/* IVs, steps to hatch, level, form ID */
 		GetIVs(&wild);
 		f_steps = IsEgg(wild.iv2) * (f_steps + 1) * 255; //steps to hatch if Egg, else zero (0)
-		u8 f_level = seven.cond[22] & 0xff;
+		u8 f_level = seven.cond[BLOCK_SIZE + STACK_OFFSET + 2] & 0xff;
 		u8 form = GetFormId((u8)fate);
+
+		/* HP and HP max determine catch rate */
+		u32 f_hp = seven.cond[BLOCK_SIZE + STACK_OFFSET + 3];
+		u32 f_hp_max = seven.cond[BLOCK_SIZE + STACK_OFFSET + 4];
+		u8* str_catch = (3 * f_hp_max / 2 < f_hp) ? "Any   " : "Master";
 
 		/* Strings for a succesful result */
 		u8* str_fateful = IsFatefulEncounter(fate) ? "Fateful" : "-------";
@@ -461,11 +473,13 @@ int main() {
 #ifdef DEBUG
 		/* Print successful result to console */
 		printf("0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, str_fateful, str_shiny);
+		printf("%s | ", str_catch);
 		printf("%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
 		printf("%s, %s, %s, %s\n", str_moves[0], str_moves[1], str_moves[2], str_moves[3]);
 #endif
 		/* Print successful result to file */
 		fprintf(fp, "0x%08X | 0x%08X | Lv. %-3d | %-12s | %-4d | %-14s | %-16s | %-5d steps | %s | %s | ", seed, wild.pid, f_level, str_f_species, form, str_f_item, str_f_abi, f_steps, str_fateful, str_shiny);
+		fprintf(fp, "%s | ", str_catch);
 		fprintf(fp, "%02d/%02d/%02d/%02d/%02d/%02d | ", wild.ivs[hp], wild.ivs[at], wild.ivs[df], wild.ivs[sa], wild.ivs[sd], wild.ivs[sp]);
 		fprintf(fp, "%s, %s, %s, %s\n", str_moves[0], str_moves[1], str_moves[2], str_moves[3]);
 
