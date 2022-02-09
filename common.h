@@ -12,28 +12,28 @@ typedef int32_t s32;
 typedef uint64_t u64;
 
 /* Constants */
-#define BLOCKS				(4)		// Number of blocks: A, B, C and D
-#define BLOCK_PERMS			(24)	// Factorial of the number of blocks
-#define BLOCK_SIZE			(16)	// Number of 16-bit words in 128 bytes, the size of Pkmn Block data
-#define COND_SIZE			(50)	// Number of 16-bit words in 100 bytes, the size of Pkmn Condition data
-#define COND_SIZE_S			(33)	// Utility: stop earlier to avoid needless encryption
-#define LANGUAGES_MAX		(9)		// Number of languages: _0, Japanese, English, French, Italian, German, _6, Spanish and Korean
-#define VERSIONS_MAX		(3)		// Number of versions: Diamond, Pearl and Platinum
-#define ABILITIES_MAX		(124)	// Number of abilities
-#define SPECIES_MAX			(494)	// Number of species
-#define MOVES_MAX			(468)	// Number of moves
-#define ITEMS_MAX			(468)	// Number of items (465 in Diamond and Pearl but it doesn't make a difference)
-#define NATURES_MAX			(25)	// Number of natures
-#define STATS_MAX			(6)		// Number of stats: Hit Points, Attack, Defense, Speed, Special Attack and Special Defense
-#define OWN_MOVES_MAX		(4)		// Maximum number of moves a Pkmn can know at the same time
-#define STRING_LENGTH_MAX	(16)	// Utility:
-#define STACK_OFFSET		(4)		// Misalignment between wild and seven
-#define PIDS_MAX			(1060)	// Highest amount of frames possible between 2 duplicate PIDs with Method J
-#define OG_WILDS_MAX		(9)		// OG_WILDS_MAX
-#define ASLR_GROUPS_MAX		(12)	// Number of ASLR groups (mirrors)
-#define KOREAN_OFFSET		(0x44)	// Korean RAM quirk
-#define HEAPID_MAX			(0x5C)	// Hardcoded game constant. Apparently 0x5B would work too?
-#define BALL_ID_MAX			(20)	// Hardcoded? game constant
+#define BLOCKS              (4)     // Number of blocks: A, B, C and D
+#define BLOCK_PERMS         (24)    // Factorial of the number of blocks
+#define BLOCK_SIZE          (16)    // Number of 16-bit words in 128 bytes, the size of Pkmn Block data
+#define COND_SIZE           (50)    // Number of 16-bit words in 100 bytes, the size of Pkmn Condition data
+#define COND_SIZE_S         (33)    // Utility: stop earlier to avoid needless encryption
+#define LANGUAGES_MAX       (9)     // Number of languages: _0, Japanese, English, French, Italian, German, _6, Spanish and Korean
+#define VERSIONS_MAX        (3)     // Number of versions: Diamond, Pearl and Platinum
+#define ABILITIES_MAX       (124)   // Number of abilities
+#define SPECIES_MAX         (494)   // Number of species
+#define MOVES_MAX           (468)   // Number of moves
+#define ITEMS_MAX           (468)   // Number of items (465 in Diamond and Pearl but it doesn't make a difference)
+#define NATURES_MAX         (25)    // Number of natures
+#define STATS_MAX           (6)     // Number of stats: Hit Points, Attack, Defense, Speed, Special Attack and Special Defense
+#define OWN_MOVES_MAX       (4)     // Maximum number of moves a Pkmn can know at the same time
+#define STRING_LENGTH_MAX   (16)    // Utility:
+#define STACK_OFFSET        (4)     // Misalignment between wild and seven
+#define PIDS_MAX            (1060)  // Highest amount of frames possible between 2 duplicate PIDs with Method J
+#define OG_WILDS_MAX        (9)     // OG_WILDS_MAX
+#define ASLR_GROUPS_MAX     (12)    // Number of ASLR groups (mirrors)
+#define KOREAN_OFFSET       (0x44)  // Korean RAM quirk
+#define HEAPID_MAX          (0x5C)  // Hardcoded game constant. Apparently 0x5B would work too?
+#define BALL_ID_MAX         (20)    // Hardcoded? game constant
 
 /* Strings of the available game languages by index, 0 and 6 are dummies */
 u8 Languages[LANGUAGES_MAX][3] = { "_0", "jp", "en", "fr", "it", "ge", "_6", "sp", "ko" };
