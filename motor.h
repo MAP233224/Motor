@@ -27,7 +27,31 @@
 #define BALL_ID_MAX         (20)    // Hardcoded? game constant
 #define SEED_MAX_B          (24)    // Hours in a day
 #define SEED_OFF_C          (3600)  // Delay, 1 minute of leeway
-#define MIN_DELAY_DPPT      (700)  // Minimum delay you can get in DPPT from a Save&Quit
+#define MIN_DELAY_DPPT      (700)   // Minimum delay you can get in DPPT from a Save&Quit
+#define TYPES_MAX           (18)    // Total number of types, including ???
+
+enum {
+    TYPE_NORMAL,
+    TYPE_FIGHTING,
+    TYPE_FLYING,
+    TYPE_POISON,
+    TYPE_GROUND,
+    TYPE_ROCK,
+    TYPE_BUG,
+    TYPE_GHOST,
+    TYPE_STEEL,
+    TYPE_UNKNOWN, //??? type
+    TYPE_FIRE,
+    TYPE_WATER,
+    TYPE_GRASS,
+    TYPE_ELECTRIC,
+    TYPE_PSYCHIC,
+    TYPE_ICE,
+    TYPE_DRAGON,
+    TYPE_DARK
+};
+
+const u8 Types[TYPES_MAX][STRING_LENGTH_MAX] = { "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel", "???", "Fire", "Water", "Grass", "Electric", "Psychic", "Ice", "Dragon", "Dark" };
 
 #define NAME_ROTOM          {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}
 #define NAME_ROTOM_JP       {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}
@@ -85,13 +109,17 @@
 #define MOVES_AZELF_DP      {0x005D, 0x00FD, 0x00F8, 0x01A1}
 #define MOVES_DIALGA_DP     {0x00E8, 0x00F6, 0x0151, 0x01CB}
 #define MOVES_PALKIA_DP     {0x0160, 0x00F6, 0x0151, 0x01CC}
+//#define MOVES_REGIGIGAS_DP
+//#define MOVES_HEATRAN_DP
 
 #define MOVES_GIRATINA_PT   {0x01D2, 0x00F6, 0x0151, 0x01D3}
 #define MOVES_UXIE_PT       {0x0081, 0x0119, 0x00F8, 0x0085}
 #define MOVES_AZELF_PT      {0x0081, 0x00FD, 0x00F8, 0x01A1}
 #define MOVES_DIALGA_PT     {0x01CB, 0x0179, 0x019E, 0x00A3}
 #define MOVES_PALKIA_PT     {0x01CC, 0x0179, 0x019E, 0x00A3}
-#define MOVES_ROTOM_DPPT    {0x0054, 0x006D, 0x00FD, 0x0068}
+#define MOVES_ROTOM_DPPT    {0x0054, 0x006D, 0x00FD, 0x0068} //same moves 
+//#define MOVES_REGIGIGAS_PT
+//#define MOVES_HEATRAN_PT
 
 #define GFX_GIRATINA_DP     {0x3377, 0x1463, 0x9631, 0x7779, 0x3377, 0x1463, 0x7605, 0x7777}
 #define GFX_ARCEUS_DP       {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x7205, 0x6565}
@@ -100,12 +128,16 @@
 #define GFX_CAVERN_DP       {0x0015, 0x3000, 0x1000, 0x0000, 0x0015, 0x3000, 0x1005, 0x0000} //Uxie & Azelf
 #define GFX_ROTOM_DP        {0x0000, 0x0000, 0x0000, 0x0000, 0x0100, 0x0100, 0x0005, 0x002C}
 #define GFX_PILLARS_DP      {0x10E4, 0x0000, 0x0217, 0x4300, 0x4652, 0x0000, 0x9D05, 0x0000} //Dialga & Palkia
+//#define GFX_REGIGIGAS_DP
+//#define GFX_HEATRAN_DP
 
 #define GFX_DISTORTION_PT   {0x0FFC, 0x1B99, 0x1A06, 0x0000, 0xFFA3, 0x0133, 0x2705, 0x2122} //Giratina-o
 #define GFX_TURNBACK_PT     {0x0290, 0x0000, 0x0000, 0x0000, 0x0004, 0x0000, 0x0005, 0x0000} //Giratina-a
 #define GFX_PILLARS_PT      {0x7570, 0x6464, 0x656C, 0x0070, 0x0000, 0x0000, 0x0005, 0x0000} //Dialga & Palkia
 #define GFX_CAVERN_PT       {0x4444, 0x4444, 0x4444, 0x4444, 0x2234, 0x2222, 0x2205, 0x4322} //Uxie & Azelf
 #define GFX_ROTOM_PT        {0x0000, 0x0005, 0xe000, 0xfa00, 0xfc00, 0x4000, 0x3a05, 0x0800}
+//#define GFX_REGIGIGAS_PT
+//#define GFX_HEATRAN_PT
 
 /* Indices of each version */
 enum { VERSION_DIAMOND, VERSION_PEARL, VERSION_PLATINUM };
@@ -261,6 +293,12 @@ typedef struct {
     u32 frames;
     //Size: 8 bytes
 } REVERSEDSEED;
+
+typedef struct {
+    u8 type;
+    u8 power;
+    //Size: 2 bytes
+} HIDDENPOWER;
 
 /* Every static encounters */
 //TODO: add Heatran and the Regis
@@ -445,6 +483,31 @@ static void DecomposeIVs(u32 ivs, u8 iv_arr[STATS_MAX]) {
     iv_arr[sp] = (ivs >> 15) & 31;
     iv_arr[sa] = (ivs >> 20) & 31;
     iv_arr[sd] = (ivs >> 25) & 31;
+}
+
+static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
+    /* Calculate Hidden Power from IVs */
+
+    u8 power = ((ivs[hp] & 2) >> 1) |
+               ((ivs[at] & 2) >> 0) |
+               ((ivs[df] & 2) << 1) |
+               ((ivs[sp] & 2) << 2) |
+               ((ivs[sa] & 2) << 3) |
+               ((ivs[sd] & 2) << 4);
+
+    u8 type = ((ivs[hp] & 1) >> 0) |
+              ((ivs[at] & 1) << 1) |
+              ((ivs[df] & 1) << 2) |
+              ((ivs[sp] & 1) << 3) |
+              ((ivs[sa] & 1) << 4) |
+              ((ivs[sd] & 1) << 5);
+
+    power = (power * 40 / 63) + 30;
+    type = (type * 15 / 63) + 1;
+
+    if (type >= TYPE_UNKNOWN) { type++; }
+
+    return (HIDDENPOWER) { type, power };
 }
 
 static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
