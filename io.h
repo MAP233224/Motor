@@ -4,6 +4,8 @@
 #pragma once
 #include "common.h"
 
+#define PROFILE_FILE_SIZE (PROFILE_SLOTS_MAX * sizeof(PROFILE))
+
 /* Globals */
 
 const u8 ResultsDirectory[] = ".results";
@@ -24,21 +26,26 @@ static int GetFileSize_mine(FILE* fp) {
     return size;
 }
 
-static void InitProfilesFile(FILE* fp) {
+static void InitProfilesFile(void) {
     /* Create the PROFILES file and set all its data to zero */
+    FILE* fp = fopen(ProfilesPath, "wb+");
     u8 buffer[PROFILE_SLOTS_MAX * sizeof(PROFILE)] = { 0 };
     fwrite(buffer, sizeof(buffer), 1, fp);
+    fclose(fp);
 }
 
 static APPSTATUS CheckProfileFileSize(void) {
     /* Should always be PROFILE_SLOTS_MAX * sizeof(PROFILE) */
-    FILE* fp = fopen(ProfilesPath, "rb+");
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
-    if (GetFileSize_mine(fp) != PROFILE_SLOTS_MAX * sizeof(PROFILE)) {
+    FILE* fp = fopen(ProfilesPath, "rb");
+    if (fp == NULL) { InitProfilesFile(); }
+    else if (GetFileSize_mine(fp) != PROFILE_FILE_SIZE) {
         DLOG("The PROFILES file was not of the correct size.");
-        InitProfilesFile(fp);
+        fclose(fp);
+        InitProfilesFile();
     }
-    fclose(fp);
+    else {
+        fclose(fp);
+    }
     return APP_RESUME;
 }
 
@@ -59,4 +66,9 @@ static int GetResultsCount(FILE* fp, BOOL hasProfileHeader) {
     int r = GetFileSize_mine(fp) / sizeof(RESULTDATA);
     if (hasProfileHeader) { return r - 1; } //PROFILE and RESULTDATA structs are the same size
     return r;
+}
+
+static void GetProfileFromResultsFile(PROFILE* p, FILE* fp){
+    /*  */
+    fread(p, sizeof(PROFILE), 1, fp);
 }
