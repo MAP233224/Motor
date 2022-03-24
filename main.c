@@ -71,7 +71,7 @@ static APPSTATUS SetProfileSlotState(u8 slot) {
 
     for (u8 i = 0; i < PROFILE_SLOTS_MAX; i++) {
         PROFILE p;
-        fread(&p, sizeof(PROFILE), 1, fp);
+        GetProfileFromResultsFile(&p, fp);
         ProfileSlotState[i] = IsEmptyProfile(&p) ? PSS_EMPTY : PSS_TAKEN;
         if (i == slot) { ProfileSlotState[i] ^= PSS_ACTIVE; } //only 1 can be active
         InvalidateRect(HWND_ProfileSlotButton[i], NULL, 0); //redraw button
@@ -97,12 +97,12 @@ static APPSTATUS IsValidProfile(PROFILE* p) {
     return PROFILE_OK;
 }
 
-static APPSTATUS GetSearchParameters(void) {
+static APPSTATUS GetProfileFromWindows(void) {
     /* Get the search parameters from the input fields and set them in PROFILE_Current */
-    /* Return an error code to identify which search param is wrong */
+    /* Return an error code to identify which filed is wrong */
     /* Note: the filters are automatically updated with their windows */
     PROFILE p = { 0 }; //temp
-    memcpy(&p, &PROFILE_Current, sizeof(PROFILE)); //filters
+    memcpy(&p, &PROFILE_Current, sizeof(PROFILE)); //copies filters
 
     u8 str_tid[U16_DIGITS_DEC_MAX + 1] = { 0 };
     u8 str_sid[U16_DIGITS_DEC_MAX + 1] = { 0 };
@@ -133,7 +133,7 @@ static APPSTATUS GetSearchParameters(void) {
     return PROFILE_OK;
 }
 
-static void GetSearchParametersRecapString(PROFILE* p, u8 str[256]) {
+static void GetProfileRecapString(PROFILE* p, u8 str[256]) {
     /* Format a string with all the profile info */
     sprintf(str, "Version: %s\nLanguage: %s\nTID: %05d\nSID: %05d\nWild: %s\nSeed: 0x%08X\nFrames: %u\nASLR: %u (0x%08X)\n\nFilters:\nSpecies: %s\nMove: %s\nItem: %s",
         Versions[p->version],
@@ -221,7 +221,7 @@ static APPSTATUS ConfirmLoadProfile(void) {
 
 static APPSTATUS ConfirmSaveProfile(void) {
     /* Basic yes/no/cancel message box */
-    APPSTATUS err = GetSearchParameters();
+    APPSTATUS err = GetProfileFromWindows();
     if (err != PROFILE_OK) {
         ErrorMessageBox_BadProfile(err);
         return APP_RESUME;
@@ -231,7 +231,7 @@ static APPSTATUS ConfirmSaveProfile(void) {
     if (slot == 255) { return APP_ERR_PROFILE_SLOT; }
 
     u8 str_recap[256];
-    GetSearchParametersRecapString(&PROFILE_Current, str_recap);
+    GetProfileRecapString(&PROFILE_Current, str_recap);
     strcat(str_recap, "\n\nSave a new profile with these search parameters?");
     int answer = MessageBoxA(HWND_AppMain, str_recap, "ConfirmSaveProfile", MB_YESNOCANCEL | MB_ICONQUESTION);
     if (answer == IDYES) {
@@ -269,8 +269,42 @@ static void ResetSearchParameters(void) {
 
 static APPSTATUS ConfirmResetSearchParameters(void) {
     /* Create YESNOCANCEL Message box and process user answer */
-    int answer = MessageBoxA(HWND_AppMain, "Reset every search parameters?", "ConfirmResetSearchParameters", MB_YESNOCANCEL | MB_ICONWARNING);
+    int answer = MessageBoxA(HWND_AppMain, "Reset every search parameters?", "Notice", MB_YESNOCANCEL | MB_ICONWARNING);
     if (answer == IDYES) { ResetSearchParameters(); }
+    return APP_RESUME;
+}
+
+static APPSTATUS LoadResultsFileDetails(u8 path[PATH_REL_LENGTH_MAX]) {
+    /* Displays number of results in a file + profile info */
+    FILE* fp = fopen(path, "rb");
+    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
+
+    int results = GetResultsCount(fp, TRUE);
+    if (results == -1) { //file empty
+        SetWindowTextA(HWND_DetailsList, "This results file is empty.");
+        return APP_RESUME;
+    }
+
+    PROFILE p = { 0 };
+    GetProfileFromResultsFile(&p, fp);
+    fclose(fp);
+
+    u8 str_details[512] = { 0 };
+    sprintf(str_details, "%u results in this file.\nDouble-click to load.\n\nVersion         %s\nLanguage        %s\nTID             %05u\nSID             %05u\nWild            %s\nASLR            %02u (0x%08X)\nSeed            0x%08X\nFrames          %u\n\nFilters\n  Species       %s\n  Item          %s\n  Move          %s\n",
+        results,
+        Versions[p.version],
+        Languages[p.language],
+        p.tid,
+        p.sid,
+        OgWilds[p.version >> 1][p.wild], //grouped version
+        p.aslr, Aslrs[p.language][p.version >> 1][p.aslr], //grouped version
+        p.seed,
+        p.frames,
+        Pokelist[p.filter_species],
+        Moves[p.filter_move],
+        Items[p.filter_item]
+    );
+    SetWindowTextA(HWND_DetailsList, str_details);
     return APP_RESUME;
 }
 
@@ -280,7 +314,7 @@ static APPSTATUS LoadResultDetails(int idx) {
     FILE* fp = fopen(SearchDataCurrent.path, "rb");
     if (fp == NULL) { return APP_ERR_OPEN_FILE; } //couldn't open file
 
-    fseek(fp, (idx + 1) * sizeof(RESULTDATA), SEEK_SET); //go to index of selected result from in the file
+    fseek(fp, (idx + 1) * sizeof(RESULTDATA), SEEK_SET); //go to index of selected result from in the file //+1 because of PROFILE header
     fread(&ResultDataCurrent, sizeof(RESULTDATA), 1, fp); //read data and write to ResultDataCurrent
 
     //TODO: species sprite icon? bonus
@@ -293,6 +327,7 @@ static APPSTATUS LoadResultDetails(int idx) {
     u8 ivs[STATS_MAX] = { 0 };
 
     DecomposeIVs(ResultDataCurrent.ivs, ivs);
+    HIDDENPOWER hiddenpower = GetHiddenPower(ivs);
 
     u8* str_fate = IsFatefulEncounter(ResultDataCurrent.fate) ? "Yes" : "No";
     u8* str_egg = IsEgg(ResultDataCurrent.ivs) ? "Yes" : "No";
@@ -309,7 +344,7 @@ static APPSTATUS LoadResultDetails(int idx) {
 
     ReversedSeedCurrent = ReverseSeed(ResultDataCurrent.seed);
 
-    sprintf(str_details, "Details of results #%u:\n\nSpecies: %s\nLevel: %u\nItem: %s\nAbility: %s\nMoves: %s / %s / %s / %s\nPID: 0x%08X\nNature: %s\nIVs: %02u / %02u / %02u / %02u / %02u / %02u\nShiny: %s\nFateful: %s\nEgg: %s\nPokerus: %s\nFriendship/Egg Cycles: %u\nForm ID: %u\n\nHit seed 0x%08X, advance by %u frame(s).\n%s.",
+    sprintf(str_details, "Details of results #%u:\n\nSpecies: %s\nLevel: %u\nItem: %s\nAbility: %s\nMoves: %s / %s / %s / %s\nPID: 0x%08X\nNature: %s\nIVs: %02u / %02u / %02u / %02u / %02u / %02u\nHidden Power: %s %u\nShiny: %s\nFateful: %s\nEgg: %s\nPokerus: %s\nFriendship/Egg Cycles: %u\nForm ID: %u\n\nHit seed 0x%08X, advance by %u frame(s).\n%s.",
         idx,
         str_species,
         ResultDataCurrent.level,
@@ -319,6 +354,7 @@ static APPSTATUS LoadResultDetails(int idx) {
         ResultDataCurrent.pid,
         Natures[GetNatureId(ResultDataCurrent.pid)],
         ivs[hp], ivs[at], ivs[df], ivs[sa], ivs[sd], ivs[sp],
+        Types[hiddenpower.type], hiddenpower.power,
         str_shiny,
         str_fate,
         str_egg,
@@ -387,7 +423,7 @@ static APPSTATUS LoadResultsFromFile(u8* filepath) {
     GetRelativeResultsPath(filepath); //TODO: use return value!
     memcpy(SearchDataCurrent.path, filepath, sizeof(SearchDataCurrent.path));
 
-    fread(&PROFILE_Load, sizeof(PROFILE), 1, fp); //header of the file is the profile that was used for the search
+    GetProfileFromResultsFile(&PROFILE_Load, fp);
 
     /* Load result data into HWND_ResultsList */
     for (u32 i = 0; i < SearchDataCurrent.results; i++) {
@@ -630,7 +666,7 @@ static APPSTATUS GenerateResultsTextFile(void) {
     if (fp == NULL) { return APP_ERR_OPEN_FILE; }
 
     PROFILE p = { 0 };
-    fread(&p, sizeof(PROFILE), 1, results_file);
+    GetProfileFromResultsFile(&p, results_file);
 
     APPSTATUS err_profile = IsValidProfile(&p);
     if (err_profile != PROFILE_OK) { return err_profile; }
@@ -643,6 +679,7 @@ static APPSTATUS GenerateResultsTextFile(void) {
     fprintf(fp, "Language        %s\n", Languages[p.language]);
     fprintf(fp, "TID             %05u\n", p.tid);
     fprintf(fp, "SID             %05u\n", p.sid);
+    fprintf(fp, "Wild            %s\n", OgWilds[p.version >> 1][p.wild]);
     fprintf(fp, "ASLR            %02u (0x%08X)\n", p.aslr, Aslrs[p.language][p.version >> 1][p.aslr]);
     fprintf(fp, "Seed            0x%08X\n", p.seed);
     fprintf(fp, "Frames          %u\n\n", p.frames);
@@ -795,6 +832,7 @@ static DWORD WINAPI MotorThreadProc(LPVOID param) {
         if (AuthorizeSearch) {
 
             ClearResults();
+            ResultsMode = MODE_RESULTS;
 
             SendMessageA(HWND_ProgressBar, PBM_SETPOS, 0, 0); //progress bar empty
             InvalidateRect(HWND_SearchButton, NULL, 0); //tells search button to draw itself
@@ -837,14 +875,14 @@ static DWORD WINAPI MotorThreadProc(LPVOID param) {
 
 static APPSTATUS ConfirmSearchLaunch(void) {
     /* Creates a dialog box which recaps the search parameters and asks for confirmation to launch the search */
-    int err = GetSearchParameters();
+    int err = GetProfileFromWindows();
     if (err != PROFILE_OK) {
         ErrorMessageBox_BadProfile(err);
         return APP_RESUME;
     }
 
     u8 str_recap[256];
-    GetSearchParametersRecapString(&PROFILE_Current, str_recap);
+    GetProfileRecapString(&PROFILE_Current, str_recap);
     strcat(str_recap, "\n\nLaunch a search with these parameters?");
 
     int answer = MessageBoxA(HWND_AppMain, str_recap, "ConfirmSearchLaunch", MB_YESNOCANCEL | MB_ICONQUESTION);
@@ -1182,7 +1220,9 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
             int idx = SendMessageA(HWND_ResultsList, LB_GETCURSEL, 0, 0);
             if (idx == LB_ERR) { return 0; } //no item selected
             if (ResultsMode == MODE_FILES) {
-                //TODO: something?
+                u8 path[PATH_REL_LENGTH_MAX] = { 0 };
+                GetResultsPath(idx, path);
+                LoadResultsFileDetails(path);
             }
             else if (ResultsMode == MODE_RESULTS) {
                 LoadResultDetails(idx);
