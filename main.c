@@ -90,6 +90,7 @@ static APPSTATUS IsValidProfile(PROFILE* p) {
     if (p->language >= LANGUAGES_MAX) { return PROFILE_BAD_LANGUAGE; }
     if (p->version >= VERSIONS_MAX) { return PROFILE_BAD_VERSION; }
     if (p->wild >= OG_WILDS_MAX) { return PROFILE_BAD_WILD; }
+    if (OGW_LangVers[p->language][p->version][p->wild] == NULL) { return PROFILE_BAD_WILD; }
     if (p->language == LANGUAGE_JP && p->aslr > ASLR_VALUE_MAX) { return PROFILE_BAD_ASLR; }
     else if (p->language == LANGUAGE_KO && p->aslr > ASLR_VALUE_MAX_KO) { return PROFILE_BAD_ASLR; }
     else if (p->aslr > ASLR_VALUE_MAX_EN) { return PROFILE_BAD_ASLR; }
@@ -140,7 +141,7 @@ static void GetProfileRecapString(PROFILE* p, u8 str[256]) {
         Languages[p->language],
         p->tid,
         p->sid,
-        OgWilds[p->version >> 1][p->wild], //grouped version
+        OgWilds[p->version][p->wild], //grouped version
         p->seed,
         p->frames,
         p->aslr,
@@ -195,9 +196,8 @@ static APPSTATUS LoadProfileFromSlot(PROFILE* p, u8 slot) {
 }
 
 static APPSTATUS ConfirmLoadProfile(void) {
-    /*  */
-
-    u8 slot = GetProfileSlot(); //TODO: retrieve from user
+    /* Profile slot selection and loading procedure */
+    u8 slot = GetProfileSlot();
     if (slot == 255) { return APP_ERR_PROFILE_SLOT; }
 
     APPSTATUS err = LoadProfileFromSlot(&PROFILE_Current, slot);
@@ -296,7 +296,7 @@ static APPSTATUS LoadResultsFileDetails(u8 path[PATH_REL_LENGTH_MAX]) {
         Languages[p.language],
         p.tid,
         p.sid,
-        OgWilds[p.version >> 1][p.wild], //grouped version
+        OgWilds[p.version][p.wild], //grouped version
         p.aslr, Aslrs[p.language][p.version >> 1][p.aslr], //grouped version
         p.seed,
         p.frames,
@@ -319,7 +319,7 @@ static APPSTATUS LoadResultDetails(int idx) {
 
     //TODO: species sprite icon? bonus
 
-    u8 str_details[512] = { 0 }; //complete string with all the details. TODO: calc size
+    u8 str_details[512] = { 0 }; //complete string with all the details. TODO: calc max size
     u8 str_species[STRING_LENGTH_MAX] = { 0 };
     u8 str_item[STRING_LENGTH_MAX] = { 0 };
     u8 str_moves[OWN_MOVES_MAX][STRING_LENGTH_MAX] = { 0 };
@@ -369,28 +369,28 @@ static APPSTATUS LoadResultDetails(int idx) {
     return APP_RESUME;
 }
 
-static BOOL GetRelativeResultsPath(u8 abs[PATH_ABS_LENGTH_MAX]) {
-    /* Convert from absolute to relative RESULTS file path */
-    const u8 dir[] = "/.results/"; //directory string, guarantees correct location
-    u8 i = 0;
-    u8 pos = 255; //default
-    do { //seek dir string
-        u8 sum = 0;
-        for (u8 p = 0; p < sizeof(dir) - 1; p++) {
-            sum += (dir[p] ^ abs[i + p]);
-        }
-        if (sum == 0) {
-            pos = i;
-            break;
-        }
-        i++;
-    } while (abs[i]); //reached end of abs
-    if (pos == 255) { return FALSE; } //dir string not found in abs string
-    u8 tmp[PATH_ABS_LENGTH_MAX] = { 0 };
-    memcpy(tmp, &abs[pos + 1], PATH_ABS_LENGTH_MAX - pos);
-    memcpy(abs, tmp, PATH_ABS_LENGTH_MAX);
-    return TRUE; //sucess
-}
+//static BOOL GetRelativeResultsPath(u8 abs[PATH_ABS_LENGTH_MAX]) {
+//    /* Convert from absolute to relative RESULTS file path */
+//    const u8 dir[] = "/.results/"; //directory string, guarantees correct location
+//    u8 i = 0;
+//    u8 pos = 255; //default
+//    do { //seek dir string
+//        u8 sum = 0;
+//        for (u8 p = 0; p < sizeof(dir) - 1; p++) {
+//            sum += (dir[p] ^ abs[i + p]);
+//        }
+//        if (sum == 0) { //string match
+//            pos = i;
+//            break;
+//        }
+//        i++;
+//    } while (abs[i]); //reached end of abs
+//    if (pos == 255) { return FALSE; } //dir string not found in abs string
+//    u8 tmp[PATH_ABS_LENGTH_MAX] = { 0 };
+//    memcpy(tmp, &abs[pos + 1], PATH_ABS_LENGTH_MAX - pos);
+//    memcpy(abs, tmp, PATH_ABS_LENGTH_MAX);
+//    return TRUE; //sucess
+//}
 
 static void AddResultToList(RESULTDATA* result, int index) {
     /* Format a result string and add it to the results list */
@@ -420,7 +420,7 @@ static APPSTATUS LoadResultsFromFile(u8* filepath) {
     SearchDataCurrent.results = GetResultsCount(fp, TRUE);
     if (SearchDataCurrent.results == -1) { return APP_ERR_NORESULTS; } //no results
 
-    GetRelativeResultsPath(filepath); //TODO: use return value!
+    //GetRelativeResultsPath(filepath);
     memcpy(SearchDataCurrent.path, filepath, sizeof(SearchDataCurrent.path));
 
     GetProfileFromResultsFile(&PROFILE_Load, fp);
@@ -483,7 +483,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 wild.data[wild.pos_b][5] = SearchDataCurrent.pOgWild->pp3and4; //pp3and4
                 wild.data[wild.pos_b][8] = wild.iv1;
                 wild.data[wild.pos_b][9] = wild.iv2;
-                wild.data[wild.pos_b][12] = 0x0004 | SearchDataCurrent.alt_form; //0x0004 for genderless
+                wild.data[wild.pos_b][12] = GetGender(wild.pid, SearchDataCurrent.pOgWild->species) | SearchDataCurrent.alt_form; //gender | alt_form
                 /* Block C */
                 for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = SearchDataCurrent.pOgWild->name[i]; } //11 characters for the name
                 wild.data[wild.pos_c][11] = SearchDataCurrent.w_version; //version
@@ -679,7 +679,7 @@ static APPSTATUS GenerateResultsTextFile(void) {
     fprintf(fp, "Language        %s\n", Languages[p.language]);
     fprintf(fp, "TID             %05u\n", p.tid);
     fprintf(fp, "SID             %05u\n", p.sid);
-    fprintf(fp, "Wild            %s\n", OgWilds[p.version >> 1][p.wild]);
+    fprintf(fp, "Wild            %s\n", OgWilds[p.version][p.wild]);
     fprintf(fp, "ASLR            %02u (0x%08X)\n", p.aslr, Aslrs[p.language][p.version >> 1][p.aslr]);
     fprintf(fp, "Seed            0x%08X\n", p.seed);
     fprintf(fp, "Frames          %u\n\n", p.frames);
@@ -723,7 +723,7 @@ static APPSTATUS GenerateResultsTextFile(void) {
             SetString(str_moves[i], rd.moves[i], Moves, MOVES_MAX, "None", "0x%04X");
         }
 
-        REVERSEDSEED rs = ReverseSeed(rd.seed); //TODO: implement
+        REVERSEDSEED rs = ReverseSeed(rd.seed);
 
         fprintf(fp, "0x%08X | 0x%08X | %-8u | 0x%08X | Lv. %-3u | %-12s | %-4u | %-14s | %-16s | %-5u steps | %s | %s | %s | %s | ",
             rd.seed, rs.seed, rs.frames, rd.pid, rd.level, str_species, GetFormId(rd.fate), str_item, str_ability, steps, str_fate, str_pkrs, str_shiny, str_catch);
@@ -737,8 +737,7 @@ static APPSTATUS GenerateResultsTextFile(void) {
 }
 
 static APPSTATUS CompileResultsToFile(void) {
-    /**/
-    //TODO: move to io.h?
+    /* Copy the contents of the temporary results file into a single one, delete the tmp files  */
     FILE* results_file = fopen(SearchDataCurrent.path, "wb+"); //byte mode
     if (results_file == NULL) { return APP_ERR_OPEN_FILE; }
 
@@ -768,7 +767,7 @@ static APPSTATUS CompileResultsToFile(void) {
     APPSTATUS err_txt = GenerateResultsTextFile();
     if (err_txt != APP_RESUME) {
         if (err_txt == APP_ERR_OPEN_FILE) {
-
+            //TODO: something?
         }
         else { ErrorMessageBox_BadProfile(err_txt); }
     }
@@ -780,7 +779,7 @@ static APPSTATUS MotorSearch(void) {
     SearchDataCurrent.grouped_version = PROFILE_Current.version >> 1; //Group Diamond and Pearl together
     SearchDataCurrent.w_version = (PROFILE_Current.version + 10) << 8; //convert for use in pkmn data
     SearchDataCurrent.w_language = PROFILE_Current.language << 8; //convert for use in pkmn data
-    SearchDataCurrent.pOgWild = OGW_LangVers[PROFILE_Current.language][SearchDataCurrent.grouped_version][PROFILE_Current.wild];
+    SearchDataCurrent.pOgWild = OGW_LangVers[PROFILE_Current.language][PROFILE_Current.version][PROFILE_Current.wild];
     SearchDataCurrent.aslr = Aslrs[PROFILE_Current.language][SearchDataCurrent.grouped_version][PROFILE_Current.aslr]; //depends on language, version and user choice
     if (PROFILE_Current.language == LANGUAGE_KO) { SearchDataCurrent.aslr += KOREAN_OFFSET; } //RAM thing
     SearchDataCurrent.alt_form = (PROFILE_Current.version == VERSION_PLATINUM && PROFILE_Current.wild == OGW_PT_GIRATINA_O) ? 8 : 0; //Giratina Origin
@@ -817,7 +816,7 @@ static APPSTATUS MotorSearch(void) {
     clock_t end = clock(); //timer ends
     SearchDataCurrent.time = ((double)end - (double)begin) / CLOCKS_PER_SEC; //calculate time elapsed since start of search
 
-    CompileResultsToFile();
+    CompileResultsToFile(); //TODO: use return value
 
     return APP_RESUME;
 }
@@ -841,7 +840,7 @@ static DWORD WINAPI MotorThreadProc(LPVOID param) {
             sprintf(path, ".results/RESULTS_%s_%s_%s_%u_%05u_%05u.mtr",
                 Versions_short[PROFILE_Current.version],
                 Languages_short[PROFILE_Current.language],
-                OgWilds[PROFILE_Current.version >> 1][PROFILE_Current.wild],
+                OgWilds[PROFILE_Current.version][PROFILE_Current.wild],
                 PROFILE_Current.aslr,
                 PROFILE_Current.tid,
                 PROFILE_Current.sid);
@@ -896,7 +895,7 @@ static APPSTATUS GetResultsPath(u8 index, u8 path[PATH_REL_LENGTH_MAX]) {
     /* Get the relative path of the results file pointed to by the index of the selected item */
     WIN32_FIND_DATAA wfd = { 0 };
     int i = 0;
-    HANDLE file = FindFirstFileA(".results/RESULTS_*.mtr", &wfd); //TODO: add an extension to results files
+    HANDLE file = FindFirstFileA(".results/RESULTS_*.mtr", &wfd);
 
     if (file == INVALID_HANDLE_VALUE) { return APP_ERR_OPEN_FILE; } //not really an error, just no file in the directory
 
@@ -921,12 +920,13 @@ static APPSTATUS ListResultsFiles(void) {
 
     WIN32_FIND_DATAA wfd = { 0 };
     int i = 0;
-    HANDLE file = FindFirstFileA(".results/RESULTS_*.mtr", &wfd); //TODO: add an extension to results files
+    HANDLE file = FindFirstFileA(".results/RESULTS_*.mtr", &wfd);
 
     if (file == INVALID_HANDLE_VALUE) { return APP_ERR_OPEN_FILE; } //not really an error, just no file in the directory
 
     do {
         /* Gets rid of RESULTS_ prefix and .mtr file extension */
+        //TODO: fix end of string shenanigans when file name is too long
         u8 tmp[PATH_REL_LENGTH_MAX] = { 0 };
         memcpy(tmp, wfd.cFileName + sizeof("RESULTS_") - 1, sizeof(tmp));
         for (u8 i = sizeof(tmp) - 1; i > 0; i--) {
@@ -1122,16 +1122,10 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             u8 label[3] = { 0 };
             sprintf(label, "P%u", wParam - ID_PROFILE_SLOT_BUTTON + 1);
             int color = ((ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & 0xf0) == PSS_ACTIVE) ? MOTOR_COLOR_PUMP : MOTOR_COLOR_TEAL;
-
-            /* invert */
+            /* "invert" button aspect */
             if ((ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & 0x0f) == PSS_EMPTY) {
-                lpdis->itemState = (ODS_FOCUS | ODS_SELECTED);
+                lpdis->itemState = ODS_INVERT;
             }
-
-            //TODO: get color from "selected" state -> global var that tells if a slot is selected or not
-            //Empty profile: negative teal
-            //Taken profile: teal
-            //Active profile: pump
             return DrawButton(lpdis, color, label, sizeof(label) - 1);
         }
         case ID_LOAD_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_TEAL, "LOAD", sizeof("LOAD") - 1);
@@ -1170,7 +1164,7 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         case ID_WILDS_LIST:
         {
-            u8* label = (lpdis->itemID >= OG_WILDS_MAX) ? "WILD           " : OgWilds[PROFILE_Current.version >> 1][lpdis->itemID];
+            u8* label = (lpdis->itemID >= OG_WILDS_MAX) ? "WILD           " : OgWilds[PROFILE_Current.version][lpdis->itemID];
             return DrawList(lpdis, label);
         }
         }
@@ -1216,7 +1210,6 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         {
         case LBN_SELCHANGE:
         {
-            //TODO: check if results or results files are loaded
             int idx = SendMessageA(HWND_ResultsList, LB_GETCURSEL, 0, 0);
             if (idx == LB_ERR) { return 0; } //no item selected
             if (ResultsMode == MODE_FILES) {
@@ -1247,9 +1240,6 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
             switch (wParam)
             {
             case ID_RESULTS_HEADER:
-                //what to do with the error code APP_ERR_OPEN_FILE
-                //TODO: list files in /.results/ directory
-                //display in the results list
                 ResultsMode = MODE_FILES;
                 ListResultsFiles();
                 break;
