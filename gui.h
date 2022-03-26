@@ -58,6 +58,7 @@
 #define MOTOR_COLOR_PUMP_H              (0x3779dd)
 #define MOTOR_COLOR_DEBUG               (0xff00ff) //magenta
 
+#define ODS_INVERT                      (0x12345678) //custom owner drawn state
 
 /* HMENU Identifiers */
 enum {
@@ -179,8 +180,8 @@ static void FreeEsketit(void) {
 
 static HBRUSH GetBrushFromColor(int color) {
     /* Return the HBRUSH corresponding to a MOTOR_COLOR */
-    //TODO: try to find a one liner macro to map a defined color to a brush
-    switch (color) {
+    switch (color)
+    {
     case MOTOR_COLOR_DARK: return HBRUSH_Dark;
     case MOTOR_COLOR_GRAY: return HBRUSH_Gray;
     case MOTOR_COLOR_TEAL: return HBRUSH_Teal;
@@ -193,8 +194,8 @@ static HBRUSH GetBrushFromColor(int color) {
 
 static HPEN GetPenFromColor(int color) {
     /* Return the HPEN corresponding to a MOTOR_COLOR */
-    //TODO: try to find a one liner macro to map a defined color to a pen
-    switch (color) {
+    switch (color)
+    {
     case MOTOR_COLOR_DARK: return HPEN_Dark;
     case MOTOR_COLOR_GRAY: return HPEN_Gray;
     case MOTOR_COLOR_TEAL: return HPEN_Teal;
@@ -224,7 +225,7 @@ static BOOL DrawButton_hover(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 le
 static BOOL DrawButton(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 length) {
     /**/
     /* Draw the background rect the same color as main window */
-    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED)) {
+    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED) || lpdis->itemState == ODS_INVERT) {
         return DrawButton_hover(lpdis, color, label, length); //only when clicked
     }
     SelectObject(lpdis->hDC, HBRUSH_Dark);
