@@ -4,17 +4,19 @@ This glitch allows players to catch any desired species in the place of some sta
 
 Each user will need to provide several things to the application:  
 
-- their Trainer ID and Secret ID (TID and SID)  
-- their game's Version (Diamond, Pearl or Platinum)  
-- their game's Language (Japanese, English, French, Italian, German, Spanish, Korean)  
-- their desired Species ID (optional, from Bulbasaur to Arceus https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_IV))  
-- their desired Item ID (optional, from Master Ball to Secret Key https://bulbapedia.bulbagarden.net/wiki/List_of_items_by_index_number_(Generation_IV))  
-- their desired Move ID (optional, from Pound to Shadow Force https://bulbapedia.bulbagarden.net/wiki/List_of_moves)  
+- their Trainer ID and Secret ID (TID and SID)
+- their game's Version (Diamond, Pearl or Platinum)
+- their game's Language (Japanese, English, French, Italian, German, Spanish, Korean)
+- their corruption target (depends on Version)
 - how many Frames they want to go through (maximum 4,294,967,295)
 - a starting Seed (32-bit hexadecimal number)
-- their desired ASLR (between 0 and 11, some languages are more restrictive)  
+- their desired ASLR (between 0 and 11, some languages are more restrictive)
+- their desired Species ID (optional, from Bulbasaur to Arceus https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_IV))
+- their desired Item ID (optional, from Master Ball to Secret Key https://bulbapedia.bulbagarden.net/wiki/List_of_items_by_index_number_(Generation_IV))
+- their desired Move ID (optional, from Pound to Shadow Force https://bulbapedia.bulbagarden.net/wiki/List_of_moves)
 
-Once all of these parameters have been entered, the application will go through each seed and output every successful hit.  
+You can save/load these parameters to/from 1 of 8 possible profile slots.
+Upon launching the search, the application will go through each seed in the specified frame range and output every successful hit.  
 It will provide the Seed on which it found the Pokémon on, alongside several other characteristics (Level, Item, Ability, Moves, ...).  
 Performance wise, a full search of the 4,294,967,295 possible RNG states takes about 3 minutes to complete on my i5-11600K CPU.  
 
@@ -22,7 +24,14 @@ You can also perform Battle Corruption easily on Desmume 0.9.11 by editing Motor
 You'll be required to have a save file with a full party of 6 Pokémon, all knocked out, for the glitch to work.  
 The most common way to get to this state is with the Pomeg Glitch.  
 
-The executable was compiled with ``-O2`` in Visual Studio.  
+The executable was compiled for the Win32 platform in Visual Studio 2019 with the Optimization options set to:  
+- Optimization ``Maximum Optimization (Favor Speed) (/O2)``
+- Inline Function Expansion ``Default``
+- Enable Intrinsic Functions ``Yes (/Oi)``
+- Favor Size Or Speed ``Favor fast code (/Ot)``
+- Omit Frame Pointers ``No (/Oy)``
+- Enable Fiber-Safe Optimizations ``No``
+- Whole Program Optimization ``/GL``  
 
 If you have any questions or issues regarding the application, direct them to me via Twitter @shinyhunter_map  
 If you want to thank me with a little extra, you can donate at https://ko-fi.com/map233224 <3
