@@ -9,9 +9,6 @@
 #define BLOCK_SIZE          (16)    // Number of 16-bit words in 128 bytes, the size of PKMN Block data
 #define COND_SIZE           (50)    // Number of 16-bit words in 100 bytes, the size of PKMN Condition data
 #define COND_SIZE_S         (33)    // Utility: stop earlier to avoid needless encryption
-#define LANGUAGES_MAX       (9)     // Number of languages: _0, Japanese, English, French, Italian, German, _6, Spanish and Korean
-#define LANGUAGES_ACT_MAX   (7)     // Actual number of languages: Japanese, English, French, Italian, German, Spanish and Korean
-#define VERSIONS_MAX        (3)     // Number of versions: Diamond, Pearl and Platinum
 #define ABILITIES_MAX       (124)   // Number of abilities
 #define SPECIES_MAX         (494)   // Number of species
 #define MOVES_MAX           (468)   // Number of moves
@@ -21,13 +18,13 @@
 #define OWN_MOVES_MAX       (4)     // Maximum number of moves a PKMN can know at the same time
 #define STACK_OFFSET        (4)     // Misalignment between wild and seven
 #define OG_WILDS_MAX        (10)    // OG_WILDS_MAX
-#define ASLR_GROUPS_MAX     (12)    // Number of ASLR groups (mirrors)
 #define KOREAN_OFFSET       (0x44)  // Korean RAM quirk
 #define HEAPID_MAX          (0x5C)  // Hardcoded game constant. Apparently 0x5B would work too?
 #define BALL_ID_MAX         (20)    // Hardcoded? game constant
 #define SEED_MAX_B          (24)    // Hours in a day
 #define SEED_OFF_C          (3600)  // Delay, 1 minute of leeway
 #define MIN_DELAY_DPPT      (700)   // Minimum delay you can get in DPPT from a Save&Quit
+#define MAX_DELAY_DPPT      (MIN_DELAY_DPPT + SEED_OFF_C)
 #define TYPES_MAX           (18)    // Total number of types, including ???
 
 #define NAME_ROTOM          {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}
@@ -175,39 +172,6 @@ const u8 Versions_short[VERSIONS_MAX][3] = { "D", "P", "Pt" };
 u32 OppPartyOffBeg[VERSIONS_MAX - 1] = { 0x4C7B0, 0x4B884 }; //DP, Pt
 u32 OppPartyOffEnd[VERSIONS_MAX - 1] = { 0x4D310, 0x4C3E4 }; //DP, Pt
 
-/* Base pointers depending on ASLR, Language and Version, 1 per group (ignores mirrors)  */
-u32 aslr__0_dp[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
-u32 aslr__0_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
-u32 aslr_jp_dp[ASLR_GROUPS_MAX] = { 0x02271940, 0x02271944, 0x02271948, 0x0227194C, 0x02271970, 0x02271974, 0x02271978, 0x0227197C, 0x022719F0, 0x022719F4, 0x022719F8, 0x022719FC };
-u32 aslr_jp_pt[ASLR_GROUPS_MAX] = { 0x0227D4F0, 0x0227D4F4, 0x0227D4F8, 0x0227D4FC, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
-u32 aslr_en_dp[ASLR_GROUPS_MAX] = { 0x0226D2F8, 0x0226D2FC, 0x0226D300, 0x0226D304, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-u32 aslr_en_pt[ASLR_GROUPS_MAX] = { 0x0227E140, 0x0227E144, 0x0227E148, 0x0227E14C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-u32 aslr_fr_dp[ASLR_GROUPS_MAX] = { 0x0226D5F8, 0x0226D5FC, 0x0226D600, 0x0226D604, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-u32 aslr_fr_pt[ASLR_GROUPS_MAX] = { 0x0227E440, 0x0227E444, 0x0227E448, 0x0227E44C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //0/4 mirrors
-u32 aslr_it_dp[ASLR_GROUPS_MAX] = { 0x0226D500, 0x0226D504, 0x0226D508, 0x0226D50C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-u32 aslr_it_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
-u32 aslr_ge_dp[ASLR_GROUPS_MAX] = { 0x0226D500, 0x0226D504, 0x0226D508, 0x0226D50C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-u32 aslr_ge_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
-u32 aslr__6_dp[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
-u32 aslr__6_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
-u32 aslr_sp_dp[ASLR_GROUPS_MAX] = { 0x0226D60C, 0x0226D600, 0x0226D604, 0x0226D608, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-u32 aslr_sp_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
-u32 aslr_ko_dp[ASLR_GROUPS_MAX] = { 0x02274B9C, 0x02274BA0, 0x02274BA4, 0x02274BA8, 0x02274BAC, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-u32 aslr_ko_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
-
-/* ASLR table using the grouped version format */
-u32* Aslrs[LANGUAGES_MAX][VERSIONS_MAX - 1] = {
-  { aslr__0_dp, aslr__0_pt },
-  { aslr_jp_dp, aslr_jp_pt },
-  { aslr_en_dp, aslr_en_pt },
-  { aslr_fr_dp, aslr_fr_pt },
-  { aslr_it_dp, aslr_it_pt },
-  { aslr_ge_dp, aslr_ge_pt },
-  { aslr__6_dp, aslr__6_pt },
-  { aslr_sp_dp, aslr_sp_pt },
-  { aslr_ko_dp, aslr_ko_pt }
-};
-
 /* The 24 ABCD Block permutations (inverse) */
 u16 Perms[BLOCK_PERMS] = { 0x0123, 0x0132, 0x0213, 0x0312, 0x0231, 0x0321, 0x1023, 0x1032, 0x2013, 0x3012, 0x2031, 0x3021, 0x1203, 0x1302, 0x2103, 0x3102, 0x2301, 0x3201, 0x1230, 0x1320, 0x2130, 0x3120, 0x2310, 0x3210 };
 
@@ -304,7 +268,6 @@ typedef struct {
 } HIDDENPOWER;
 
 /* Every static encounters */
-
 OGWILD dp_giratina = { 0x01E7, 0, 70, STATS_GIRATINA_A, 0x8ACE, 0x0006, 0x2E00, MOVES_GIRATINA_DP, 0x0F05, 0x140A, NAME_GIRATINA, GFX_GIRATINA_DP };
 OGWILD dp_arceus = { 0x01ED, 0, 80, STATS_ARCEUS, 0xC400, 0x0009, 0x7900, MOVES_ARCEUS_DP, 0x0F14, 0x050A, NAME_ARCEUS, GFX_ARCEUS_DP };
 OGWILD dp_shaymin = { 0x01EC, 0x009D, 30, STATS_SHAYMIN, 0x5500, 0x0000, 0x1E64, MOVES_SHAYMIN_DP, 0x1428, 0x050A, NAME_SHAYMIN, GFX_SHAYMIN_DP };
@@ -589,11 +552,11 @@ static REVERSEDSEED ReverseSeed(u32 state) {
     u16 c = state & 0xffff;
     /* Search loop */
     do {
-        state = state * 0xEEB9EB65 + 0xA3561A1; //reverse LCRNG
+        state = state * 0xEEB9EB65 + 0x0A3561A1; //reverse LCRNG
         a = state >> 24;
         b = state >> 16;
         c = state & 0xffff;
         frame++;
-    } while (b > SEED_MAX_B || c < MIN_DELAY_DPPT || c >(MIN_DELAY_DPPT + SEED_OFF_C));
+    } while (b > SEED_MAX_B || c < MIN_DELAY_DPPT || c > MAX_DELAY_DPPT);
     return (REVERSEDSEED) { state, frame };
 }
