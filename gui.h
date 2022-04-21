@@ -23,7 +23,7 @@
 #define TEXT_INPUT_HEIGHT               (16)
 #define SAVE_BUTTON_HEIGHT              (2 * TEXT_INPUT_HEIGHT)
 #define LOAD_BUTTON_HEIGHT              (SAVE_BUTTON_HEIGHT)
-#define RESET_BUTTON_HEIGHT             (TEXT_INPUT_HEIGHT)
+#define RESET_BUTTON_HEIGHT             (SAVE_BUTTON_HEIGHT)//(TEXT_INPUT_HEIGHT)
 #define COMBOBOX_HEIGHT                 (20)
 /* Dimensions - Search Parameters sub window */
 #define SEARCH_PARAMS_X                 (APP_WINDOW_PADDING_M)
@@ -45,6 +45,8 @@
 #define DETAILS_HEIGHT                  (3 * BASE_HEIGHT / 5 - 2 * APP_WINDOW_PADDING_M)
 #define DETAILS_X                       (SEARCH_RESULTS_X + SEARCH_RESULTS_WIDTH + APP_WINDOW_PADDING_M)
 #define DETAILS_Y                       (APP_WINDOW_PADDING_M)
+/* Dimensions - Seed to time button and year input field */
+#define SEEDTIME_WIDTH                  (DETAILS_WIDTH - TEXT_INPUT_WIDTH - 2 * APP_WINDOW_PADDING_S)
 /* Profile slot buttons */
 #define PROFILE_SLOT_BUTTON_WIDTH       (26)
 
@@ -60,6 +62,11 @@
 
 #define ODS_INVERT                      (0x12345678) //custom owner drawn state
 
+/* MessageBox labels */
+#define MBL_CONFIRM                     ("Confirm")
+#define MBL_ERROR                       ("Error")
+#define MBL_NOTICE                      ("Notice")
+
 /* HMENU Identifiers */
 enum {
     ID_SEARCH_PARAMETERS = 100,
@@ -74,12 +81,13 @@ enum {
     ID_VERSIONS_LIST,
     ID_LANGUAGES_LIST,
     ID_WILDS_LIST,
-    ID_PROFILE_SLOT_BUTTON,
+    ID_PROFILE_SLOT_BUTTON = 0x1000, //for bitmask
 
     ID_RESULTS = 200,
     ID_RESULTS_HEADER,
     ID_RESULTS_LIST,
     ID_COPY_SEED_BUTTON,
+    ID_YEAR_FILTER,
     ID_DETAILS,
     ID_SEARCH_PROGRESS_BAR
 };
@@ -105,6 +113,7 @@ DeclareWindowAndClass(ResultsList)
 DeclareWindowAndClass(ResultDetails)
 DeclareWindowAndClass(DetailsList)
 DeclareWindowAndClass(CopyButton)
+DeclareWindowAndClass(YearFilter)
 
 DeclareWindowAndClass(ProfileSlotButton[PROFILE_SLOTS_MAX])
 DeclareWindowAndClass(SearchParameters)
@@ -116,6 +125,7 @@ DeclareWindowAndClass(AslrInput)
 DeclareWindowAndClass(WildInput)
 DeclareWindowAndClass(SeedInput)
 DeclareWindowAndClass(FramesInput)
+DeclareWindowAndClass(MacInput)
 DeclareWindowAndClass(SpeciesFilterInput)
 DeclareWindowAndClass(MoveFilterInput)
 DeclareWindowAndClass(ItemFilterInput)
@@ -291,7 +301,8 @@ static HWND GetNextSearchParamTabStop(HWND current) {
     if (current == HWND_FramesInput) { return HWND_VersionInput; }
     if (current == HWND_VersionInput) { return HWND_LanguageInput; }
     if (current == HWND_LanguageInput) { return HWND_WildInput; }
-    if (current == HWND_WildInput) { return HWND_SpeciesFilterInput; }
+    if (current == HWND_WildInput) { return HWND_MacInput; }
+    if (current == HWND_MacInput) { return HWND_SpeciesFilterInput; }
     if (current == HWND_SpeciesFilterInput) { return HWND_ItemFilterInput; }
     if (current == HWND_ItemFilterInput) { return HWND_MoveFilterInput; }
     if (current == HWND_MoveFilterInput) { return HWND_TidInput; }
@@ -300,7 +311,7 @@ static HWND GetNextSearchParamTabStop(HWND current) {
 
 static APPSTATUS ConfirmAbortSearch(void) {
     /* Message box */
-    int answer = MessageBoxA(NULL, "Do you want to abort the search?", "Abort?", MB_YESNOCANCEL | MB_ICONQUESTION);
+    int answer = MessageBoxA(NULL, "Do you want to abort the search?", MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONQUESTION);
     if (answer == IDYES) { return APP_ABORT_SEARCH; }
     return APP_RESUME;
 }
@@ -309,10 +320,10 @@ static void ErrorMessageBox_BadProfile(APPSTATUS code) {
     /* Message box when a search parameter is incorrect */
     u8 str[3 * STRING_LENGTH_MAX] = { 0 };
     sprintf(str, "%s is invalid, please correct it.", PROFILE_ErrorCodes[code - PROFILE_OK]);
-    MessageBoxA(NULL, str, "Invalid search parameter", MB_OK | MB_ICONWARNING);
+    MessageBoxA(NULL, str, MBL_ERROR, MB_OK | MB_ICONWARNING);
 }
 
-static void SetWindowTextFromInt(HWND hwnd, u8* format, u32 value) {
+static void SetWindowTextFromInt(HWND hwnd, u8* format, u64 value) {
     /* Format the string with value and send it to the window */
     u8 str[STRING_LENGTH_MAX] = { 0 };
     sprintf(str, format, value);
@@ -344,18 +355,17 @@ static void SetFilterInput(HWND hInput, const u8 strarr[][STRING_LENGTH_MAX], u1
     }
 }
 
-static void SetTextInput_dec16(HWND hInput) {
-    /* TID and SID  */
+static void SetTextInput_dec16(HWND hInput, u16 min, u16 max, u8 digits) {
+    /* TID, SID, Year  */
     u8 b[U16_DIGITS_DEC_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_dec16
-    GetWindowTextA(hInput, b, U16_DIGITS_DEC_MAX + 1);
-    ZeroLeftPadTextInputInt(b, U16_DIGITS_DEC_MAX);
-    u32 value = AsciiToInt_dec16(b, U16_DIGITS_DEC_MAX);
-    if (value > U16_VALUE_MAX || !IsValidIntString_dec(b, U16_DIGITS_DEC_MAX)) {
-        SetWindowTextA(hInput, "65535");
+    GetWindowTextA(hInput, b, digits + 1);
+    ZeroLeftPadTextInputInt(b, digits);
+    u32 value = AsciiToInt_dec16(b, digits);
+    if (value < min || value > max || !IsValidIntString_dec(b, digits))
+    {
+        sprintf(b, "%u", max);
     }
-    else {
-        SetWindowTextA(hInput, b);
-    }
+    SetWindowTextA(hInput, b);
 }
 
 static void SetTextInput_dec32(HWND hInput) {
@@ -378,7 +388,7 @@ static void SetTextInput_hex32(HWND hInput) {
     GetWindowTextA(hInput, b, U32_DIGITS_HEX_MAX + 1);
     ZeroLeftPadTextInputInt(b, U32_DIGITS_HEX_MAX);
     u32 value = AsciiToInt_hex32(b);
-    if (value > U32_VALUE_MAX || !IsValidIntString_hex(b)) {
+    if (value > U32_VALUE_MAX || !IsValidIntString_hex(b, U32_DIGITS_HEX_MAX)) {
         SetWindowTextA(hInput, "FFFFFFFF");
     }
     else {
@@ -397,6 +407,21 @@ static void SetTextInput_aslr(HWND hInput) {
         SetWindowTextA(hInput, "11"); //not always 11, depends on language and version
     }
     else {
+        SetWindowTextA(hInput, b);
+    }
+}
+
+static void SetTextInput_mac(HWND hInput) {
+    /* MAC address (hex) */
+    u8 b[MAC_DIGITS_HEX_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_hex32
+    GetWindowTextA(hInput, b, MAC_DIGITS_HEX_MAX + 1);
+    ZeroLeftPadTextInputInt(b, MAC_DIGITS_HEX_MAX);
+    u64 value = AsciiToInt_hex64(b);
+    if (value > MAC_VALUE_MAX || !IsValidIntString_hex(b, MAC_DIGITS_HEX_MAX)) {
+        SetWindowTextA(hInput, "010203040506");
+    }
+    else {
+        sprintf(b, "%012llX", value);
         SetWindowTextA(hInput, b);
     }
 }
