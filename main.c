@@ -4,6 +4,7 @@
 #include "io.h"
 #include "gui.h"
 #include "motor.h"
+#include "aslr.h"
 
 /* Globals */
 
@@ -30,7 +31,7 @@ u8 SearchThreadsMax; //maximum number of threads that will be allocated
 
 /* Functions */
 
-static BOOL WINAPI EditCopy(void) {
+static BOOL WINAPI CopySeedToClipboard(void) {
     /* Clipboard function */
     u8 str[STRING_LENGTH_MAX] = { 0 };
     sprintf(str, "%08X", ReversedSeedCurrent.seed);
@@ -91,6 +92,7 @@ static APPSTATUS IsValidProfile(PROFILE* p) {
     if (p->version >= VERSIONS_MAX) { return PROFILE_BAD_VERSION; }
     if (p->wild >= OG_WILDS_MAX) { return PROFILE_BAD_WILD; }
     if (OGW_LangVers[p->language][p->version][p->wild] == NULL) { return PROFILE_BAD_WILD; }
+    if (*(u64*)p->mac > MAC_VALUE_MAX) { return PROFILE_BAD_MAC; }
     if (p->language == LANGUAGE_JP && p->aslr > ASLR_VALUE_MAX) { return PROFILE_BAD_ASLR; }
     else if (p->language == LANGUAGE_KO && p->aslr > ASLR_VALUE_MAX_KO) { return PROFILE_BAD_ASLR; }
     else if (p->aslr > ASLR_VALUE_MAX_EN) { return PROFILE_BAD_ASLR; }
@@ -110,21 +112,33 @@ static APPSTATUS GetProfileFromWindows(void) {
     u8 str_seed[U32_DIGITS_HEX_MAX + 1] = { 0 };
     u8 str_frames[U32_DIGITS_DEC_MAX + 1] = { 0 };
     u8 str_aslr[ASLR_DIGITS_DEC_MAX + 1] = { 0 };
+    u8 str_mac[MAC_DIGITS_HEX_MAX + 1] = { 0 };
 
     p.version = (u8)SendMessageA(HWND_VersionInput, CB_GETCURSEL, 0, 0);
     p.language = (u8)SendMessageA(HWND_LanguageInput, CB_GETCURSEL, 0, 0);
     p.language = GetLanguageFullIndex(p.language);
     p.wild = (u8)SendMessageA(HWND_WildInput, CB_GETCURSEL, 0, 0);
-    GetWindowTextA(HWND_AslrInput, str_aslr, ASLR_DIGITS_DEC_MAX + 1);
-    p.aslr = AsciiToInt_dec16(str_aslr, ASLR_DIGITS_DEC_MAX);
-    GetWindowTextA(HWND_TidInput, str_tid, U16_DIGITS_DEC_MAX + 1);
-    GetWindowTextA(HWND_SidInput, str_sid, U16_DIGITS_DEC_MAX + 1);
-    GetWindowTextA(HWND_SeedInput, str_seed, U32_DIGITS_HEX_MAX + 1);
-    GetWindowTextA(HWND_FramesInput, str_frames, U32_DIGITS_DEC_MAX + 1);
-    p.tid = AsciiToInt_dec16(str_tid, U16_DIGITS_DEC_MAX);
-    p.sid = AsciiToInt_dec16(str_sid, U16_DIGITS_DEC_MAX);
+    GetWindowTextA(HWND_AslrInput, str_aslr, sizeof(str_aslr));
+    p.aslr = AsciiToInt_dec16(str_aslr, sizeof(str_aslr) - 1);
+    GetWindowTextA(HWND_TidInput, str_tid, sizeof(str_tid));
+    GetWindowTextA(HWND_SidInput, str_sid, sizeof(str_sid));
+    GetWindowTextA(HWND_SeedInput, str_seed, sizeof(str_seed));
+    GetWindowTextA(HWND_FramesInput, str_frames, sizeof(str_frames));
+    GetWindowTextA(HWND_MacInput, str_mac, sizeof(str_mac));
+
+    p.tid = AsciiToInt_dec16(str_tid, sizeof(str_tid) - 1);
+    p.sid = AsciiToInt_dec16(str_sid, sizeof(str_sid) - 1);
     p.seed = AsciiToInt_hex32(str_seed);
     p.frames = (u32)AsciiToInt_dec32(str_frames);
+
+    u64 mac = AsciiToInt_hex64(str_mac);
+    //todo: for loop? this already works currently
+    p.mac[0] = (mac >> 40) & 0xFF;
+    p.mac[1] = (mac >> 32) & 0xFF;
+    p.mac[2] = (mac >> 24) & 0xFF;
+    p.mac[3] = (mac >> 16) & 0xFF;
+    p.mac[4] = (mac >> 8) & 0xFF;
+    p.mac[5] = (mac >> 0) & 0xFF;
 
     APPSTATUS err = IsValidProfile(&p);
     if (err != PROFILE_OK) { return err; }
@@ -134,9 +148,9 @@ static APPSTATUS GetProfileFromWindows(void) {
     return PROFILE_OK;
 }
 
-static void GetProfileRecapString(PROFILE* p, u8 str[256]) {
+static void GetProfileRecapString(PROFILE* p, u8 str[512]) {
     /* Format a string with all the profile info */
-    sprintf(str, "Version: %s\nLanguage: %s\nTID: %05d\nSID: %05d\nWild: %s\nSeed: 0x%08X\nFrames: %u\nASLR: %u (0x%08X)\n\nFilters:\nSpecies: %s\nMove: %s\nItem: %s",
+    sprintf(str, "Version: %s\nLanguage: %s\nTID: %05d\nSID: %05d\nWild: %s\nSeed: 0x%08X\nFrames: %u\nASLR: %u (0x%08X)\nMAC Address: %02X-%02X-%02X-%02X-%02X-%02X\n\nFilters:\nSpecies: %s\nMove: %s\nItem: %s",
         Versions[p->version],
         Languages[p->language],
         p->tid,
@@ -146,6 +160,7 @@ static void GetProfileRecapString(PROFILE* p, u8 str[256]) {
         p->frames,
         p->aslr,
         Aslrs[p->language][p->version >> 1][p->aslr], //grouped version
+        p->mac[0], p->mac[1], p->mac[2], p->mac[3], p->mac[4], p->mac[5],
         Pokelist[p->filter_species],
         Moves[p->filter_move],
         Items[p->filter_item]
@@ -163,6 +178,9 @@ static void SetWindowsFromProfile(PROFILE* p) {
     SendMessageA(HWND_VersionInput, CB_SETCURSEL, p->version, 0);
     SendMessageA(HWND_LanguageInput, CB_SETCURSEL, GetLanguageActualIndex(p->language), 0);
     SendMessageA(HWND_WildInput, CB_SETCURSEL, p->wild, 0);
+    u8 str_mac[MAC_DIGITS_HEX_MAX + 1] = { 0 };
+    sprintf(str_mac, "%02X%02X%02X%02X%02X%02X", p->mac[0], p->mac[1], p->mac[2], p->mac[3], p->mac[4], p->mac[5]);
+    SetWindowTextA(HWND_MacInput, str_mac);
     SetWindowTextA(HWND_ItemFilterInput, Items[p->filter_item]);
     SetWindowTextA(HWND_MoveFilterInput, Moves[p->filter_move]);
     SetWindowTextA(HWND_SpeciesFilterInput, Pokelist[p->filter_species]);
@@ -204,13 +222,13 @@ static APPSTATUS ConfirmLoadProfile(void) {
 
     if (err != APP_RESUME) {
         if (err == APP_ERR_PROFILE_EMPTY) {
-            MessageBoxA(HWND_AppMain, "Profile loaded was empty.", "Notice", MB_OK | MB_ICONINFORMATION);
+            MessageBoxA(HWND_AppMain, "Profile loaded was empty.", MBL_NOTICE, MB_OK | MB_ICONINFORMATION);
         }
         else if (err > PROFILE_OK) {
             ErrorMessageBox_BadProfile(err);
         }
         else {
-            MessageBoxA(HWND_AppMain, "No profile loaded.\nYou may want to create and save a new profile.", "Notice", MB_OK | MB_ICONINFORMATION);
+            MessageBoxA(HWND_AppMain, "No profile loaded.\nYou may want to create and save a new profile.", MBL_NOTICE, MB_OK | MB_ICONINFORMATION);
         }
         return APP_RESUME;
     }
@@ -230,10 +248,10 @@ static APPSTATUS ConfirmSaveProfile(void) {
     u8 slot = GetProfileSlot();
     if (slot == 255) { return APP_ERR_PROFILE_SLOT; }
 
-    u8 str_recap[256];
+    u8 str_recap[512];
     GetProfileRecapString(&PROFILE_Current, str_recap);
     strcat(str_recap, "\n\nSave a new profile with these search parameters?");
-    int answer = MessageBoxA(HWND_AppMain, str_recap, "ConfirmSaveProfile", MB_YESNOCANCEL | MB_ICONQUESTION);
+    int answer = MessageBoxA(HWND_AppMain, str_recap, MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONQUESTION);
     if (answer == IDYES) {
         APPSTATUS empty = LoadProfileFromSlot(&PROFILE_Load, slot);
         if (empty == APP_ERR_PROFILE_EMPTY) {
@@ -241,7 +259,7 @@ static APPSTATUS ConfirmSaveProfile(void) {
             SetProfileSlotState(slot);
         }
         else {
-            int ans = MessageBoxA(HWND_AppMain, "This profile slot is already taken, do you want to overwrite it?", "Profile slot taken", MB_YESNO | MB_ICONQUESTION);
+            int ans = MessageBoxA(HWND_AppMain, "This profile slot is already taken, do you want to overwrite it?", MBL_CONFIRM, MB_YESNO | MB_ICONQUESTION);
             if (ans == IDYES) {
                 SaveProfileToSlot(slot);
                 SetProfileSlotState(slot);
@@ -269,7 +287,7 @@ static void ResetSearchParameters(void) {
 
 static APPSTATUS ConfirmResetSearchParameters(void) {
     /* Create YESNOCANCEL Message box and process user answer */
-    int answer = MessageBoxA(HWND_AppMain, "Reset every search parameters?", "Notice", MB_YESNOCANCEL | MB_ICONWARNING);
+    int answer = MessageBoxA(HWND_AppMain, "Reset every search parameters?", MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONWARNING);
     if (answer == IDYES) { ResetSearchParameters(); }
     return APP_RESUME;
 }
@@ -449,9 +467,9 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
             u8 tmp_filename[PATH_REL_LENGTH_MAX] = { 0 };
             sprintf(tmp_filename, ".results/RESULTS_tmp_%u", i);
-            FILE* ftmp = fopen(tmp_filename, "wb+");
+            FILE* f_tmp = fopen(tmp_filename, "wb+");
 
-            if (ftmp == NULL) { return APP_ERR_OPEN_FILE; }
+            if (f_tmp == NULL) { return APP_ERR_OPEN_FILE; }
 
             u32 seed = SearchDataCurrent.seed[i];
 
@@ -565,23 +583,27 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 /* If the Bad Egg flag is set or the Fast Mode flags aren't set, the PKMN will become a Bad Egg */
                 if ((seven.data[seven.pos_c][2] & 7) != 3) { continue; }
 
+                SearchDataCurrent.progress[i] = frame; //will update progress bar (placed here to avoid slowing down the search while still updating frequently)
+
                 /* Get the new PID of the wild and deduce its new block order */
                 wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16);
                 SetBlocks(&wild);
 
-                /* Get final species, item, ability and friendship to hatch - array out of bounds method */
+                /* Prepare result data */
                 RESULTDATA rd = { 0 };
 
                 rd.pid = wild.pid;
                 rd.seed = seed;
 
+                /* Get final species, item, ability and friendship to hatch - array out of bounds method */
                 rd.species = seven.data[1 + wild.pos_a][STACK_OFFSET];
                 rd.item = seven.data[1 + wild.pos_a][STACK_OFFSET + 1];
                 rd.friendship = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] & 0xff;
                 rd.ability = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] >> 8;
 
-                /* Valid species, user-defined species and user-defined item filters */
+                /* Valid species */
                 if (rd.species >= SPECIES_MAX) { continue; }
+                /* Species and item filters */
                 if (PROFILE_Current.filter_species != 0 && rd.species != PROFILE_Current.filter_species) { continue; }
                 if (PROFILE_Current.filter_item != 0 && rd.item != PROFILE_Current.filter_item) { continue; }
 
@@ -610,15 +632,14 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 u32 f_hp_max = seven.cond[BLOCK_SIZE + STACK_OFFSET + 4];
                 rd.catch = (3 * f_hp_max / 2 < f_hp) ? 1 : 0;
 
-                fwrite(&rd, sizeof(rd), 1, ftmp); //Write to temp results file
+                fwrite(&rd, sizeof(rd), 1, f_tmp); //Write to temp results file
                 AddResultToList(&rd, SearchDataCurrent.results); //add to results list window
 
                 SearchDataCurrent.results++;
-                SearchDataCurrent.progress[i] = frame;
             }
-
+            /* Search end */
             AuthorizeSearchThreads[i] = FALSE;
-            fclose(ftmp);
+            fclose(f_tmp);
         }
     }
 }
@@ -673,7 +694,7 @@ static APPSTATUS GenerateResultsTextFile(void) {
 
     //TODO: too many calls to fprintf?
     /* Header */
-    fprintf(fp, "Motor v%s\nThis results file was generated automatically.\n\n[PROFILE]\n\n", MOTOR_VERSION);
+    fprintf(fp, "%s\nThis results file was generated automatically.\n\n[PROFILE]\n\n", MOTOR_VERSION);
     /* Profile */
     fprintf(fp, "Version         %s\n", Versions[p.version]);
     fprintf(fp, "Language        %s\n", Languages[p.language]);
@@ -816,7 +837,8 @@ static APPSTATUS MotorSearch(void) {
     clock_t end = clock(); //timer ends
     SearchDataCurrent.time = ((double)end - (double)begin) / CLOCKS_PER_SEC; //calculate time elapsed since start of search
 
-    CompileResultsToFile(); //TODO: use return value
+    APPSTATUS err = CompileResultsToFile();
+    if (err != APP_RESUME) { return err; }
 
     return APP_RESUME;
 }
@@ -854,12 +876,12 @@ static DWORD WINAPI MotorThreadProc(LPVOID param) {
 
             u8 str[5 * STRING_LENGTH_MAX] = { 0 };
             sprintf(str, "%u results found in %.2f seconds.\nSaved to \"%s\".", SearchDataCurrent.results, SearchDataCurrent.time, SearchDataCurrent.path);
-            MessageBoxA(HWND_AppMain, str, "Search complete", MB_OK); //
+            MessageBoxA(HWND_AppMain, str, MBL_NOTICE, MB_OK); //
 
             SendMessageA(HWND_ProgressBar, PBM_SETPOS, 0, 0); //progress bar empty
 
             if (LoadResultsFromFile(SearchDataCurrent.path) != APP_RESUME) {
-                MessageBoxA(HWND_AppMain, "Couln't load results file.", "ERROR", MB_OK | MB_ICONERROR);
+                MessageBoxA(HWND_AppMain, "Couln't load results file.", MBL_ERROR, MB_OK | MB_ICONERROR);
             }
 
             PauseSearch = FALSE;
@@ -880,11 +902,11 @@ static APPSTATUS ConfirmSearchLaunch(void) {
         return APP_RESUME;
     }
 
-    u8 str_recap[256];
+    u8 str_recap[512];
     GetProfileRecapString(&PROFILE_Current, str_recap);
     strcat(str_recap, "\n\nLaunch a search with these parameters?");
 
-    int answer = MessageBoxA(HWND_AppMain, str_recap, "ConfirmSearchLaunch", MB_YESNOCANCEL | MB_ICONQUESTION);
+    int answer = MessageBoxA(HWND_AppMain, str_recap, MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONQUESTION);
     if (answer == IDYES) {
         AuthorizeSearch = TRUE;
     }
@@ -895,7 +917,7 @@ static APPSTATUS GetResultsPath(u8 index, u8 path[PATH_REL_LENGTH_MAX]) {
     /* Get the relative path of the results file pointed to by the index of the selected item */
     WIN32_FIND_DATAA wfd = { 0 };
     int i = 0;
-    HANDLE file = FindFirstFileA(".results/RESULTS_*.mtr", &wfd);
+    HANDLE file = FindFirstFileA(ResultsFileFilter, &wfd);
 
     if (file == INVALID_HANDLE_VALUE) { return APP_ERR_OPEN_FILE; } //not really an error, just no file in the directory
 
@@ -920,7 +942,7 @@ static APPSTATUS ListResultsFiles(void) {
 
     WIN32_FIND_DATAA wfd = { 0 };
     int i = 0;
-    HANDLE file = FindFirstFileA(".results/RESULTS_*.mtr", &wfd);
+    HANDLE file = FindFirstFileA(ResultsFileFilter, &wfd);
 
     if (file == INVALID_HANDLE_VALUE) { return APP_ERR_OPEN_FILE; } //not really an error, just no file in the directory
 
@@ -1006,19 +1028,19 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         {
         case EN_SETFOCUS:
         {
-            //TODO: fix, works only with filters and TAB?
-            //SendMessageA((HWND)lParam, EM_SETSEL, 0, -1); //select all chars in an edit control (TAB only)
+            //TODO: fix, only works with TAB
+            SendMessageA((HWND)lParam, EM_SETSEL, 0, -1); //select all chars in an edit control (TAB only)
             break;
         }
         case EN_KILLFOCUS:
         {
-            SendMessageA((HWND)lParam, EM_SETSEL, 0, -1); //select all chars in an edit control (TAB only)
             if (AuthorizeSearch) { break; } //search is running, don't process commands below
-            SetTextInput_dec16(HWND_TidInput);
-            SetTextInput_dec16(HWND_SidInput);
+            SetTextInput_dec16(HWND_TidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
+            SetTextInput_dec16(HWND_SidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
             SetTextInput_hex32(HWND_SeedInput);
             SetTextInput_dec32(HWND_FramesInput);
             SetTextInput_aslr(HWND_AslrInput);
+            SetTextInput_mac(HWND_MacInput);
             SetFilterInput(HWND_SpeciesFilterInput, Pokelist, SPECIES_MAX, &PROFILE_Current.filter_species);
             SetFilterInput(HWND_ItemFilterInput, Items, ITEMS_MAX, &PROFILE_Current.filter_item);
             SetFilterInput(HWND_MoveFilterInput, Moves, MOVES_MAX, &PROFILE_Current.filter_move);
@@ -1026,6 +1048,13 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         case BN_CLICKED:
         {
+
+            if (wParam & ID_PROFILE_SLOT_BUTTON) {
+                if (AuthorizeSearch) { return 0; } //search is running, don't process commands below
+                SetProfileSlotState(wParam - ID_PROFILE_SLOT_BUTTON);
+                return 0;
+            }
+
             switch (wParam) //control id
             {
             case ID_SEARCH_BUTTON:
@@ -1043,17 +1072,6 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             case ID_RESET_BUTTON:
                 if (AuthorizeSearch) { break; } //search is running, don't process commands below
                 ConfirmResetSearchParameters();
-                break;
-            case ID_PROFILE_SLOT_BUTTON + 0:
-            case ID_PROFILE_SLOT_BUTTON + 1:
-            case ID_PROFILE_SLOT_BUTTON + 2:
-            case ID_PROFILE_SLOT_BUTTON + 3:
-            case ID_PROFILE_SLOT_BUTTON + 4:
-            case ID_PROFILE_SLOT_BUTTON + 5:
-            case ID_PROFILE_SLOT_BUTTON + 6:
-            case ID_PROFILE_SLOT_BUTTON + 7:
-                if (AuthorizeSearch) { break; } //search is running, don't process commands below
-                SetProfileSlotState(wParam - ID_PROFILE_SLOT_BUTTON);
                 break;
             }
             break;
@@ -1109,25 +1127,18 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
         LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
 
-        switch (wParam) {
-        case ID_PROFILE_SLOT_BUTTON + 0:
-        case ID_PROFILE_SLOT_BUTTON + 1:
-        case ID_PROFILE_SLOT_BUTTON + 2:
-        case ID_PROFILE_SLOT_BUTTON + 3:
-        case ID_PROFILE_SLOT_BUTTON + 4:
-        case ID_PROFILE_SLOT_BUTTON + 5:
-        case ID_PROFILE_SLOT_BUTTON + 6:
-        case ID_PROFILE_SLOT_BUTTON + 7:
-        {
+        if (wParam & ID_PROFILE_SLOT_BUTTON) {
             u8 label[3] = { 0 };
             sprintf(label, "P%u", wParam - ID_PROFILE_SLOT_BUTTON + 1);
-            int color = ((ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & 0xf0) == PSS_ACTIVE) ? MOTOR_COLOR_PUMP : MOTOR_COLOR_TEAL;
+            int color = (ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & PSS_ACTIVE) ? MOTOR_COLOR_PUMP : MOTOR_COLOR_TEAL;
             /* "invert" button aspect */
-            if ((ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & 0x0f) == PSS_EMPTY) {
+            if (!(ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & PSS_TAKEN)) {
                 lpdis->itemState = ODS_INVERT;
             }
             return DrawButton(lpdis, color, label, sizeof(label) - 1);
         }
+
+        switch (wParam) {
         case ID_LOAD_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_TEAL, "LOAD", sizeof("LOAD") - 1);
         case ID_SAVE_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_TEAL, "SAVE", sizeof("SAVE") - 1);
         case ID_RESET_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_PUMP, "RESET", sizeof("RESET") - 1);
@@ -1231,7 +1242,7 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
             GetResultsPath(idx, path);
             ResultsMode = MODE_RESULTS;
             if (LoadResultsFromFile(path) != APP_RESUME) {
-                MessageBoxA(HWND_AppMain, "Couln't load results file.", "Error", MB_OK | MB_ICONERROR);
+                MessageBoxA(HWND_AppMain, "Couln't load results file.", MBL_ERROR, MB_OK | MB_ICONERROR);
             }
             break;
         }
@@ -1247,10 +1258,21 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
             {
                 int idx = SendMessageA(HWND_ResultsList, LB_GETCURSEL, 0, 0);
                 if (idx == LB_ERR) { break; } //no item selected
-                EditCopy();
+                CopySeedToClipboard(); //keep, in case you want to send to Pokéfinder or do something else with it
+                /* Get year and calc seed to time */
+                //todo: filepath
+                u8 str_year[YEAR_DIGITS_DEC_MAX + 1] = { 0 };
+                GetWindowTextA(HWND_YearFilter, str_year, sizeof(str_year));
+                u8 year = AsciiToInt_dec16(str_year, sizeof(str_year) - 1) - YEAR_VALUE_MIN; //from 2000~2099 to 0~99
+                SeedToTime(ReversedSeedCurrent.seed, &PROFILE_Load, year);
                 break;
             }
             }
+        }
+        case EN_KILLFOCUS:
+        {
+            SetTextInput_dec16(HWND_YearFilter, YEAR_VALUE_MIN, YEAR_VALUE_MAX, YEAR_DIGITS_DEC_MAX);
+            break;
         }
         }
 
@@ -1280,13 +1302,37 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         return (LRESULT)HBRUSH_Dark; //need to return handle to a brush
     }
 
+    case WM_CTLCOLOREDIT:
+    {
+        /* Input windows esketit */
+        HWND hwnd = (HWND)lParam;
+        HDC hdc = (HDC)wParam;
+        RECT rct = { 0 };
+
+        //HWND_YearFilter only
+
+        SelectObject(hdc, HPEN_Pump_h);
+        SetTextColor(hdc, MOTOR_COLOR_PUMP_H);
+
+        SelectObject(hdc, HBRUSH_Dark);
+        Edit_GetRect(hwnd, &rct);
+
+        RoundRect(hdc, -1, -1, TEXT_INPUT_WIDTH + 1, TEXT_INPUT_HEIGHT + 1, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S); //edit
+
+        SelectObject(hdc, myFont);
+        SetBkColor(hdc, MOTOR_COLOR_DARK);
+        return (LRESULT)HBRUSH_Dark; //need to return handle to brush for use
+    }
+
     case WM_DRAWITEM:
     {
         LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
         switch (wParam)
         {
         case ID_RESULTS_HEADER: return DrawButton(lpdis, MOTOR_COLOR_PUMP, "RESULTS", sizeof("RESULTS") - 1);
-        case ID_COPY_SEED_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_TEAL, "COPY SEED TO CLIPBOARD", sizeof("COPY SEED TO CLIPBOARD") - 1);
+        case ID_COPY_SEED_BUTTON:
+            //IDEA: alternative when MODE_FILE, allow deleting results file
+            return DrawButton(lpdis, MOTOR_COLOR_TEAL, "SEED TO TIME", sizeof("SEED TO TIME") - 1);
         case ID_RESULTS_LIST: return DrawResultsList(lpdis);
         }
         return TRUE;
@@ -1367,7 +1413,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     HWND_AppMain = CreateWindowA(
         WC_AppMain.lpszClassName,
-        "Motor v2.0.0",
+        MOTOR_VERSION,
         WS_VISIBLE | WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -1484,14 +1530,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     HWND_CopyButton = CreateWindowA(
         "BUTTON", //system class
-        "COPY SEED TO CLIPBOARD",
+        "SEED TO TIME",
         WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
         0,
         DETAILS_HEIGHT - BUTTON_WINDOW_HEIGHT,
-        DETAILS_WIDTH,
+        SEEDTIME_WIDTH,
         BUTTON_WINDOW_HEIGHT,
         HWND_ResultDetails,
         (HMENU)ID_COPY_SEED_BUTTON,
+        HINSTANCE_DetailsWindow,
+        NULL
+    );
+
+    //todo: dimensions and placement
+    HWND_YearFilter = CreateWindowA(
+        "EDIT", //system class
+        "YEAR",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        SEEDTIME_WIDTH + APP_WINDOW_PADDING_S,
+        DETAILS_HEIGHT - BUTTON_WINDOW_HEIGHT,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_ResultDetails,
+        (HMENU)ID_YEAR_FILTER,
         HINSTANCE_DetailsWindow,
         NULL
     );
@@ -1661,6 +1722,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         NULL
     );
 
+    HWND_MacInput = CreateWindowA(
+        "EDIT", //system class
+        "MAC",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_UPPERCASE | ES_CENTER,
+        TEXT_INPUT_WIDTH + 2 * APP_WINDOW_PADDING_S,
+        4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_SEARCH_INPUT,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
     HWND_SpeciesFilterInput = CreateWindowA(
         "EDIT", //system class
         "SPECIES",
@@ -1707,8 +1782,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         "BUTTON", //system class
         "RESET",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
-        TEXT_INPUT_WIDTH + 2 * APP_WINDOW_PADDING_S,
-        4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        5 * TEXT_INPUT_HEIGHT + 6 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         RESET_BUTTON_HEIGHT,
         HWND_SearchParameters,
@@ -1777,6 +1852,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     SendMessageA(HWND_SeedInput, EM_SETLIMITTEXT, U32_DIGITS_HEX_MAX, 0);
     SendMessageA(HWND_FramesInput, EM_SETLIMITTEXT, U32_DIGITS_DEC_MAX, 0);
     SendMessageA(HWND_AslrInput, EM_SETLIMITTEXT, ASLR_DIGITS_DEC_MAX, 0);
+    SendMessageA(HWND_MacInput, EM_SETLIMITTEXT, MAC_DIGITS_HEX_MAX, 0);
+    SendMessageA(HWND_YearFilter, EM_SETLIMITTEXT, 4, 0); //2000->2099
 
     /* Progress bar init */
     SendMessageA(HWND_ProgressBar, PBM_SETBARCOLOR, 0, MOTOR_COLOR_TEAL);
@@ -1786,15 +1863,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     /* Populate combo boxes */
     for (u8 i = 0; i < LANGUAGES_ACT_MAX; i++) { SendMessageA(HWND_LanguageInput, CB_ADDSTRING, 0, (LPARAM)LanguagesActual[i]); }
     for (u8 i = 0; i < VERSIONS_MAX; i++) { SendMessageA(HWND_VersionInput, CB_ADDSTRING, 0, (LPARAM)Versions[i]); }
-    for (u8 i = 0; i < OG_WILDS_MAX; i++) { SendMessageA(HWND_WildInput, CB_ADDSTRING, 0, (LPARAM)OgWilds[VERSION_DIAMOND][i]); }
+    for (u8 i = 0; i < OG_WILDS_MAX; i++) { SendMessageA(HWND_WildInput, CB_ADDSTRING, 0, (LPARAM)OgWilds[VERSION_DIAMOND][i]); } //TODO: remove last element if version is Platinum
 
     /* Create .results and .profiles directories if they don't already exist */
     SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES) };
     CreateDirectoryA(ResultsDirectory, &sa);
     CreateDirectoryA(ProfilesDirectory, &sa);
     SetFileAttributesA(ProfilesDirectory, FILE_ATTRIBUTE_HIDDEN); //.profiles is hidden
-    /* Check if the PROFILES file exists, if not zero-initialize it */
-    CheckProfileFileSize();
+    CheckProfileFileSize(); //Check if the PROFILES file exists, if not zero-initialize it
     for (u8 i = PROFILE_SLOTS_MAX; i > 0; i--) { SetProfileSlotState(i - 1); } //init slots draw, slot 0 is active
 
     /* Tab */
@@ -1825,7 +1901,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     {
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
-    };
+    }
 
     FreeEsketit(); //useless?
 
