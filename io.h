@@ -1,5 +1,5 @@
 // io.h
-// Contains functions relative to FILE IO
+// Contains functions relative to file input/output
 
 #pragma once
 #include "common.h"
@@ -10,11 +10,20 @@
 
 const u8 ResultsDirectory[] = ".results";
 const u8 ProfilesDirectory[] = ".profiles";
-const u8 ResultFilePrefix[] = "RESULTS_";
+const u8 ResultFilePrefix[] = "RESULTS_"; //unused
 const u8 ProfileFilePrefix[] = "PROFILE_"; //unused
 const u8 ResultFileExtension[] = ".mtr"; //MoTorResult
 const u8 ProfileFileExtension[] = ".mtp"; //MoTorProfile, unused
 const u8 ProfilesPath[] = ".profiles/PROFILES";
+const u8 ResultsFileFilter[] = ".results/RESULTS_*.mtr";
+
+//#define RESULTS_DIR               (".results")
+//#define PROFILE_DIR               (".profiles")
+//#define RESULTS_FILE_PREFIX       ("RESULTS_")
+//#define PROFILE_FILE_PREFIX       ("PROFILE_")
+//#define RESULTS_FILE_EXTENSION    (".mtr")
+//#define PROFILE_PATH              (".profiles/PROFILES")
+//#define RESULTS_FILE_FILTER       (RESULTS_DIR ## "/" ## RESULTS_FILE_PREFIX ## "*" ## RESULTS_FILE_EXTENSION)
 
 /* Functions */
 
@@ -68,7 +77,7 @@ static int GetResultsCount(FILE* fp, BOOL hasProfileHeader) {
     return r;
 }
 
-static void GetProfileFromResultsFile(PROFILE* p, FILE* fp){
-    /*  */
+static void GetProfileFromResultsFile(PROFILE* p, FILE* fp) {
+    /* Only call when file is open at address 0 */
     fread(p, sizeof(PROFILE), 1, fp);
 }
