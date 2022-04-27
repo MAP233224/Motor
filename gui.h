@@ -46,7 +46,7 @@
 #define DETAILS_X                       (SEARCH_RESULTS_X + SEARCH_RESULTS_WIDTH + APP_WINDOW_PADDING_M)
 #define DETAILS_Y                       (APP_WINDOW_PADDING_M)
 /* Dimensions - Seed to time button and year input field */
-#define SEEDTIME_WIDTH                  (DETAILS_WIDTH - TEXT_INPUT_WIDTH - 2 * APP_WINDOW_PADDING_S)
+#define SEEDTIME_WIDTH                  (DETAILS_WIDTH - TEXT_INPUT_WIDTH - 3 * APP_WINDOW_PADDING_S)
 /* Profile slot buttons */
 #define PROFILE_SLOT_BUTTON_WIDTH       (26)
 
@@ -75,6 +75,7 @@ enum {
     ID_SPECIES_FILTER,
     ID_ITEM_FILTER,
     ID_MOVE_FILTER,
+    ID_ABILITY_FILTER,
     ID_SAVE_BUTTON,
     ID_LOAD_BUTTON,
     ID_RESET_BUTTON,
@@ -84,9 +85,9 @@ enum {
     ID_PROFILE_SLOT_BUTTON = 0x1000, //for bitmask
 
     ID_RESULTS = 200,
-    ID_RESULTS_HEADER,
+    ID_RESULTS_BUTTON,
     ID_RESULTS_LIST,
-    ID_COPY_SEED_BUTTON,
+    ID_SEED_TO_TIME_BUTTON,
     ID_YEAR_FILTER,
     ID_DETAILS,
     ID_SEARCH_PROGRESS_BAR
@@ -129,6 +130,7 @@ DeclareWindowAndClass(MacInput)
 DeclareWindowAndClass(SpeciesFilterInput)
 DeclareWindowAndClass(MoveFilterInput)
 DeclareWindowAndClass(ItemFilterInput)
+DeclareWindowAndClass(AbilityFilterInput)
 DeclareWindowAndClass(ResetSearchParams)
 DeclareWindowAndClass(LoadSearchParams)
 DeclareWindowAndClass(SaveSearchParams)
