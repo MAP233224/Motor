@@ -88,10 +88,11 @@ enum {
     PROFILE_BAD_LANGUAGE,
     PROFILE_BAD_VERSION,
     PROFILE_BAD_WILD,
-    PROFILE_BAD_MAC
+    PROFILE_BAD_MAC,
+    PROFILE_BAD_FILTER_ABILITY
 };
 
-const u8 PROFILE_ErrorCodes[12][STRING_LENGTH_MAX] = {
+const u8 PROFILE_ErrorCodes[14][STRING_LENGTH_MAX] = {
     "OK",
     "FRAMES",
     "SEED",
@@ -103,7 +104,9 @@ const u8 PROFILE_ErrorCodes[12][STRING_LENGTH_MAX] = {
     "ASLR",
     "LANGUAGE",
     "VERSION",
-    "WILD"
+    "WILD",
+    "MAC ADDRESS",
+    "FILTER_ABILITY"
 };
 
 //RESULTDATA should be in motor.h but it needs to be used by io.h
@@ -137,7 +140,8 @@ typedef struct {
     u8 version; //game version index
     u8 wild; //original wild target to be corrupted
     u8 mac[6]; //mac address
-    u8 padding[4];
+    u8 filter_ability;
+    u8 padding[3];
     //there's space for an IV filter (4 bytes)
     //Size: 32 bytes, padded to be the same size as RESULTDATA on purpose
 } PROFILE;
@@ -216,7 +220,7 @@ static u8 HexLetterToNumber(u8 n) {
 
 static u32 BCD(u32 val) {
     /* Binary Coded Decimal for values under 100 */
-    //todo: macro?
+    //better optimized when u32 instead of u8
     return val + 6 * (val / 10);
 }
 
@@ -233,9 +237,8 @@ static u64 AsciiToInt_hex64(u8 b[MAC_DIGITS_HEX_MAX]) {
     /* Converts a buffer of 8 chars in hex format to an int */
     u64 r = HexLetterToNumber(b[0]);
     for (u8 i = 1; i < MAC_DIGITS_HEX_MAX; i++) {
-        r = r * 16 + HexLetterToNumber(b[i]);// - 48;
+        r = r * 16 + HexLetterToNumber(b[i]);
     }
-    //return r;
     return r - 0x3333333333330ULL;
 }
 
