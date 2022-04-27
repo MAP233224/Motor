@@ -9,6 +9,7 @@
 
 #define BUFFER_SIZE 8
 #define DIGEST_SIZE 16
+#define HOUR_MAX (23)
 #define MONTHS_MAX (12)
 #define WEEKDAYS_MAX (7)
 #define BOOT_TIME (90) //frames of white screen: 86 mininum, 90 max, to be calibrated
@@ -17,6 +18,7 @@ enum { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY }; //japan
 
 const u8 DaysInMonth[MONTHS_MAX + 1] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 const u8 MagicMonth[MONTHS_MAX] = { 0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4 }; //magic month array
+const u32 NDS_Keys[VERSIONS_MAX - 1] = { 0x000003FF, 0x00002FFF };
 
 /* Smallest possible value found at the base sampling address */
 //todo: fill for plat
@@ -316,24 +318,14 @@ static u32 GetRTCLow(DATETIME* dt) {
 
 static u32 GetRTCHigh(DATETIME* dt) {
     /* Format hour, minute, second (0x00SSMMHH) */
-    return (BCD(dt->second) << 16) | (BCD(dt->minute) << 8) | (BCD(dt->hour));
+    dt->hour = BCD(dt->hour) + 0x40 * (dt->hour > 11); //add 0x40 if PM
+    return (BCD(dt->second) << 16) | (BCD(dt->minute) << 8) | dt->hour;
 }
 
-static u32 MD5GetHeapOffset(PROFILE* pf, DATETIME* dt) {
+static u32 MD5GetHeapOffset(PROFILE* pf, DATETIME* dt, u32 buffer[BUFFER_SIZE]) {
     /* From MAC address and date/time, calculate the MD5 of a buffer and the heap offset of the digest */
 
-    u32 buffer[BUFFER_SIZE] = {
-        0x00930003, //constant
-        (*(u16*)(pf->mac + 4)) << 16, //last two u8 of MAC address in a u16, << 16
-        0x06000000 ^ (*(u32*)pf->mac), //first 4 u8 of MAC address in a u32
-        GetRTCLow(dt), //rtc_low (date)
-        GetRTCHigh(dt), //rtc_high (time)
-        0x00000000, //constant
-        0x00000000, //constant
-        0x000003ff, //constant
-    };
-
-    //debug
+    //debug print buffer
     for (int i = 0; i < BUFFER_SIZE; i++)
     {
         DLOG("b[%u] = 0x%08X\n", i, buffer[i]);
@@ -343,7 +335,8 @@ static u32 MD5GetHeapOffset(PROFILE* pf, DATETIME* dt) {
     MD5_CTX ctx = { 0 };
     u8 digest[DIGEST_SIZE] = { 0 };
     MD5Init(&ctx);
-    MD5Update(&ctx, (u8*)buffer, sizeof(buffer));
+    //MD5Update(&ctx, (u8*)buffer, sizeof(buffer));
+    MD5Update(&ctx, (u8*)buffer, sizeof(buffer[0]) * BUFFER_SIZE);
     MD5Final(digest, &ctx);
     /* Get offset from digest */
     u32 offset = 0;
@@ -369,39 +362,52 @@ static u8 GetAslrOffset(PROFILE* pf) {
     return Aslrs[pf->language][pf->version >> 1][pf->aslr] - AslrMin[pf->language][pf->version >> 1];
 }
 
-static BOOL CheckRollBack(DATETIME* dt, int minute, int second, int second_dif) {
-    /* Check clock roll back: second, minute, hour */
+static void CheckRollBack(DATETIME* dt, int minute, int second, int second_dif) {
+    /* Check clock roll back for seconds and minutes */
     if (second - second_dif < 0)
     {
         dt->second = 60 + second - second_dif;
-        if (minute == 0)
-        {
-            if (dt->hour == 0) { return FALSE; }
-            dt->minute = 59;
-            dt->hour--;
-        }
-        else
-        {
-            dt->minute = minute - 1;
-        }
+        dt->minute = minute ? minute - 1 : 59;
     }
     else
     {
         dt->second = second - second_dif;
         dt->minute = minute;
     }
-    return TRUE;
 }
 
 static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
     /* Get a list of all possible time/date setup depending on seed and mac address (rng + aslr manip) */
 
-    FILE* fp = fopen("SeedToTime.txt", "w+"); //todo: filepath, .results/?
+    u8 filepath[PATH_REL_LENGTH_MAX] = { 0 };
+    sprintf(filepath, ".results/%08X_TIME.txt", seed);
+    FILE* fp = fopen(filepath, "w+");
+    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
 
     fprintf(fp, "Seed: 0x%08X\n", seed);
     fprintf(fp, "Year: 20%02u\n", year);
-    fprintf(fp, "MAC ADDRESS: %02X-%02X-%02X-%02X-%02X-%02X\n\n", pf->mac[0], pf->mac[1], pf->mac[2], pf->mac[3], pf->mac[4], pf->mac[5]);
-    fprintf(fp, "dd/mm/yyyy hh:mm:ss delay\n");
+    fprintf(fp, "ASLR: %02u (0x%08X)\n", pf->aslr, Aslrs[pf->language][pf->version][pf->aslr]);
+    fprintf(fp, "MAC Address: %02X-%02X-%02X-%02X-%02X-%02X\n\n", pf->mac[0], pf->mac[1], pf->mac[2], pf->mac[3], pf->mac[4], pf->mac[5]);
+    fprintf(fp, "dd/mm/yyyy (hh:mm:ss) hh:mm:ss delay\n");
+
+    //buffer[0] = (vcount << 16) | tick_low
+    //vcount could be: 
+    //0x0093 (bizhawk no firmware/bios, dp en, fr, sp)
+    //0x00ED (bizhawk with firmware/bios, dp en)
+    //0x0000 (bizhawk no firmware/bios, plat fr)
+    //0x0083 (desmume, dp en, it)
+    //0x0080 (desmume, dp jp)
+
+    u32 buffer[BUFFER_SIZE] = {
+        0x00ed0003, //constant?  //0x00930003
+        (*(u16*)(pf->mac + 4)) << 16, //last two u8 of MAC address in a u16, << 16
+        0x06000000 ^ (*(u32*)pf->mac), //first 4 u8 of MAC address in a u32
+        0x00000000, //rtc_low (date)
+        0x00000000, //rtc_high (time)
+        0x00000000, //constant
+        0x00000000, //constant
+        NDS_Keys[pf->version >> 1],
+    };
 
     DATETIME dt = { 0 };
 
@@ -413,13 +419,20 @@ static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
     u8 cd = (seed >> 16) & 0xFF;
     u32 efgh = seed & 0xFFFF;
 
-    // Allow overflow seeds by setting hour to 23 and adjusting for delay
-    dt.hour = cd > 23 ? 23 : cd;
-    dt.delay = cd > 23 ? (efgh - year) + ((cd - 23) * 0x10000) : (efgh - year);
-    //dt.delay = cd > 23 ? efgh + ((cd - 23) * 0x10000) : efgh; //if year == 0
+    if (cd > HOUR_MAX)
+    {
+        dt.hour = HOUR_MAX;
+        dt.delay = efgh - year + ((cd - HOUR_MAX) << 16);
+    }
+    else
+    {
+        dt.hour = cd;
+        dt.delay = efgh - year;
+    }
+
     dt.year = year;
 
-    int second_dif = (dt.delay + BOOT_TIME) / 60; //
+    int second_dif = (dt.delay + BOOT_TIME) / 60; // difference between the time the game boots (ASLR manip) and the time you hit the seed (RNG manip)
 
     for (int month = 1; month <= 12; month++)
     {
@@ -433,27 +446,28 @@ static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
                 {
                     if (ab == ((month * day + minute + second) & 0xFF))
                     {
-                        if (!CheckRollBack(&dt, minute, second, second_dif)) //the hour couldn't roll back
-                        {
-                            DLOG("Hour couldn't roll back: %02u:%02u:%02u\n", dt.hour, minute, second);
-                            continue;
-                        }
+                        /* Found a matching seed, check rtc and prepare buffer */
+                        CheckRollBack(&dt, minute, second, second_dif);
                         dt.month = month;
                         dt.day = day;
-                        if (MD5GetHeapOffset(pf, &dt) == offset)
+
+                        buffer[3] = GetRTCLow(&dt);
+                        buffer[4] = GetRTCHigh(&dt);
+
+                        if (MD5GetHeapOffset(pf, &dt, buffer) == offset)
                         {
-                            fprintf(fp, "%02u/%02u/20%02u %02u:%02u:%02u %u\n", dt.day, dt.month, dt.year, dt.hour, minute, second, dt.delay);
+                            /* Offsets are matching, print rtc + delay to file */
+                            fprintf(fp, "%02u/%02u/20%02u (%02u:%02u:%02u) %02u:%02u:%02u %u\n",
+                                dt.day, dt.month, dt.year, dt.hour - (dt.minute > minute), dt.minute, dt.second, dt.hour, minute, second, dt.delay);
                             results++;
                         }
-
                     }
                 }
             }
         }
     }
 
-    fprintf(fp, "\nFound %u date/time setup(s) with ASLR 0x%08X.", results, Aslrs[pf->language][pf->version][pf->aslr]);
-
+    fprintf(fp, "\nFound %u date/time setup(s).", results);
     fclose(fp);
 
     //todo: message box with file path
