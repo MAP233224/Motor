@@ -71,7 +71,13 @@
 enum {
     ID_SEARCH_PARAMETERS = 100,
     ID_SEARCH_BUTTON,
-    ID_SEARCH_INPUT,
+    //ID_SEARCH_INPUT, //todo: replace by individual filters: tid, sid, aslr, etc...
+    ID_TID_INPUT,
+    ID_SID_INPUT,
+    ID_SEED_INPUT,
+    ID_ASLR_INPUT,
+    ID_FRAMES_INPUT,
+    ID_MAC_INPUT,
     ID_SPECIES_FILTER,
     ID_ITEM_FILTER,
     ID_MOVE_FILTER,
