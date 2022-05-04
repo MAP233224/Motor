@@ -535,7 +535,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 wild.cond[28] = 0xffff;
                 wild.cond[29] = 0xffff;
 
-                SetCheckum(&wild);
+                SetChecksum(&wild);
                 EncryptBlocks(&wild);
                 EncryptCondition(&wild);
 
@@ -576,7 +576,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 u8 ballid = seven.data[seven.pos_d][13] >> 8;
                 if (ballid > BALL_ID_MAX) { continue; }
 
-                SetCheckum(&seven);
+                SetChecksum(&seven);
                 EncryptBlocks(&seven);
 
                 /* If heap ID of Opponent 1 Party is valid, the game will crash when returning to the overworld */
@@ -1011,7 +1011,12 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             int menu = (int)GetMenu(hwnd);
             switch (menu)
             {
-            case ID_SEARCH_INPUT:
+            case ID_TID_INPUT:
+            case ID_SID_INPUT:
+            case ID_SEED_INPUT:
+            case ID_FRAMES_INPUT:
+            case ID_ASLR_INPUT:
+            case ID_MAC_INPUT:
             case ID_SPECIES_FILTER:
             case ID_ITEM_FILTER:
             case ID_MOVE_FILTER:
@@ -1048,16 +1053,42 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         case EN_KILLFOCUS:
         {
             if (AuthorizeSearch) { break; } //search is running, don't process commands below
-            SetTextInput_dec16(HWND_TidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
-            SetTextInput_dec16(HWND_SidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
-            SetTextInput_hex32(HWND_SeedInput);
-            SetTextInput_dec32(HWND_FramesInput);
-            SetTextInput_aslr(HWND_AslrInput);
-            SetTextInput_mac(HWND_MacInput);
-            SetFilterInput(HWND_SpeciesFilterInput, Pokelist, SPECIES_MAX, &PROFILE_Current.filter_species);
-            SetFilterInput(HWND_ItemFilterInput, Items, ITEMS_MAX, &PROFILE_Current.filter_item);
-            SetFilterInput(HWND_MoveFilterInput, Moves, MOVES_MAX, &PROFILE_Current.filter_move);
-            SetFilterInput(HWND_AbilityFilterInput, Abilities, ABILITIES_MAX, (u16*)&PROFILE_Current.filter_ability);
+            //TODO: split by window
+
+            u16 control_id = LOWORD(wParam);
+            switch (control_id)
+            {
+            case ID_TID_INPUT:
+                SetTextInput_dec16(HWND_TidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
+                break;
+            case ID_SID_INPUT:
+                SetTextInput_dec16(HWND_SidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
+                break;
+            case ID_SEED_INPUT:
+                SetTextInput_hex32(HWND_SeedInput);
+                break;
+            case ID_FRAMES_INPUT:
+                SetTextInput_dec32(HWND_FramesInput);
+                break;
+            case ID_ASLR_INPUT:
+                SetTextInput_aslr(HWND_AslrInput);
+                break;
+            case ID_MAC_INPUT:
+                SetTextInput_mac(HWND_MacInput);
+                break;
+            case ID_SPECIES_FILTER:
+                SetFilterInput(HWND_SpeciesFilterInput, Pokelist, SPECIES_MAX, &PROFILE_Current.filter_species);
+                break;
+            case ID_ITEM_FILTER:
+                SetFilterInput(HWND_ItemFilterInput, Items, ITEMS_MAX, &PROFILE_Current.filter_item);
+                break;
+            case ID_MOVE_FILTER:
+                SetFilterInput(HWND_MoveFilterInput, Moves, MOVES_MAX, &PROFILE_Current.filter_move);
+                break;
+            case ID_ABILITY_FILTER:
+                SetFilterInput(HWND_AbilityFilterInput, Abilities, ABILITIES_MAX, (u16*)&PROFILE_Current.filter_ability);
+                break;
+            }
             break;
         }
         case BN_CLICKED:
@@ -1285,7 +1316,7 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
                 u8 str_year[YEAR_DIGITS_DEC_MAX + 1] = { 0 };
                 GetWindowTextA(HWND_YearFilter, str_year, sizeof(str_year));
                 u8 year = AsciiToInt_dec16(str_year, sizeof(str_year) - 1) - YEAR_VALUE_MIN; //from 2000~2099 to 0~99
-                SeedToTime(ReversedSeedCurrent.reversed, &PROFILE_Load, year); //todo: filepath
+                SeedToTime(ReversedSeedCurrent.reversed, &PROFILE_Load, year);
                 MotorSearchAslr(&ReversedSeedCurrent, &PROFILE_Load);
                 break;
             }
@@ -1640,7 +1671,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
         HWND_SearchParameters,
-        (HMENU)ID_SEARCH_INPUT,
+        (HMENU)ID_TID_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
@@ -1654,7 +1685,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
         HWND_SearchParameters,
-        (HMENU)ID_SEARCH_INPUT,
+        (HMENU)ID_SID_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
@@ -1710,7 +1741,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
         HWND_SearchParameters,
-        (HMENU)ID_SEARCH_INPUT,
+        (HMENU)ID_ASLR_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
@@ -1724,7 +1755,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
         HWND_SearchParameters,
-        (HMENU)ID_SEARCH_INPUT,
+        (HMENU)ID_SEED_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
@@ -1738,7 +1769,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
         HWND_SearchParameters,
-        (HMENU)ID_SEARCH_INPUT,
+        (HMENU)ID_FRAMES_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
@@ -1752,7 +1783,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
         HWND_SearchParameters,
-        (HMENU)ID_SEARCH_INPUT,
+        (HMENU)ID_MAC_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
@@ -1942,4 +1973,4 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     FreeEsketit(); //useless?
 
     return APP_EXIT;
-};
+}
