@@ -2,6 +2,7 @@
 
 #pragma once
 #include "common.h"
+#include "aslr.h"
 
 /* Constants */
 #define BLOCKS              (4)     // Number of blocks: A, B, C and D
@@ -131,7 +132,7 @@ enum { OGW_DP_GIRATINA, OGW_DP_ARCEUS, OGW_DP_DIALGA, OGW_DP_PALKIA = OGW_DP_DIA
 enum { OGW_PT_GIRATINA_O, OGW_PT_GIRATINA_A, OGW_PT_DIALGA, OGW_PT_PALKIA, OGW_PT_UXIE, OGW_PT_AZELF, OGW_PT_ROTOM, OGW_PT_HEATRAN, OGW_PT_REGIGIGAS, OGW_PT_9, OGW_PT_10 };
 
 /* Indices of each stat */
-enum { hp, at, df, sp, sa, sd };
+enum { HP, AT, DF, SP, SA, SD };
 
 /* Types */
 enum {
@@ -181,7 +182,7 @@ s8 NatureStatModifiers[NATURES_MAX][STATS_MAX - 1] = { {0, 0, 0, 0, 0}, {1, -1, 
 const u8 Natures[NATURES_MAX][8] = { "Hardy", "Lonely", "Brave", "Adamant", "Naughty", "Bold", "Docile", "Relaxed", "Impish", "Lax", "Timid", "Hasty", "Serious", "Jolly", "Naive", "Modest", "Mild", "Quiet", "Bashful", "Rash", "Calm", "Gentle", "Sassy", "Careful", "Quirky" };
 
 /* Ordered strings of all abilities */
-const u8 Abilities[ABILITIES_MAX][STRING_LENGTH_MAX] = { "None", "Stench", "Drizzle", "Speed Boost", "Battle Armor", "Sturdy", "Damp", "Limber", "Sand Veil", "Static", "Volt Absorb", "Water Absorb", "Oblivious", "Cloud Nine", "Compound Eyes", "Insomnia", "Color Change", "Immunity", "Flash Fire", "Shield Dust", "Own Tempo", "Suction Cups", "Intimidate", "Shadow Tag", "Rough Skin", "Wonder Guard", "Levitate", "Effect Spore", "Synchronize", "Clear Body", "Natural Cure", "Lightning Rod", "Serene Grace", "Swift Swim", "Chlorophyll", "Illuminate", "Trace", "Huge Power", "Poison Point", "Inner Focus", "Magma Armor", "Water Veil", "Magnet Pull", "Soundproof", "Rain Dish", "Sand Stream", "Pressure", "Thick Fat", "Early Bird", "Flame Body", "Run Away", "Keen Eye", "Hyper Cutter", "Pickup", "Truant", "Hustle", "Cute Charm", "Plus", "Minus", "Forecast", "Sticky Hold", "Shed Skin", "Guts", "Marvel Scale", "Liquid Ooze", "Overgrow", "Blaze", "Torrent", "Swarm", "Rock Head", "Drought", "Arena Trap", "Vital Spirit", "White Smoke", "Pure Power", "Shell Armor", "Air Lock", "Tangled Feet", "Motor Drive", "Rivalry", "Steadfast", "Snow Cloak", "Gluttony", "Anger Point", "Unburden", "Heatproof", "Simple", "Dry Skin", "Download", "Iron Fist", "Poison Heal", "Adaptability", "Skill Link", "Hydration", "Solar Power", "Quick Feet", "Normalize", "Sniper", "Magic Guard", "No Guard", "Stall", "Technician", "Leaf Guard", "Klutz", "Mold Breaker", "Super Luck", "Aftermath", "Anticipation", "Forewarn", "Unaware", "Tinted Lens", "Filter", "Slow Start", "Scrappy", "Storm Drain", "Ice Body", "Solid Rock", "Snow Warning", "Honey Gather", "Frisk", "Reckless", "Multitype", "Flower Gift", "Bad Dreams" };
+const u8 Abilities[ABILITIES_MAX][STRING_LENGTH_MAX] = { "Anything", "Stench", "Drizzle", "Speed Boost", "Battle Armor", "Sturdy", "Damp", "Limber", "Sand Veil", "Static", "Volt Absorb", "Water Absorb", "Oblivious", "Cloud Nine", "Compound Eyes", "Insomnia", "Color Change", "Immunity", "Flash Fire", "Shield Dust", "Own Tempo", "Suction Cups", "Intimidate", "Shadow Tag", "Rough Skin", "Wonder Guard", "Levitate", "Effect Spore", "Synchronize", "Clear Body", "Natural Cure", "Lightning Rod", "Serene Grace", "Swift Swim", "Chlorophyll", "Illuminate", "Trace", "Huge Power", "Poison Point", "Inner Focus", "Magma Armor", "Water Veil", "Magnet Pull", "Soundproof", "Rain Dish", "Sand Stream", "Pressure", "Thick Fat", "Early Bird", "Flame Body", "Run Away", "Keen Eye", "Hyper Cutter", "Pickup", "Truant", "Hustle", "Cute Charm", "Plus", "Minus", "Forecast", "Sticky Hold", "Shed Skin", "Guts", "Marvel Scale", "Liquid Ooze", "Overgrow", "Blaze", "Torrent", "Swarm", "Rock Head", "Drought", "Arena Trap", "Vital Spirit", "White Smoke", "Pure Power", "Shell Armor", "Air Lock", "Tangled Feet", "Motor Drive", "Rivalry", "Steadfast", "Snow Cloak", "Gluttony", "Anger Point", "Unburden", "Heatproof", "Simple", "Dry Skin", "Download", "Iron Fist", "Poison Heal", "Adaptability", "Skill Link", "Hydration", "Solar Power", "Quick Feet", "Normalize", "Sniper", "Magic Guard", "No Guard", "Stall", "Technician", "Leaf Guard", "Klutz", "Mold Breaker", "Super Luck", "Aftermath", "Anticipation", "Forewarn", "Unaware", "Tinted Lens", "Filter", "Slow Start", "Scrappy", "Storm Drain", "Ice Body", "Solid Rock", "Snow Warning", "Honey Gather", "Frisk", "Reckless", "Multitype", "Flower Gift", "Bad Dreams" };
 
 /* Ordered strings of all species */
 const u8 Pokelist[SPECIES_MAX][STRING_LENGTH_MAX] = { "Anything", "Bulbasaur", "Ivysaur", "Venusaur", "Charmander", "Charmeleon", "Charizard", "Squirtle", "Wartortle", "Blastoise", "Caterpie", "Metapod", "Butterfree", "Weedle", "Kakuna", "Beedrill", "Pidgey", "Pidgeotto", "Pidgeot", "Rattata", "Raticate", "Spearow", "Fearow", "Ekans", "Arbok", "Pikachu", "Raichu", "Sandshrew","Sandslash", "Nidoran-F", "Nidorina", "Nidoqueen", "Nidoran-M", "Nidorino", "Nidoking", "Clefairy", "Clefable", "Vulpix", "Ninetales", "Jigglypuff", "Wigglytuff", "Zubat", "Golbat", "Oddish", "Gloom", "Vileplume", "Paras", "Parasect", "Venonat", "Venomoth", "Diglett", "Dugtrio", "Meowth", "Persian", "Psyduck", "Golduck", "Mankey", "Primeape", "Growlithe", "Arcanine", "Poliwag", "Poliwhirl", "Poliwrath", "Abra", "Kadabra", "Alakazam", "Machop", "Machoke", "Machamp", "Bellsprout", "Weepinbell", "Victreebel", "Tentacool", "Tentacruel", "Geodude", "Graveler", "Golem", "Ponyta", "Rapidash", "Slowpoke", "Slowbro", "Magnemite", "Magneton", "Farfetch'd", "Doduo", "Dodrio", "Seel", "Dewgong", "Grimer", "Muk", "Shellder", "Cloyster", "Gastly", "Haunter", "Gengar", "Onix", "Drowzee", "Hypno", "Krabby", "Kingler", "Voltorb", "Electrode", "Exeggcute", "Exeggutor", "Cubone", "Marowak", "Hitmonlee", "Hitmonchan", "Lickitung", "Koffing", "Weezing", "Rhyhorn", "Rhydon", "Chansey", "Tangela", "Kangaskhan", "Horsea", "Seadra", "Goldeen", "Seaking", "Staryu", "Starmie", "Mr.Mime", "Scyther", "Jynx", "Electabuzz", "Magmar", "Pinsir", "Tauros", "Magikarp", "Gyarados", "Lapras", "Ditto", "Eevee", "Vaporeon", "Jolteon", "Flareon", "Porygon", "Omanyte", "Omastar", "Kabuto", "Kabutops", "Aerodactyl", "Snorlax", "Articuno", "Zapdos", "Moltres", "Dratini", "Dragonair", "Dragonite", "Mewtwo", "Mew", "Chikorita", "Bayleef", "Meganium", "Cyndaquil", "Quilava", "Typhlosion", "Totodile", "Croconaw", "Feraligatr", "Sentret", "Furret", "Hoothoot", "Noctowl", "Ledyba", "Ledian", "Spinarak", "Ariados", "Crobat", "Chinchou", "Lanturn", "Pichu", "Cleffa", "Igglybuff", "Togepi", "Togetic", "Natu", "Xatu", "Mareep", "Flaaffy", "Ampharos", "Bellossom", "Marill", "Azumarill", "Sudowoodo", "Politoed", "Hoppip", "Skiploom", "Jumpluff", "Aipom", "Sunkern", "Sunflora", "Yanma", "Wooper", "Quagsire", "Espeon", "Umbreon", "Murkrow", "Slowking", "Misdreavus", "Unown", "Wobbuffet", "Girafarig", "Pineco", "Forretress", "Dunsparce", "Gligar", "Steelix", "Snubbull", "Granbull", "Qwilfish", "Scizor", "Shuckle", "Heracross", "Sneasel", "Teddiursa", "Ursaring", "Slugma", "Magcargo", "Swinub", "Piloswine", "Corsola", "Remoraid", "Octillery", "Delibird", "Mantine", "Skarmory", "Houndour", "Houndoom", "Kingdra", "Phanpy", "Donphan", "Porygon-2", "Stantler", "Smeargle", "Tyrogue", "Hitmontop", "Smoochum", "Elekid", "Magby", "Miltank", "Blissey", "Raikou", "Entei", "Suicune", "Larvitar", "Pupitar", "Tyranitar", "Lugia", "Ho-Oh", "Celebi", "Treecko", "Grovyle", "Sceptile", "Torchic", "Combusken", "Blaziken", "Mudkip", "Marshtomp", "Swampert", "Poochyena", "Mightyena", "Zigzagoon", "Linoone", "Wurmple", "Silcoon", "Beautifly", "Cascoon", "Dustox", "Lotad", "Lombre", "Ludicolo", "Seedot", "Nuzleaf", "Shiftry", "Taillow", "Swellow", "Wingull", "Pelipper", "Ralts", "Kirlia", "Gardevoir", "Surskit", "Masquerain", "Shroomish", "Breloom", "Slakoth", "Vigoroth", "Slaking", "Nincada", "Ninjask", "Shedinja", "Whismur", "Loudred", "Exploud", "Makuhita", "Hariyama", "Azurill", "Nosepass", "Skitty", "Delcatty", "Sableye", "Mawile", "Aron", "Lairon", "Aggron", "Meditite", "Medicham", "Electrike", "Manectric", "Plusle", "Minun", "Volbeat", "Illumise", "Roselia", "Gulpin", "Swalot", "Carvanha", "Sharpedo", "Wailmer", "Wailord", "Numel", "Camerupt", "Torkoal", "Spoink", "Grumpig", "Spinda", "Trapinch", "Vibrava", "Flygon", "Cacnea", "Cacturne", "Swablu", "Altaria", "Zangoose", "Seviper", "Lunatone", "Solrock", "Barboach", "Whiscash", "Corphish", "Crawdaunt", "Baltoy", "Claydol", "Lileep", "Cradily", "Anorith", "Armaldo", "Feebas", "Milotic", "Castform", "Kecleon", "Shuppet", "Banette", "Duskull", "Dusclops", "Tropius", "Chimecho", "Absol", "Wynaut", "Snorunt", "Glalie", "Spheal", "Sealeo", "Walrein", "Clamperl", "Huntail", "Gorebyss", "Relicanth", "Luvdisc", "Bagon", "Shelgon", "Salamence", "Beldum", "Metang", "Metagross", "Regirock", "Regice", "Registeel", "Latias", "Latios", "Kyogre", "Groudon", "Rayquaza", "Jirachi", "Deoxys", "Turtwig", "Grotle", "Torterra", "Chimchar", "Monferno", "Infernape", "Piplup", "Prinplup", "Empoleon", "Starly", "Staravia", "Staraptor", "Bidoof", "Bibarel", "Kricketot", "Kricketune", "Shinx", "Luxio", "Luxray", "Budew", "Roserade", "Cranidos", "Rampardos", "Shieldon", "Bastiodon", "Burmy", "Wormadam", "Mothim", "Combee", "Vespiquen", "Pachirisu", "Buizel", "Floatzel", "Cherubi", "Cherrim", "Shellos", "Gastrodon", "Ambipom", "Drifloon", "Drifblim", "Buneary", "Lopunny", "Mismagius", "Honchkrow", "Glameow", "Purugly", "Chingling", "Stunky", "Skuntank", "Bronzor", "Bronzong", "Bonsly", "MimeJr.", "Happiny", "Chatot", "Spiritomb", "Gible", "Gabite", "Garchomp", "Munchlax", "Riolu", "Lucario", "Hippopotas", "Hippowdon", "Skorupi", "Drapion", "Croagunk", "Toxicroak", "Carnivine", "Finneon", "Lumineon", "Mantyke", "Snover", "Abomasnow", "Weavile", "Magnezone", "Lickilicky", "Rhyperior", "Tangrowth", "Electivire", "Magmortar", "Togekiss", "Yanmega", "Leafeon", "Glaceon", "Gliscor", "Mamoswine", "Porygon-Z", "Gallade", "Probopass", "Dusknoir", "Froslass", "Rotom", "Uxie", "Mesprit", "Azelf", "Dialga", "Palkia", "Heatran", "Regigigas", "Giratina", "Cresselia", "Phione", "Manaphy", "Darkrai", "Shaymin", "Arceus" };
@@ -192,7 +193,7 @@ const u8 Items[ITEMS_MAX][STRING_LENGTH_MAX] = { "Anything", "Master Ball", "Ult
 /* Ordered strings of all moves */
 const u8 Moves[MOVES_MAX][STRING_LENGTH_MAX] = { "Anything" , "Pound", "Karate Chop", "Double Slap", "Comet Punch", "Mega Punch", "Pay Day", "Fire Punch", "Ice Punch", "Thunder Punch", "Scratch", "Vice Grip", "Guillotine", "Razor Wind", "Swords Dance", "Cut", "Gust", "Wing Attack", "Whirlwind", "Fly", "Bind", "Slam", "Vine Whip", "Stomp", "Double Kick", "Mega Kick", "Jump Kick", "Rolling Kick", "Sand Attack", "Headbutt", "Horn Attack", "Fury Attack", "Horn Drill", "Tackle", "Body Slam", "Wrap", "Take Down", "Thrash", "Double-Edge", "Tail Whip", "Poison Sting", "Twineedle", "Pin Missile", "Leer", "Bite", "Growl", "Roar", "Sing", "Supersonic", "Sonic Boom", "Disable", "Acid", "Ember", "Flamethrower", "Mist", "Water Gun", "Hydro Pump", "Surf", "Ice Beam", "Blizzard", "Psybeam", "Bubble Beam", "Aurora Beam", "Hyper Beam", "Peck", "Drill Peck", "Submission", "Low Kick", "Counter", "Seismic Toss", "Strength", "Absorb", "Mega Drain", "Leech Seed", "Growth", "Razor Leaf", "Solar Beam", "Poison Powder", "Stun Spore", "Sleep Powder", "Petal Dance", "String Shot", "Dragon Rage", "Fire Spin", "Thunder Shock", "Thunderbolt", "Thunder Wave", "Thunder", "Rock Throw", "Earthquake", "Fissure", "Dig", "Toxic", "Confusion", "Psychic", "Hypnosis", "Meditate", "Agility", "Quick Attack", "Rage", "Teleport", "Night Shade", "Mimic", "Screech", "Double Team", "Recover", "Harden", "Minimize", "Smokescreen", "Confuse Ray", "Withdraw", "Defense Curl", "Barrier", "Light Screen", "Haze", "Reflect", "Focus Energy", "Bide", "Metronome", "Mirror Move", "Self-Destruct", "Egg Bomb", "Lick", "Smog", "Sludge", "Bone Club", "Fire Blast", "Waterfall", "Clamp", "Swift", "Skull Bash", "Spike Cannon", "Constrict", "Amnesia", "Kinesis", "Soft-Boiled", "High Jump Kick", "Glare", "Dream Eater", "Poison Gas", "Barrage", "Leech Life", "Lovely Kiss", "Sky Attack", "Transform", "Bubble", "Dizzy Punch", "Spore", "Flash", "Psywave", "Splash", "Acid Armor", "Crabhammer", "Explosion", "Fury Swipes", "Bonemerang", "Rest", "Rock Slide", "Hyper Fang", "Sharpen", "Conversion", "Tri Attack", "Super Fang", "Slash", "Substitute", "Struggle", "Sketch", "Triple Kick", "Thief", "Spider Web", "Mind Reader", "Nightmare", "Flame Wheel", "Snore", "Curse", "Flail", "Conversion 2", "Aeroblast", "Cotton Spore", "Reversal", "Spite", "Powder Snow", "Protect", "Mach Punch", "Scary Face", "Feint Attack", "Sweet Kiss", "Belly Drum", "Sludge Bomb", "Mud-Slap", "Octazooka", "Spikes", "Zap Cannon", "Foresight", "Destiny Bond", "Perish Song", "Icy Wind", "Detect", "Bone Rush", "Lock-On", "Outrage", "Sandstorm", "Giga Drain", "Endure", "Charm", "Rollout", "False Swipe", "Swagger", "Milk Drink", "Spark", "Fury Cutter", "Steel Wing", "Mean Look", "Attract", "Sleep Talk", "Heal Bell", "Return", "Present", "Frustration", "Safeguard", "Pain Split", "Sacred Fire", "Magnitude", "Dynamic Punch", "Megahorn", "Dragon Breath", "Baton Pass", "Encore", "Pursuit", "Rapid Spin", "Sweet Scent", "Iron Tail", "Metal Claw", "Vital Throw", "Morning Sun", "Synthesis", "Moonlight", "Hidden Power", "Cross Chop", "Twister", "Rain Dance", "Sunny Day", "Crunch", "Mirror Coat", "Psych Up", "Extreme Speed", "Ancient Power", "Shadow Ball", "Future Sight", "Rock Smash", "Whirlpool", "Beat Up", "Fake Out", "Uproar", "Stockpile", "Spit Up", "Swallow", "Heat Wave", "Hail", "Torment", "Flatter", "Will-O-Wisp", "Memento", "Facade", "Focus Punch", "Smelling Salts", "Follow Me", "Nature Power", "Charge", "Taunt", "Helping Hand", "Trick", "Role Play", "Wish", "Assist", "Ingrain", "Superpower", "Magic Coat", "Recycle", "Revenge", "Brick Break", "Yawn", "Knock Off", "Endeavor", "Eruption", "Skill Swap", "Imprison", "Refresh", "Grudge", "Snatch", "Secret Power", "Dive", "Arm Thrust", "Camouflage", "Tail Glow", "Luster Purge", "Mist Ball", "Feather Dance", "Teeter Dance", "Blaze Kick", "Mud Sport", "Ice Ball", "Needle Arm", "Slack Off", "Hyper Voice", "Poison Fang", "Crush Claw", "Blast Burn", "Hydro Cannon", "Meteor Mash", "Astonish", "Weather Ball", "Aromatherapy", "Fake Tears", "Air Cutter", "Overheat", "Odor Sleuth", "Rock Tomb", "Silver Wind", "Metal Sound", "Grass Whistle", "Tickle", "Cosmic Power", "Water Spout", "Signal Beam", "Shadow Punch", "Extrasensory", "Sky Uppercut", "Sand Tomb", "Sheer Cold", "Muddy Water", "Bullet Seed", "Aerial Ace", "Icicle Spear", "Iron Defense", "Block", "Howl", "Dragon Claw", "Frenzy Plant", "Bulk Up", "Bounce", "Mud Shot", "Poison Tail", "Covet", "Volt Tackle", "Magical Leaf", "Water Sport", "Calm Mind", "Leaf Blade", "Dragon Dance", "Rock Blast", "Shock Wave", "Water Pulse", "Doom Desire", "Psycho Boost", "Roost", "Gravity", "Miracle Eye", "Wake-Up Slap", "Hammer Arm", "Gyro Ball", "Healing Wish", "Brine", "Natural Gift", "Feint", "Pluck", "Tailwind", "Acupressure", "Metal Burst", "U-turn", "Close Combat", "Payback", "Assurance", "Embargo", "Fling", "Psycho Shift", "Trump Card", "Heal Block", "Wring Out", "Power Trick", "Gastro Acid", "Lucky Chant", "Me First", "Copycat", "Power Swap", "Guard Swap", "Punishment", "Last Resort", "Worry Seed", "Sucker Punch", "Toxic Spikes", "Heart Swap", "Aqua Ring", "Magnet Rise", "Flare Blitz", "Force Palm", "Aura Sphere", "Rock Polish", "Poison Jab", "Dark Pulse", "Night Slash", "Aqua Tail", "Seed Bomb", "Air Slash", "X-Scissor", "Bug Buzz", "Dragon Pulse", "Dragon Rush", "Power Gem", "Drain Punch", "Vacuum Wave", "Focus Blast", "Energy Ball", "Brave Bird", "Earth Power", "Switcheroo", "Giga Impact", "Nasty Plot", "Bullet Punch", "Avalanche", "Ice Shard", "Shadow Claw", "Thunder Fang", "Ice Fang", "Fire Fang", "Shadow Sneak", "Mud Bomb", "Psycho Cut", "Zen Headbutt", "Mirror Shot", "Flash Cannon", "Rock Climb", "Defog", "Trick Room", "Draco Meteor", "Discharge", "Lava Plume", "Leaf Storm", "Power Whip", "Rock Wrecker", "Cross Poison", "Gunk Shot", "Iron Head", "Magnet Bomb", "Stone Edge", "Captivate", "Stealth Rock", "Grass Knot", "Chatter", "Judgment", "Bug Bite", "Charge Beam", "Wood Hammer", "Aqua Jet", "Attack Order", "Defend Order", "Heal Order", "Head Smash", "Double Hit", "Roar of Time", "Spacial Rend", "Lunar Dance", "Crush Grip", "Magma Storm", "Dark Void", "Seed Flare", "Ominous Wind", "Shadow Force" };
 
-/* Strings used for appending to Results.txt's file name */
+/* Original wild Pokemon names */
 const u8 OgWilds[VERSIONS_MAX][OG_WILDS_MAX][STRING_LENGTH_MAX] = {
     { "Giratina", "Arceus", "Dialga", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas" }, //Diamond
     { "Giratina", "Arceus", "Palkia", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas" }, //Pearl
@@ -226,7 +227,7 @@ typedef struct {
     u16 bstats[STATS_MAX];
     u16 xp1;
     u16 xp2;
-    u16 frab; //frienship and ability concatenated
+    u16 frab; //friendship and ability concatenated
     u16 moves[OWN_MOVES_MAX];
     u16 pp1and2;
     u16 pp3and4;
@@ -256,9 +257,10 @@ typedef struct {
 } SEARCHDATA;
 
 typedef struct {
-    u32 seed;
-    u32 frames;
-    //Size: 8 bytes
+    u32 seed; //original seed
+    u32 reversed; //reversed seed
+    u32 frames; //distance between seed and reversed
+    //Size: 12 bytes
 } REVERSEDSEED;
 
 typedef struct {
@@ -320,14 +322,14 @@ OGWILD pt_rotom_fr = { 0x01DF, 0, 20, STATS_ROTOM, 0x1F40, 0x0000, 0x1A46, MOVES
 OGWILD pt_uxie_ge = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_GE, GFX_CAVERN_PT };
 OGWILD pt_azelf_ge = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_GE, GFX_CAVERN_PT };
 OGWILD pt_giratina_o_jp = { 0x01E7, 0, 47, STATS_GIRATINA_O, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_JP, GFX_DISTORTION_PT }; //origin
-OGWILD pt_giratina_a_jp = { 0x01E7, 0, 47, STATS_GIRATINA_A, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_JP, GFX_DISTORTION_PT }; //altered
+OGWILD pt_giratina_a_jp = { 0x01E7, 0, 47, STATS_GIRATINA_A, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_JP, GFX_TURNBACK_PT }; //altered
 OGWILD pt_dialga_jp = { 0x01E3, 0, 70, STATS_DIALGA, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA_JP, GFX_PILLARS_PT };
 OGWILD pt_palkia_jp = { 0x01E4, 0, 70, STATS_PALKIA, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA_JP, GFX_PILLARS_PT };
 OGWILD pt_uxie_jp = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_JP, GFX_CAVERN_PT };
 OGWILD pt_azelf_jp = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_JP, GFX_CAVERN_PT };
 OGWILD pt_rotom_jp = { 0x01DF, 0, 20, STATS_ROTOM, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_JP, GFX_ROTOM_PT };
 OGWILD pt_giratina_o_ko = { 0x01E7, 0, 47, STATS_GIRATINA_O, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_KO, GFX_DISTORTION_PT }; //origin
-OGWILD pt_giratina_a_ko = { 0x01E7, 0, 47, STATS_GIRATINA_A, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_KO, GFX_DISTORTION_PT }; //altered
+OGWILD pt_giratina_a_ko = { 0x01E7, 0, 47, STATS_GIRATINA_A, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_KO, GFX_TURNBACK_PT }; //altered
 OGWILD pt_dialga_ko = { 0x01E3, 0, 70, STATS_DIALGA, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA_KO, GFX_PILLARS_PT };
 OGWILD pt_palkia_ko = { 0x01E4, 0, 70, STATS_PALKIA, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA_KO, GFX_PILLARS_PT };
 OGWILD pt_uxie_ko = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_KO, GFX_CAVERN_PT };
@@ -423,7 +425,7 @@ static u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
 
 static u16 IvToStat_HP(PKMN* pkmn, OGWILD* wild) {
     /* Return the value of the HP stat based on the IV, Base Stat and Level. */
-    return (2 * (wild->bstats[hp]) + pkmn->ivs[hp]) * wild->level / 100 + wild->level + 10;
+    return (2 * (wild->bstats[HP]) + pkmn->ivs[HP]) * wild->level / 100 + wild->level + 10;
 }
 
 static u16 IvToStat(PKMN* pkmn, OGWILD* wild, u8 stat) {
@@ -432,7 +434,7 @@ static u16 IvToStat(PKMN* pkmn, OGWILD* wild, u8 stat) {
     return StatNatureModifier(pkmn->nature, stat - 1, (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + 5);
 }
 
-static void SetCheckum(PKMN* pkmn) {
+static void SetChecksum(PKMN* pkmn) {
     /* Set the checksum of a PKMN by summing all of its Block data. */
     for (u8 i = 0; i < BLOCK_SIZE; i++) {
         pkmn->checksum += pkmn->data[pkmn->pos_a][i] + pkmn->data[pkmn->pos_b][i] + pkmn->data[pkmn->pos_c][i] + pkmn->data[pkmn->pos_d][i];
@@ -501,30 +503,30 @@ static void EncryptCondition(PKMN* pkmn) {
 
 static void DecomposeIVs(u32 ivs, u8 iv_arr[STATS_MAX]) {
     /* Decompose IVs */
-    iv_arr[hp] = (ivs >> 0) & 31;
-    iv_arr[at] = (ivs >> 5) & 31;
-    iv_arr[df] = (ivs >> 10) & 31;
-    iv_arr[sp] = (ivs >> 15) & 31;
-    iv_arr[sa] = (ivs >> 20) & 31;
-    iv_arr[sd] = (ivs >> 25) & 31;
+    iv_arr[HP] = (ivs >> 0) & 31;
+    iv_arr[AT] = (ivs >> 5) & 31;
+    iv_arr[DF] = (ivs >> 10) & 31;
+    iv_arr[SP] = (ivs >> 15) & 31;
+    iv_arr[SA] = (ivs >> 20) & 31;
+    iv_arr[SD] = (ivs >> 25) & 31;
 }
 
 static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
     /* Calculate Hidden Power from IVs */
 
-    u8 power = ((ivs[hp] & 2) >> 1) |
-        ((ivs[at] & 2) >> 0) |
-        ((ivs[df] & 2) << 1) |
-        ((ivs[sp] & 2) << 2) |
-        ((ivs[sa] & 2) << 3) |
-        ((ivs[sd] & 2) << 4);
+    u8 power = ((ivs[HP] & 2) >> 1) |
+        ((ivs[AT] & 2) >> 0) |
+        ((ivs[DF] & 2) << 1) |
+        ((ivs[SP] & 2) << 2) |
+        ((ivs[SA] & 2) << 3) |
+        ((ivs[SD] & 2) << 4);
 
-    u8 type = ((ivs[hp] & 1) >> 0) |
-        ((ivs[at] & 1) << 1) |
-        ((ivs[df] & 1) << 2) |
-        ((ivs[sp] & 1) << 3) |
-        ((ivs[sa] & 1) << 4) |
-        ((ivs[sd] & 1) << 5);
+    u8 type = ((ivs[HP] & 1) >> 0) |
+        ((ivs[AT] & 1) << 1) |
+        ((ivs[DF] & 1) << 2) |
+        ((ivs[SP] & 1) << 3) |
+        ((ivs[SA] & 1) << 4) |
+        ((ivs[SD] & 1) << 5);
 
     power = (power * 40 / 63) + 30;
     type = (type * 15 / 63) + 1;
@@ -544,8 +546,9 @@ static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
     pkmn->iv2 >>= 1;
 }
 
-static REVERSEDSEED ReverseSeed(u32 state) {
+static REVERSEDSEED ReverseSeed(u32 seed) {
     /* Find the nearest console-hitable seed provided the current state of the RNG */
+    u32 state = seed;
     u16 frame = 0;
     u8 a = state >> 24;
     u8 b = state >> 16;
@@ -558,5 +561,154 @@ static REVERSEDSEED ReverseSeed(u32 state) {
         c = state & 0xffff;
         frame++;
     } while (b > SEED_MAX_B || c < MIN_DELAY_DPPT || c > MAX_DELAY_DPPT);
-    return (REVERSEDSEED) { state, frame };
+    return (REVERSEDSEED) { seed, state, frame };
+}
+
+static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
+    /* Stripped down version of general search, only vary the ASLR */
+
+    //TODO: add valid mirrors
+
+    u8 filename[PATH_REL_LENGTH_MAX] = { 0 };
+    sprintf(filename, ".results/%08X_ASLR.txt", rs->reversed);
+    FILE* fp = fopen(filename, "wb+");
+    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
+
+    fprintf(fp, "/4    ASLR        Wild       Species\n\n");
+
+    SEARCHDATA sd = { 0 };
+    sd.grouped_version = pf->version >> 1; //Group Diamond and Pearl together
+    sd.w_version = (pf->version + 10) << 8; //convert for use in pkmn data
+    sd.w_language = pf->language << 8; //convert for use in pkmn data
+    sd.pOgWild = OGW_LangVers[pf->language][pf->version][pf->wild];
+    sd.aslr = Aslrs[pf->language][sd.grouped_version][pf->aslr];
+    sd.alt_form = (pf->version == VERSION_PLATINUM && pf->wild == OGW_PT_GIRATINA_O) ? 8 : 0; //Giratina Origin
+    u8 korean_offset = (pf->language == LANGUAGE_KO) ? KOREAN_OFFSET : 0;
+
+    for (u32 offset = 0; offset <= 256; offset += 4) {
+
+        u32 aslr = AslrMin[pf->language][sd.grouped_version] + offset;
+
+        PKMN wild = { 0 }; //0 init
+        PKMN seven = { 0 }; //0 init
+
+        MethodJSeedToPID(rs->seed, &wild);
+        SetBlocks(&wild);
+
+        /* Block A */
+        wild.data[wild.pos_a][0] = sd.pOgWild->species; //species
+        wild.data[wild.pos_a][1] = sd.pOgWild->item; //held item
+        wild.data[wild.pos_a][2] = pf->tid; //tid
+        wild.data[wild.pos_a][3] = pf->sid; //sid
+        wild.data[wild.pos_a][4] = sd.pOgWild->xp1; //xp1
+        wild.data[wild.pos_a][5] = sd.pOgWild->xp2; //xp2
+        wild.data[wild.pos_a][6] = sd.pOgWild->frab; //ability and friendship concatenated
+        wild.data[wild.pos_a][7] = sd.w_language; //language
+        /* Block B */
+        for (u8 i = 0; i < OWN_MOVES_MAX; i++) { wild.data[wild.pos_b][i] = sd.pOgWild->moves[i]; }//4 moves
+        wild.data[wild.pos_b][4] = sd.pOgWild->pp1and2; //pp1and2
+        wild.data[wild.pos_b][5] = sd.pOgWild->pp3and4; //pp3and4
+        wild.data[wild.pos_b][8] = wild.iv1;
+        wild.data[wild.pos_b][9] = wild.iv2;
+        wild.data[wild.pos_b][12] = GetGender(wild.pid, sd.pOgWild->species) | sd.alt_form; //gender | alt_form
+        /* Block C */
+        for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = sd.pOgWild->name[i]; } //11 characters for the name
+        wild.data[wild.pos_c][11] = sd.w_version; //version
+        /* Block D */
+        wild.data[wild.pos_d][13] = 0x0400; //pokeball
+        wild.data[wild.pos_d][14] = sd.pOgWild->level; //level
+        /* Condition data */
+        wild.cond[2] = sd.pOgWild->level; //level again
+        wild.cond[3] = IvToStat_HP(&wild, sd.pOgWild);
+        wild.cond[4] = wild.cond[3]; //current hp = max hp
+        wild.cond[5] = IvToStat(&wild, sd.pOgWild, AT);
+        wild.cond[6] = IvToStat(&wild, sd.pOgWild, DF);
+        wild.cond[7] = IvToStat(&wild, sd.pOgWild, SP);
+        wild.cond[8] = IvToStat(&wild, sd.pOgWild, SA);
+        wild.cond[9] = IvToStat(&wild, sd.pOgWild, SD);
+        // wild.cond[10] = 0;
+        // wild.cond[11] = 0;
+        wild.cond[12] = sd.w_language; //language again
+        wild.cond[13] = 0xff00 | (sd.w_version >> 8); //version variation
+        for (u8 i = 14; i < 25; i++) { wild.cond[i] = 0xffff; } //14 to 24 = 0xffff
+        // wild.cond[25] = 0;
+        wild.cond[26] = 0xffff;
+        // wild.cond[27] = 0;
+        wild.cond[28] = 0xffff;
+        wild.cond[29] = 0xffff;
+
+        SetChecksum(&wild);
+        EncryptBlocks(&wild);
+        EncryptCondition(&wild);
+
+        /* Initialize Seven */
+        seven.pid = 0x00005544;
+        seven.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
+        SetBlocks(&seven); //always ACBD (0x0213)
+
+        /* Simulate the buffer overflow */
+        /* Block A */
+        seven.data[seven.pos_a][0] = (aslr + OppPartyOffBeg[sd.grouped_version] + korean_offset) & 0xffff;
+        seven.data[seven.pos_a][1] = (aslr + OppPartyOffBeg[sd.grouped_version] + korean_offset) >> 16;
+        seven.data[seven.pos_a][2] = (aslr + OppPartyOffEnd[sd.grouped_version] + korean_offset) & 0xffff;
+        seven.data[seven.pos_a][3] = (aslr + OppPartyOffEnd[sd.grouped_version] + korean_offset) >> 16;
+        for (u8 i = 0; i < 8; i++) { seven.data[seven.pos_a][i + 4] = sd.pOgWild->gfx[i]; }
+        seven.data[seven.pos_a][12] = 0x0006;
+        seven.data[seven.pos_a][13] = 0x0000;
+        seven.data[seven.pos_a][14] = 0x0001;
+        seven.data[seven.pos_a][15] = 0x0000;
+        /* Block C, B, D and Condition data - array out of bounds method */
+        u16* wild_data = (u16*)(&wild.pid);
+        u16* seven_data = (u16*)(&seven.data[1]);
+        for (u8 i = 0; i < (BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET; i++) { seven_data[i] = wild_data[i]; }
+
+        EncryptBlocks(&seven);
+
+        fprintf(fp, "%02u    %08X    ", offset / 4, aslr);
+
+        /* If the ball doesn't have a valid ID the battle won't load */
+        u8 ballid = seven.data[seven.pos_d][13] >> 8;
+        if (ballid > BALL_ID_MAX)
+        {
+            fprintf(fp, "Black screen\n");
+            continue;
+        }
+
+        SetChecksum(&seven);
+        EncryptBlocks(&seven);
+
+        /* If the Bad Egg flag is set or the Fast Mode flags aren't set, the PKMN will become a Bad Egg */
+        if ((seven.data[seven.pos_c][2] & 7) != 3)
+        {
+            fprintf(fp, "Bad Egg    ");
+        }
+        else
+        {
+            fprintf(fp, "Regular    ");
+        }
+
+        /* Get the new PID of the wild and deduce its new block order */
+        wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16);
+        SetBlocks(&wild);
+
+        u16 species = seven.data[1 + wild.pos_a][STACK_OFFSET];
+        u8 str_species[STRING_LENGTH_MAX] = { 0 };
+        SetString(str_species, species, Pokelist, SPECIES_MAX, "DPBox", "0x%04X");
+
+        if (aslr == sd.aslr)
+        {
+            fprintf(fp, "%s <<< your target\n", str_species);
+        }
+        else if (0) //todo: add condition
+        {
+            fprintf(fp, "%s <<< valid mirror\n", str_species);
+        }
+        else
+        {
+            fprintf(fp, "%s\n", str_species);
+        }
+    }
+    /* Search end */
+    fclose(fp);
+    return APP_RESUME;
 }
