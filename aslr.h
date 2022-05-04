@@ -18,6 +18,7 @@ enum { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY }; //japan
 
 const u8 DaysInMonth[MONTHS_MAX + 1] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 const u8 MagicMonth[MONTHS_MAX] = { 0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4 }; //magic month array
+const u32 VcountTicklo[VERSIONS_MAX - 1] = { 0x003B0007, 0x00000007 }; //to be confirmed
 const u32 NDS_Keys[VERSIONS_MAX - 1] = { 0x000003FF, 0x00002FFF };
 
 /* Smallest possible value found at the base sampling address */
@@ -386,11 +387,16 @@ static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
 
     fprintf(fp, "Seed: 0x%08X\n", seed);
     fprintf(fp, "Year: 20%02u\n", year);
-    fprintf(fp, "ASLR: %02u (0x%08X)\n", pf->aslr, Aslrs[pf->language][pf->version][pf->aslr]);
+    fprintf(fp, "ASLR: %02u (0x%08X)\n", pf->aslr, Aslrs[pf->language][pf->version >> 1][pf->aslr]);
     fprintf(fp, "MAC Address: %02X-%02X-%02X-%02X-%02X-%02X\n\n", pf->mac[0], pf->mac[1], pf->mac[2], pf->mac[3], pf->mac[4], pf->mac[5]);
+
+    fprintf(fp, "DATE       ASLR time  SEED time\n");
     fprintf(fp, "dd/mm/yyyy (hh:mm:ss) hh:mm:ss delay\n");
 
+    //todo: coin flips (mt rng) for current and nearby (pick a range) seeds
+
     //buffer[0] = (vcount << 16) | tick_low
+    // 0x003B0007 (DP: EN, IT (R4, closest to retail) rarely: 0x003B0006, 0x003B0008)
     //vcount could be: 
     //0x0093 (bizhawk no firmware/bios, dp en, fr, sp)
     //0x00ED (bizhawk with firmware/bios, dp en)
@@ -399,14 +405,14 @@ static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
     //0x0080 (desmume, dp jp)
 
     u32 buffer[BUFFER_SIZE] = {
-        0x00ed0003, //constant?  //0x00930003
+        VcountTicklo[pf->version >> 1], //assuming hard reset / boot
         (*(u16*)(pf->mac + 4)) << 16, //last two u8 of MAC address in a u16, << 16
         0x06000000 ^ (*(u32*)pf->mac), //first 4 u8 of MAC address in a u32
         0x00000000, //rtc_low (date)
         0x00000000, //rtc_high (time)
         0x00000000, //constant
         0x00000000, //constant
-        NDS_Keys[pf->version >> 1],
+        NDS_Keys[pf->version >> 1], //assumes the user isn't pressing any buttons during game boot
     };
 
     DATETIME dt = { 0 };
