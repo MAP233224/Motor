@@ -122,9 +122,6 @@
 /* Indices of each version */
 enum { VERSION_DIAMOND, VERSION_PEARL, VERSION_PLATINUM };
 
-/* Indices of each language */
-enum { LANGUAGE__0, LANGUAGE_JP, LANGUAGE_EN, LANGUAGE_FR, LANGUAGE_IT, LANGUAGE_GE, LANGUAGE__6, LANGUAGE_SP, LANGUAGE_KO };
-
 /* OGWILD wilds, Diamond */
 enum { OGW_DP_GIRATINA, OGW_DP_ARCEUS, OGW_DP_DIALGA, OGW_DP_PALKIA = OGW_DP_DIALGA, OGW_DP_SHAYMIN, OGW_DP_DARKRAI, OGW_DP_UXIE, OGW_DP_AZELF, OGW_DP_ROTOM, OGW_DP_HEATRAN, OGW_DP_REGIGIGAS };
 
@@ -554,13 +551,14 @@ static REVERSEDSEED ReverseSeed(u32 seed) {
     u8 b = state >> 16;
     u16 c = state & 0xffff;
     /* Search loop */
-    do {
+    while (b > SEED_MAX_B || c < MIN_DELAY_DPPT || c > MAX_DELAY_DPPT)
+    {
         state = state * 0xEEB9EB65 + 0x0A3561A1; //reverse LCRNG
         a = state >> 24;
         b = state >> 16;
         c = state & 0xffff;
         frame++;
-    } while (b > SEED_MAX_B || c < MIN_DELAY_DPPT || c > MAX_DELAY_DPPT);
+    }
     return (REVERSEDSEED) { seed, state, frame };
 }
 
