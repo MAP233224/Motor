@@ -313,7 +313,8 @@ static HWND GetNextSearchParamTabStop(HWND current) {
     if (current == HWND_MacInput) { return HWND_SpeciesFilterInput; }
     if (current == HWND_SpeciesFilterInput) { return HWND_ItemFilterInput; }
     if (current == HWND_ItemFilterInput) { return HWND_MoveFilterInput; }
-    if (current == HWND_MoveFilterInput) { return HWND_TidInput; }
+    if (current == HWND_MoveFilterInput) { return HWND_AbilityFilterInput; }
+    if (current == HWND_AbilityFilterInput) { return HWND_TidInput; }
     return HWND_TidInput;
 }
 
@@ -432,4 +433,14 @@ static void SetTextInput_mac(HWND hInput) {
         sprintf(b, "%012llX", value);
         SetWindowTextA(hInput, b);
     }
+}
+
+static u8 GetProfileSlot(void) {
+    /* Find and return the first active profile slot (there should only be 1) */
+    for (u8 i = 0; i < PROFILE_SLOTS_MAX; i++) {
+        if ((ProfileSlotState[i] & 0xf0) == PSS_ACTIVE) {
+            return i;
+        }
+    }
+    return 255; //couldn't find active slot
 }
