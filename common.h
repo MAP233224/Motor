@@ -92,6 +92,9 @@ enum {
     PROFILE_BAD_FILTER_ABILITY
 };
 
+/* Indices of each language */
+enum { LANGUAGE__0, LANGUAGE_JP, LANGUAGE_EN, LANGUAGE_FR, LANGUAGE_IT, LANGUAGE_GE, LANGUAGE__6, LANGUAGE_SP, LANGUAGE_KO };
+
 const u8 PROFILE_ErrorCodes[14][STRING_LENGTH_MAX] = {
     "OK",
     "FRAMES",
@@ -273,4 +276,16 @@ static int GetIndexOfString(u8 str[STRING_LENGTH_MAX], const u8 arr[][STRING_LEN
         if (hits == STRING_LENGTH_MAX) { return i; } //found, return index
     }
     return -1; //not found
+}
+
+static u8 GetLanguageActualIndex(u8 idx) {
+    /* Convert index from LanguagesActual to Languages */
+    if (idx < LANGUAGE__6) { return idx - 1; }
+    return idx - 2;
+}
+
+static u8 GetLanguageFullIndex(u8 idx) {
+    /* Convert index from Languages to LanguagesActual */
+    if (idx < LANGUAGE_GE) { return idx + 1; }
+    return idx + 2;
 }
