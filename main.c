@@ -52,17 +52,6 @@ static BOOL WINAPI CopySeedToClipboard(void) {
     return TRUE;
 }
 
-static u8 GetLanguageActualIndex(u8 idx) {
-    /* Convert index from LanguagesActual to Languages */
-    if (idx < LANGUAGE__6) { return idx - 1; }
-    return idx - 2;
-}
-
-static u8 GetLanguageFullIndex(u8 idx) {
-    /* Convert index from Languages to LanguagesActual */
-    if (idx < LANGUAGE_GE) { return idx + 1; }
-    return idx + 2;
-}
 
 static APPSTATUS SetProfileSlotState(u8 slot) {
     /* Set active state and redraw each button */
@@ -133,7 +122,6 @@ static APPSTATUS GetProfileFromWindows(void) {
     p.frames = (u32)AsciiToInt_dec32(str_frames);
 
     u64 mac = AsciiToInt_hex64(str_mac);
-    //todo: for loop? this already works currently
     p.mac[0] = (mac >> 40) & 0xFF;
     p.mac[1] = (mac >> 32) & 0xFF;
     p.mac[2] = (mac >> 24) & 0xFF;
@@ -187,16 +175,6 @@ static void SetWindowsFromProfile(PROFILE* p) {
     SetWindowTextA(HWND_ItemFilterInput, Items[p->filter_item]);
     SetWindowTextA(HWND_MoveFilterInput, Moves[p->filter_move]);
     SetWindowTextA(HWND_AbilityFilterInput, Abilities[p->filter_ability]);
-}
-
-static u8 GetProfileSlot(void) {
-    /* Find and return the first active profile slot (there should only be 1) */
-    for (u8 i = 0; i < PROFILE_SLOTS_MAX; i++) {
-        if ((ProfileSlotState[i] & 0xf0) == PSS_ACTIVE) {
-            return i;
-        }
-    }
-    return 255; //couldn't find active slot
 }
 
 static APPSTATUS LoadProfileFromSlot(PROFILE* p, u8 slot) {
