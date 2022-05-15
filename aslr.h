@@ -12,7 +12,7 @@
 #define HOUR_MAX (23)
 #define MONTHS_MAX (12)
 #define WEEKDAYS_MAX (7)
-#define BOOT_TIME (90) //frames of white screen: 86 mininum, 90 max, to be calibrated
+#define BOOT_TIME (87) //frames of white screen: 86 mininum, 90 max, to be calibrated
 
 enum { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY }; //japan order
 
@@ -319,8 +319,8 @@ static u32 GetRTCLow(DATETIME* dt) {
 
 static u32 GetRTCHigh(DATETIME* dt) {
     /* Format hour, minute, second (0x00SSMMHH) */
-    dt->hour = BCD(dt->hour) + 0x40 * (dt->hour > 11); //add 0x40 if PM
-    return (BCD(dt->second) << 16) | (BCD(dt->minute) << 8) | dt->hour;
+    u8 hour = BCD(dt->hour) + 0x40 * (dt->hour > 11); //add 0x40 if PM
+    return (BCD(dt->second) << 16) | (BCD(dt->minute) << 8) | hour;
 }
 
 static u32 MD5GetHeapOffset(PROFILE* pf, DATETIME* dt, u32 buffer[BUFFER_SIZE]) {
@@ -405,9 +405,9 @@ static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
     //0x0080 (desmume, dp jp)
 
     u32 buffer[BUFFER_SIZE] = {
-        VcountTicklo[pf->version >> 1], //assuming hard reset / boot
+        VcountTicklo[pf->version >> 1], //assuming hard reset / boot //+-1
         (*(u16*)(pf->mac + 4)) << 16, //last two u8 of MAC address in a u16, << 16
-        0x06000000 ^ (*(u32*)pf->mac), //first 4 u8 of MAC address in a u32
+        0x86000001 ^ (*(u32*)pf->mac), //first 4 u8 of MAC address in a u32
         0x00000000, //rtc_low (date)
         0x00000000, //rtc_high (time)
         0x00000000, //constant
