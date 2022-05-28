@@ -22,38 +22,37 @@ const u32 VcountTicklo[VERSIONS_MAX - 1] = { 0x003B0007, 0x00000007 }; //to be c
 const u32 NDS_Keys[VERSIONS_MAX - 1] = { 0x000003FF, 0x00002FFF };
 
 /* Smallest possible value found at the base sampling address */
-//todo: fill for plat
 const u32 AslrMin[LANGUAGES_MAX][VERSIONS_MAX - 1] = {
     { 0x00000000, 0x00000000 }, //_0
     { 0x02271940, 0x0227D4E0 }, //jp
     { 0x0226D260, 0x0227E0E0 }, //en
     { 0x0226D5E0, 0x0227E3C0 }, //fr
-    { 0x0226D440, 0x00000000 }, //it
-    { 0x0226D4A0, 0x00000000 }, //ge
+    { 0x0226D440, 0x0227E260 }, //it
+    { 0x0226D4A0, 0x0227E2A0 }, //ge
     { 0x00000000, 0x00000000 }, //_6
-    { 0x0226D600, 0x00000000 }, //sp
-    { 0x02274B00, 0x00000000 }, //ko
+    { 0x0226D600, 0x0227E3E0 }, //sp
+    { 0x02274B00, 0x0227F000 }, //ko
 };
 
 /* Base pointers depending on ASLR, Language and Version, 1 per group (ignores mirrors)  */
 const u32 aslr__0_dp[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
 const u32 aslr__0_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
 const u32 aslr_jp_dp[ASLR_GROUPS_MAX] = { 0x02271940, 0x02271944, 0x02271948, 0x0227194C, 0x02271970, 0x02271974, 0x02271978, 0x0227197C, 0x022719F0, 0x022719F4, 0x022719F8, 0x022719FC };
-const u32 aslr_jp_pt[ASLR_GROUPS_MAX] = { 0x0227D4F0, 0x0227D4F4, 0x0227D4F8, 0x0227D4FC, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
+const u32 aslr_jp_pt[ASLR_GROUPS_MAX] = { 0x0227D4F0, 0x0227D4F4, 0x0227D4F8, 0x0227D4FC, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable: nickname crash
 const u32 aslr_en_dp[ASLR_GROUPS_MAX] = { 0x0226D2F8, 0x0226D2FC, 0x0226D300, 0x0226D304, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 const u32 aslr_en_pt[ASLR_GROUPS_MAX] = { 0x0227E140, 0x0227E144, 0x0227E148, 0x0227E14C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 const u32 aslr_fr_dp[ASLR_GROUPS_MAX] = { 0x0226D5F8, 0x0226D5FC, 0x0226D600, 0x0226D604, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-const u32 aslr_fr_pt[ASLR_GROUPS_MAX] = { 0x0227E440, 0x0227E444, 0x0227E448, 0x0227E44C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //0/4 mirrors
+const u32 aslr_fr_pt[ASLR_GROUPS_MAX] = { 0x0227E440, 0x0227E444, 0x0227E448, 0x0227E44C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 const u32 aslr_it_dp[ASLR_GROUPS_MAX] = { 0x0226D500, 0x0226D504, 0x0226D508, 0x0226D50C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-const u32 aslr_it_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
+const u32 aslr_it_pt[ASLR_GROUPS_MAX] = { 0x0227E348, 0x0227E34C, 0x0227E350, 0x0227E354, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 const u32 aslr_ge_dp[ASLR_GROUPS_MAX] = { 0x0226D500, 0x0226D504, 0x0226D508, 0x0226D50C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-const u32 aslr_ge_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
+const u32 aslr_ge_pt[ASLR_GROUPS_MAX] = { 0x0227E348, 0x0227E34C, 0x0227E350, 0x0227E354, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 const u32 aslr__6_dp[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
 const u32 aslr__6_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //dummy
-const u32 aslr_sp_dp[ASLR_GROUPS_MAX] = { 0x0226D60C, 0x0226D600, 0x0226D604, 0x0226D608, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-const u32 aslr_sp_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
+const u32 aslr_sp_dp[ASLR_GROUPS_MAX] = { 0x0226D600, 0x0226D604, 0x0226D608, 0x0226D60C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
+const u32 aslr_sp_pt[ASLR_GROUPS_MAX] = { 0x0227E440, 0x0227E444, 0x0227E448, 0x0227E44C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 const u32 aslr_ko_dp[ASLR_GROUPS_MAX] = { 0x02274B9C, 0x02274BA0, 0x02274BA4, 0x02274BA8, 0x02274BAC, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
-const u32 aslr_ko_pt[ASLR_GROUPS_MAX] = { 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 }; //unavailable
+const u32 aslr_ko_pt[ASLR_GROUPS_MAX] = { 0x0227F0E0, 0x0227F0E4, 0x0227F0E8, 0x0227F0EC, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 
 /* ASLR table using the grouped version format */
 const u32* Aslrs[LANGUAGES_MAX][VERSIONS_MAX - 1] = {
@@ -377,6 +376,105 @@ static void CheckRollBack(DATETIME* dt, int minute, int second, int second_dif) 
     }
 }
 
+static APPSTATUS SeedToTime_groups(u32 seed, PROFILE* pf, u8 year) {
+    /* Get a list of all possible time/date setup depending on seed and mac address (rng + aslr manip) */
+    //TODO: aslr groups!!!
+
+    //Concept: instead of matching against 1 specific ASLR offset,
+    //just print each setups for a given year, and spread them accross all possible aslr offsets
+
+
+    u8 filepath[PATH_REL_LENGTH_MAX] = { 0 };
+    sprintf(filepath, ".results/%08X_TIME.txt", seed);
+    FILE* fp = fopen(filepath, "w+");
+    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
+
+    fprintf(fp, "Seed: 0x%08X\n", seed);
+    fprintf(fp, "Year: 20%02u\n", year);
+    fprintf(fp, "ASLR: %02u (0x%08X)\n", pf->aslr, Aslrs[pf->language][pf->version >> 1][pf->aslr]);
+    fprintf(fp, "MAC Address: %02X-%02X-%02X-%02X-%02X-%02X\n\n", pf->mac[0], pf->mac[1], pf->mac[2], pf->mac[3], pf->mac[4], pf->mac[5]);
+
+    fprintf(fp, "DATE       ASLR time  SEED time\n");
+    fprintf(fp, "dd/mm/yyyy (hh:mm:ss) hh:mm:ss delay\n");
+
+    //Now, technically nothing matters in the buffer except date/time (others are all assumed constant)
+    u32 buffer[BUFFER_SIZE] = {
+        VcountTicklo[pf->version >> 1], //assuming hard reset / boot //+-1
+        (*(u16*)(pf->mac + 4)) << 16, //last two u8 of MAC address in a u16, << 16
+        0x86000001 ^ (*(u32*)pf->mac), //first 4 u8 of MAC address in a u32
+        0x00000000, //rtc_low (date)
+        0x00000000, //rtc_high (time)
+        0x00000000, //constant
+        0x00000000, //constant
+        NDS_Keys[pf->version >> 1], //assumes the user isn't pressing any buttons during game boot
+    };
+
+    DATETIME dt = { 0 };
+
+    u32 results = 0;
+    u8 hasPrintedOffset[257] = { 0 }; //prevents printing the same offset more than once
+
+    u8 ab = seed >> 24;
+    u8 cd = (seed >> 16) & 0xFF;
+    u32 efgh = seed & 0xFFFF;
+
+    if (cd > HOUR_MAX)
+    {
+        dt.hour = HOUR_MAX;
+        dt.delay = efgh - year + ((cd - HOUR_MAX) << 16);
+    }
+    else
+    {
+        dt.hour = cd;
+        dt.delay = efgh - year;
+    }
+
+    dt.year = year;
+
+    int second_dif = (dt.delay + BOOT_TIME) / 60; // difference between the time the game boots (ASLR manip) and the time you hit the seed (RNG manip)
+
+    for (int month = 1; month <= 12; month++)
+    {
+        u8 maxDays = GetDaysInMonth(month, year);
+
+        for (int day = 1; day <= maxDays; day++)
+        {
+            for (int minute = 0; minute < 60; minute++)
+            {
+                for (int second = 0; second < 60; second++)
+                {
+                    if (ab == ((month * day + minute + second) & 0xFF))
+                    {
+                        /* Found a matching seed, check rtc and prepare buffer */
+                        CheckRollBack(&dt, minute, second, second_dif);
+                        dt.month = month;
+                        dt.day = day;
+
+                        buffer[3] = GetRTCLow(&dt);
+                        buffer[4] = GetRTCHigh(&dt);
+
+                        u8 offset = MD5GetHeapOffset(pf, &dt, buffer);
+
+                        int hour_aslr = dt.hour - (dt.minute > minute); //checking underflow
+                        if (hour_aslr >= 0 && !hasPrintedOffset[offset])
+                        {
+                            //todo: order before printing?
+                            fprintf(fp, "%02u: %02u/%02u/20%02u (%02u:%02u:%02u) %02u:%02u:%02u %u\n",
+                                offset/4, dt.day, dt.month, dt.year, hour_aslr, dt.minute, dt.second, dt.hour, minute, second, dt.delay);
+                            results++;
+                            hasPrintedOffset[offset] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fprintf(fp, "\nFound %u date/time setup(s).", results);
+    fclose(fp);
+    return APP_RESUME;
+}
+
 static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
     /* Get a list of all possible time/date setup depending on seed and mac address (rng + aslr manip) */
 
@@ -463,9 +561,13 @@ static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
                         if (MD5GetHeapOffset(pf, &dt, buffer) == offset)
                         {
                             /* Offsets are matching, print rtc + delay to file */
-                            fprintf(fp, "%02u/%02u/20%02u (%02u:%02u:%02u) %02u:%02u:%02u %u\n",
-                                dt.day, dt.month, dt.year, dt.hour - (dt.minute > minute), dt.minute, dt.second, dt.hour, minute, second, dt.delay);
-                            results++;
+                            int hour_aslr = dt.hour - (dt.minute > minute); //checking underflow
+                            if (hour_aslr >= 0)
+                            {
+                                fprintf(fp, "%02u/%02u/20%02u (%02u:%02u:%02u) %02u:%02u:%02u %u\n",
+                                    dt.day, dt.month, dt.year, hour_aslr, dt.minute, dt.second, dt.hour, minute, second, dt.delay);
+                                results++;
+                            }
                         }
                     }
                 }
@@ -475,8 +577,5 @@ static APPSTATUS SeedToTime(u32 seed, PROFILE* pf, u8 year) {
 
     fprintf(fp, "\nFound %u date/time setup(s).", results);
     fclose(fp);
-
-    //todo: message box with file path
-
     return APP_RESUME;
 }
