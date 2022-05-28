@@ -18,7 +18,6 @@
 #define STATS_MAX           (6)     // Number of stats: Hit Points, Attack, Defense, Speed, Special Attack and Special Defense
 #define OWN_MOVES_MAX       (4)     // Maximum number of moves a PKMN can know at the same time
 #define STACK_OFFSET        (4)     // Misalignment between wild and seven
-#define OG_WILDS_MAX        (10)    // OG_WILDS_MAX
 #define KOREAN_OFFSET       (0x44)  // Korean RAM quirk
 #define HEAPID_MAX          (0x5C)  // Hardcoded game constant. Apparently 0x5B would work too?
 #define BALL_ID_MAX         (20)    // Hardcoded? game constant
