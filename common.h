@@ -37,9 +37,7 @@ typedef int APPSTATUS;
 #define U32_DIGITS_DEC_MAX          (10)
 #define U64_VALUE_MAX               (0xFFFFFFFFFFFFFFFF)
 #define U64_DIGITS_HEX_MAX          (16)
-#define ASLR_VALUE_MAX              (11) //Global and Japanese
-#define ASLR_VALUE_MAX_KO           (4) //Korean
-#define ASLR_VALUE_MAX_EN           (3) //English, French, Italian, German and Spanish
+#define ASLR_VALUE_MAX              (11)
 #define ASLR_DIGITS_DEC_MAX         (2)
 #define MAC_VALUE_MAX               (0xFFFFFFFFFFFF)
 #define MAC_DIGITS_HEX_MAX          (12)
@@ -53,6 +51,8 @@ typedef int APPSTATUS;
 #define LANGUAGES_ACT_MAX           (7)  // Actual number of languages: Japanese, English, French, Italian, German, Spanish and Korean
 #define VERSIONS_MAX                (3)  // Number of versions: Diamond, Pearl and Platinum
 #define ASLR_GROUPS_MAX             (12) // Number of ASLR groups (mirrors)
+#define OG_WILDS_MAX                (10) // OG_WILDS_MAX
+
 
 /* Profile slots states */
 #define PSS_EMPTY                    (0x00)
