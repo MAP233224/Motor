@@ -61,6 +61,7 @@
 #define MOTOR_COLOR_DEBUG               (0xff00ff) //magenta
 
 #define ODS_INVERT                      (0x12345678) //custom owner drawn state
+#define SYS_ELEMENTS                    (2) //number of system elements that'll get their color changed
 
 /* MessageBox labels */
 #define MBL_CONFIRM                     ("Confirm")
@@ -105,6 +106,8 @@ enum {
 
 /* Globals */
 HFONT myFont;
+DWORD MyOldSysColors[SYS_ELEMENTS] = { 0 };
+const INT MySysElements[SYS_ELEMENTS] = { COLOR_HIGHLIGHT, COLOR_HIGHLIGHTTEXT };
 //TODO: dynamically allocate memory for this
 //48 KB
 u8 ResultsListStrings[1500][2 * STRING_LENGTH_MAX] = { 0 };
@@ -159,6 +162,10 @@ static void Esketit(void) {
     //Use an old Windows System Font for highest compatibility
     myFont = CreateFontA(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Courier");
 
+    /* Save user system colors to restore them at the end */
+    MyOldSysColors[0] = GetSysColor(MySysElements[0]);
+    MyOldSysColors[1] = GetSysColor(MySysElements[1]);
+
     HBRUSH_Dark = CreateSolidBrush(MOTOR_COLOR_DARK);
     HBRUSH_Teal = CreateSolidBrush(MOTOR_COLOR_TEAL);
     HBRUSH_Teal_h = CreateSolidBrush(MOTOR_COLOR_TEAL_H);
@@ -178,8 +185,9 @@ static void Esketit(void) {
 }
 
 static void FreeEsketit(void) {
-    /* Free resources */
-    // Might not even be needed but whatever
+    /* Free/restore resources */
+    SetSysColors(SYS_ELEMENTS, MySysElements, MyOldSysColors);
+
     DeleteObject(HBRUSH_Dark);
     DeleteObject(HBRUSH_Teal);
     DeleteObject(HBRUSH_Teal_h);
@@ -443,4 +451,482 @@ static u8 GetProfileSlot(void) {
         }
     }
     return 255; //couldn't find active slot
+}
+
+static void CheckTab(MSG* msg) {
+    /* Checks if Motor is the foreground window and process TAB key */
+    if (GetForegroundWindow() != HWND_AppMain) return;
+
+    if (msg->message == WM_KEYDOWN)
+    {
+        if (msg->wParam == VK_TAB)
+        {
+            HWND prev = GetFocus();
+            HWND next = GetNextSearchParamTabStop(prev);
+            SetFocus(next);
+        }
+    }
+}
+
+static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+static LRESULT WINAPI AppMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+static int CreateWindows(HINSTANCE hInstance) {
+    /* Create windows, instances and classes */
+
+    WC_AppMain.cbSize = sizeof(WNDCLASSEXA);
+    WC_AppMain.style = CS_OWNDC;
+    WC_AppMain.lpfnWndProc = &AppMainProc;
+    WC_AppMain.hInstance = hInstance;
+    WC_AppMain.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(101)); //loads Motor_logo.ico
+    WC_AppMain.hbrBackground = HBRUSH_Dark;
+    WC_AppMain.lpszClassName = "WC_AppMain";
+
+    if (!RegisterClassExA(&WC_AppMain)) { return GetLastError(); }
+
+    HWND_AppMain = CreateWindowA(
+        WC_AppMain.lpszClassName,
+        MOTOR_VERSION,
+        WS_VISIBLE | WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        APP_WINDOW_WIDTH,
+        APP_WINDOW_HEIGHT,
+        0,
+        0,
+        hInstance,
+        0
+    );
+
+    /* Handle to instance of the Main Window, referenced by its children */
+    HINSTANCE HINSTANCE_AppMain = (HINSTANCE)GetWindowLongPtrA(HWND_AppMain, GWLP_HINSTANCE);
+
+    HWND_ProgressBar = CreateWindowA(
+        PROGRESS_CLASSA,
+        NULL,
+        WS_VISIBLE | WS_CHILD | PBS_SMOOTH,
+        APP_WINDOW_PADDING_M,
+        SEARCH_RESULTS_HEIGHT + 2 * APP_WINDOW_PADDING_S + 4,
+        SEARCH_PARAMS_WIDTH,
+        8,
+        HWND_AppMain,
+        (HMENU)ID_SEARCH_PROGRESS_BAR,
+        HINSTANCE_AppMain,
+        0
+    );
+
+    if (!HWND_ProgressBar) { return GetLastError(); }
+
+    { //Progress bar style
+        LONG style = GetWindowLongA(HWND_ProgressBar, GWL_EXSTYLE) ^ WS_EX_STATICEDGE; //removes border
+        SetWindowLongA(HWND_ProgressBar, GWL_EXSTYLE, style);
+    }
+
+    WC_Results.cbSize = sizeof(WNDCLASSEXA);
+    WC_Results.style = CS_OWNDC; //already inherit from parent?
+    WC_Results.lpfnWndProc = &ResultsProc;
+    WC_Results.hInstance = HINSTANCE_AppMain;
+    WC_Results.lpszClassName = "WC_Results";
+
+    if (!RegisterClassExA(&WC_Results)) { return GetLastError(); }
+
+    HWND_Results = CreateWindowA(
+        WC_Results.lpszClassName, //system class
+        NULL,
+        WS_VISIBLE | WS_CHILD,
+        SEARCH_RESULTS_X,
+        SEARCH_RESULTS_Y,
+        SEARCH_RESULTS_WIDTH,
+        SEARCH_RESULTS_HEIGHT,
+        HWND_AppMain,
+        NULL,
+        HINSTANCE_AppMain,
+        NULL
+    );
+
+    /* Handle to instance of the Search Results Sub Window, referenced by its children */
+    HINSTANCE HINSTANCE_ResultsWindow = (HINSTANCE)GetWindowLongPtrA(HWND_Results, GWLP_HINSTANCE);
+
+    HWND_ResultsHeader = CreateWindowA(
+        "BUTTON",//WC_ResultsHeader.lpszClassName,
+        "RESULTS",
+        WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+        0,
+        0,
+        SEARCH_RESULTS_WIDTH,
+        BUTTON_WINDOW_HEIGHT,
+        HWND_Results,
+        (HMENU)ID_RESULTS_BUTTON,
+        HINSTANCE_ResultsWindow,
+        NULL
+    );
+
+    HWND_ResultsList = CreateWindowA(
+        "LISTBOX",
+        NULL,
+        WS_VISIBLE | WS_CHILD | WS_VSCROLL | LBS_HASSTRINGS | LBS_NOTIFY | LBS_OWNERDRAWFIXED,
+        APP_WINDOW_PADDING_S,
+        BUTTON_WINDOW_HEIGHT + APP_WINDOW_PADDING_S,
+        SEARCH_RESULTS_WIDTH - 2 * APP_WINDOW_PADDING_S,
+        SEARCH_RESULTS_HEIGHT - BUTTON_WINDOW_HEIGHT,
+        HWND_Results,
+        (HMENU)ID_RESULTS_LIST,
+        HINSTANCE_ResultsWindow,
+        NULL
+    );
+
+    WC_ResultDetails.cbSize = sizeof(WNDCLASSEXA);
+    WC_ResultDetails.style = CS_OWNDC;
+    WC_ResultDetails.lpfnWndProc = &ResultsProc;
+    WC_ResultDetails.hInstance = HINSTANCE_AppMain;
+    //WC_ResultDetails.hbrBackground = HBRUSH_Pump;
+    WC_ResultDetails.lpszClassName = "WC_ResultsDetails";
+
+    if (!RegisterClassExA(&WC_ResultDetails)) { return GetLastError(); }
+
+    HWND_ResultDetails = CreateWindowA(
+        WC_ResultDetails.lpszClassName, //"STATIC",
+        NULL,
+        WS_VISIBLE | WS_CHILD,
+        DETAILS_X,
+        DETAILS_Y,
+        DETAILS_WIDTH,
+        DETAILS_HEIGHT,
+        HWND_AppMain,
+        NULL,
+        HINSTANCE_AppMain,
+        NULL
+    );
+
+    /* Handle to instance of the Details Window, referenced by its children */
+    HINSTANCE HINSTANCE_DetailsWindow = (HINSTANCE)GetWindowLongPtrA(HWND_ResultDetails, GWLP_HINSTANCE);
+
+    HWND_CopyButton = CreateWindowA(
+        "BUTTON", //system class
+        "SEED TO TIME",
+        WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+        APP_WINDOW_PADDING_S,
+        DETAILS_HEIGHT - BUTTON_WINDOW_HEIGHT - APP_WINDOW_PADDING_S,
+        SEEDTIME_WIDTH,
+        BUTTON_WINDOW_HEIGHT,
+        HWND_ResultDetails,
+        (HMENU)ID_SEED_TO_TIME_BUTTON,
+        HINSTANCE_DetailsWindow,
+        NULL
+    );
+
+    HWND_YearFilter = CreateWindowA(
+        "EDIT", //system class
+        "YEAR",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        SEEDTIME_WIDTH + 2 * APP_WINDOW_PADDING_S,
+        DETAILS_HEIGHT - BUTTON_WINDOW_HEIGHT - APP_WINDOW_PADDING_S / 2,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_ResultDetails,
+        (HMENU)ID_YEAR_FILTER,
+        HINSTANCE_DetailsWindow,
+        NULL
+    );
+
+    HWND_DetailsList = CreateWindowA(
+        "STATIC", //system class
+        "",
+        WS_VISIBLE | WS_CHILD,// | SS_OWNERDRAW,
+        APP_WINDOW_PADDING_S,
+        APP_WINDOW_PADDING_S,
+        DETAILS_WIDTH - 2 * APP_WINDOW_PADDING_S,
+        DETAILS_HEIGHT - BUTTON_WINDOW_HEIGHT - 2 * APP_WINDOW_PADDING_S,
+        HWND_ResultDetails,
+        (HMENU)ID_DETAILS,
+        HINSTANCE_DetailsWindow,
+        NULL
+    );
+
+    WC_SearchParameters.cbSize = sizeof(WNDCLASSEXA);
+    WC_SearchParameters.style = CS_OWNDC;
+    WC_SearchParameters.lpfnWndProc = &SearchParametersProc;
+    WC_SearchParameters.hInstance = HINSTANCE_AppMain;
+    WC_SearchParameters.lpszClassName = "WC_SearchParameters";
+
+    if (!RegisterClassExA(&WC_SearchParameters)) { return GetLastError(); }
+
+    HWND_SearchParameters = CreateWindowA(
+        WC_SearchParameters.lpszClassName,
+        NULL,
+        WS_VISIBLE | WS_CHILD,
+        SEARCH_PARAMS_X,
+        SEARCH_PARAMS_Y,
+        SEARCH_PARAMS_WIDTH,
+        SEARCH_PARAMS_HEIGHT,
+        HWND_AppMain,
+        (HMENU)ID_SEARCH_PARAMETERS,
+        HINSTANCE_AppMain,
+        NULL
+    );
+
+    /* Handle to instance of the Search Parameter Window, referenced by its children */
+    HINSTANCE HINSTANCE_SearchWindow = (HINSTANCE)GetWindowLongPtrA(HWND_SearchParameters, GWLP_HINSTANCE);
+
+    HWND_SearchButton = CreateWindowA(
+        "BUTTON", //system class
+        "SEARCH",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+        SEARCH_BUTTON_X,
+        SEARCH_BUTTON_Y,
+        SEARCH_BUTTON_WIDTH,
+        SEARCH_BUTTON_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_SEARCH_BUTTON,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_TidInput = CreateWindowA(
+        "EDIT", //system class
+        "TID",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        APP_WINDOW_PADDING_S,
+        APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_TID_INPUT,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_SidInput = CreateWindowA(
+        "EDIT", //system class
+        "SID",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        APP_WINDOW_PADDING_S,
+        TEXT_INPUT_HEIGHT + 2 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_SID_INPUT,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_VersionInput = CreateWindowA(
+        "COMBOBOX", //system class
+        "VERSION",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED,
+        TEXT_INPUT_WIDTH + 2 * APP_WINDOW_PADDING_S,
+        APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        COMBOBOX_HEIGHT * (VERSIONS_MAX + 2), //why +2?
+        HWND_SearchParameters,
+        (HMENU)ID_VERSIONS_LIST,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_LanguageInput = CreateWindowA(
+        "COMBOBOX", //system class
+        "LANGUAGE",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED,
+        TEXT_INPUT_WIDTH + 2 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_HEIGHT + 3 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        COMBOBOX_HEIGHT * (LANGUAGES_ACT_MAX + 2),
+        HWND_SearchParameters,
+        (HMENU)ID_LANGUAGES_LIST,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_WildInput = CreateWindowA(
+        "COMBOBOX", //system class
+        "WILD",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED,
+        TEXT_INPUT_WIDTH + 2 * APP_WINDOW_PADDING_S,
+        2 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        COMBOBOX_HEIGHT * (OG_WILDS_MAX + 2),
+        HWND_SearchParameters,
+        (HMENU)ID_WILDS_LIST,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_AslrInput = CreateWindowA(
+        "EDIT", //system class
+        "ASLR",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        APP_WINDOW_PADDING_S,
+        2 * TEXT_INPUT_HEIGHT + 3 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_ASLR_INPUT,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_SeedInput = CreateWindowA(
+        "EDIT", //system class
+        "SEED",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_UPPERCASE | ES_CENTER,
+        APP_WINDOW_PADDING_S,
+        3 * TEXT_INPUT_HEIGHT + 4 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_SEED_INPUT,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_FramesInput = CreateWindowA(
+        "EDIT", //system class
+        "FRAMES",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        APP_WINDOW_PADDING_S,
+        4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_FRAMES_INPUT,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_MacInput = CreateWindowA(
+        "EDIT", //system class
+        "MAC",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_UPPERCASE | ES_CENTER,
+        TEXT_INPUT_WIDTH + 2 * APP_WINDOW_PADDING_S,
+        4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_MAC_INPUT,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_SpeciesFilterInput = CreateWindowA(
+        "EDIT", //system class
+        "SPECIES",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_SPECIES_FILTER,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_ItemFilterInput = CreateWindowA(
+        "EDIT", //system class
+        "ITEM",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_HEIGHT + 2 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_ITEM_FILTER,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_MoveFilterInput = CreateWindowA(
+        "EDIT", //system class
+        "MOVE",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        2 * TEXT_INPUT_HEIGHT + 3 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_MOVE_FILTER,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_AbilityFilterInput = CreateWindowA(
+        "EDIT", //system class
+        "ABILITY",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        3 * TEXT_INPUT_HEIGHT + 4 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        TEXT_INPUT_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_ABILITY_FILTER,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_ResetSearchParams = CreateWindowA(
+        "BUTTON", //system class
+        "RESET",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        5 * TEXT_INPUT_HEIGHT + 6 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        RESET_BUTTON_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_RESET_BUTTON,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_LoadSearchParams = CreateWindowA(
+        "BUTTON", //system class
+        "LOAD",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+        APP_WINDOW_PADDING_S,
+        5 * TEXT_INPUT_HEIGHT + 6 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        LOAD_BUTTON_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_LOAD_BUTTON,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    HWND_SaveSearchParams = CreateWindowA(
+        "BUTTON", //system class
+        "SAVE",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+        TEXT_INPUT_WIDTH + 2 * APP_WINDOW_PADDING_S,
+        5 * TEXT_INPUT_HEIGHT + 6 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        SAVE_BUTTON_HEIGHT,
+        HWND_SearchParameters,
+        (HMENU)ID_SAVE_BUTTON,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
+    /* Profile slot buttons */
+    for (u8 i = 0; i < PROFILE_SLOTS_MAX; i++) {
+        HWND_ProfileSlotButton[i] = CreateWindowA(
+            "BUTTON",
+            "P1",
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
+            APP_WINDOW_PADDING_S + (PROFILE_SLOT_BUTTON_WIDTH + APP_WINDOW_PADDING_S) * i,
+            SAVE_BUTTON_HEIGHT + 5 * TEXT_INPUT_HEIGHT + 7 * APP_WINDOW_PADDING_S,
+            PROFILE_SLOT_BUTTON_WIDTH,
+            PROFILE_SLOT_BUTTON_WIDTH,
+            HWND_SearchParameters,
+            (HMENU)(ID_PROFILE_SLOT_BUTTON + i),
+            HINSTANCE_SearchWindow,
+            NULL
+        );
+    }
+
+    if (!HWND_AppMain) { return APP_ERR_MAIN_CREATE; } //abort if failed to create main window
+
+
+
+    return 0; //success
 }
