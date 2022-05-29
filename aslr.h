@@ -7,12 +7,14 @@
 //MD5 implementation based on https://datatracker.ietf.org/doc/html/rfc1321
 //SeedToTime implementation based on Pokefinder's "SeedtoTime4::generate" at https://github.com/Admiral-Fish/PokeFinder/blob/master/Source/Forms/Gen4/Tools/SeedtoTime4.cpp
 
-#define BUFFER_SIZE 8
-#define DIGEST_SIZE 16
-#define HOUR_MAX (23)
-#define MONTHS_MAX (12)
-#define WEEKDAYS_MAX (7)
-#define BOOT_TIME (87) //frames of white screen: 86 mininum, 90 max, to be calibrated
+#define BUFFER_SIZE     (8)
+#define DIGEST_SIZE     (16)
+#define OFFSETS_MAX     (256)
+#define SETUPS_MAX      (8)
+#define HOUR_MAX        (23)
+#define MONTHS_MAX      (12)
+#define WEEKDAYS_MAX    (7)
+#define BOOT_TIME       (87) //frames of white screen: 86 mininum, 90 max, to be calibrated
 
 enum { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY }; //japan order
 
@@ -77,6 +79,21 @@ typedef struct {
     u16 delay; //0 to MAX_DELAY_DPPT
     //Size: 8 bytes
 } DATETIME;
+
+typedef struct {
+    DATETIME datetime;
+    u8 aslr_hour;
+    u8 aslr_minute;
+    u8 aslr_second;
+    //Size: 12 bytes (aligned)
+} DATETIME_EX;
+
+typedef struct {
+
+    u8 setups_count[OFFSETS_MAX / 4]; //counts how many setups have been added for this offset
+    DATETIME_EX datetime_ex[OFFSETS_MAX / 4][SETUPS_MAX];
+
+} DATETIME_BUF;
 
 /* MD5 context. */
 typedef struct {
@@ -376,6 +393,16 @@ static void CheckRollBack(DATETIME* dt, int minute, int second, int second_dif) 
     }
 }
 
+static BOOL SendSetupToBuffer(DATETIME_BUF* dtbuf, DATETIME* dt, u8 offset, u8 hour, u8 minute, u8 second) {
+    /* Add a date time setup to a buffer if the offs */
+    if (dtbuf->setups_count[offset] >= SETUPS_MAX) { return FALSE; } //don't add if limit reached for this offset
+    DATETIME_EX dtex = { .aslr_hour = hour, .aslr_minute = minute, .aslr_second = second };
+    memcpy(&dtex.datetime, dt, sizeof(DATETIME)); //copy DATETIME to DATETIME_EX
+    memcpy(&dtbuf->datetime_ex[offset][dtbuf->setups_count[offset]], &dtex, sizeof(DATETIME_EX)); //copy DATETIME_EX to DATETIME_BUF
+    dtbuf->setups_count[offset]++;
+    return TRUE; //successfully added to the buffer
+}
+
 static APPSTATUS SeedToTime_groups(u32 seed, PROFILE* pf, u8 year) {
     /* Get a list of all possible time/date setup depending on seed and mac address (rng + aslr manip) */
     //TODO: aslr groups!!!
@@ -410,9 +437,10 @@ static APPSTATUS SeedToTime_groups(u32 seed, PROFILE* pf, u8 year) {
     };
 
     DATETIME dt = { 0 };
+    DATETIME_BUF dtbuf = { 0 }; //max 8 per offset (Size = 256*8*12 = 24576 bytes)
 
     u32 results = 0;
-    u8 hasPrintedOffset[257] = { 0 }; //prevents printing the same offset more than once
+    u8 hasPrintedOffset[OFFSETS_MAX] = { 0 }; //prevents printing the same offset more than once
 
     u8 ab = seed >> 24;
     u8 cd = (seed >> 16) & 0xFF;
@@ -453,20 +481,31 @@ static APPSTATUS SeedToTime_groups(u32 seed, PROFILE* pf, u8 year) {
                         buffer[3] = GetRTCLow(&dt);
                         buffer[4] = GetRTCHigh(&dt);
 
-                        u8 offset = MD5GetHeapOffset(pf, &dt, buffer);
+                        u8 offset = MD5GetHeapOffset(pf, &dt, buffer); //currently ignoring offset 256
 
                         int hour_aslr = dt.hour - (dt.minute > minute); //checking underflow
-                        if (hour_aslr >= 0 && !hasPrintedOffset[offset])
+                        if (hour_aslr >= 0)
                         {
-                            //todo: order before printing?
-                            fprintf(fp, "%02u: %02u/%02u/20%02u (%02u:%02u:%02u) %02u:%02u:%02u %u\n",
-                                offset/4, dt.day, dt.month, dt.year, hour_aslr, dt.minute, dt.second, dt.hour, minute, second, dt.delay);
-                            results++;
-                            hasPrintedOffset[offset] = 1;
+                            if (SendSetupToBuffer(&dtbuf, &dt, offset / 4, hour_aslr, minute, second))
+                            {
+                                results++;
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    /* Print DATETIME_EX buffer */
+    for (u32 i = 0; i < OFFSETS_MAX / 4; i++)
+    {
+        fprintf(fp, "%02u\n", i); //offset/4
+        for (u32 j = 0; j < SETUPS_MAX; j++)
+        {
+            DATETIME_EX* dtexp = &dtbuf.datetime_ex[i][j]; //get from buffer
+            fprintf(fp, "%02u/%02u/20%02u (%02u:%02u:%02u) %02u:%02u:%02u %u\n",
+                dtexp->datetime.day, dtexp->datetime.month, dtexp->datetime.year, dtexp->aslr_hour, dtexp->datetime.minute, dtexp->datetime.second, dtexp->datetime.hour, dtexp->aslr_minute, dtexp->aslr_second, dtexp->datetime.delay);
         }
     }
 
