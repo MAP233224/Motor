@@ -25,7 +25,7 @@ typedef int32_t s32;
 typedef uint64_t u64;
 typedef int APPSTATUS;
 
-#define MOTOR_VERSION               ("Motor v2.1.0")
+#define MOTOR_VERSION               ("Motor v2.2.0")
 #define SEARCH_THREADS_MAX          (8)
 #define PROFILE_SLOTS_MAX           (8)
 #define STRING_LENGTH_MAX           (16)
@@ -52,7 +52,12 @@ typedef int APPSTATUS;
 #define VERSIONS_MAX                (3)  // Number of versions: Diamond, Pearl and Platinum
 #define ASLR_GROUPS_MAX             (12) // Number of ASLR groups (mirrors)
 #define OG_WILDS_MAX                (10) // OG_WILDS_MAX
-
+#define STATS_MAX                   (6)  // Number of stats: Hit Points, Attack, Defense, Speed, Special Attack and Special Defense
+#define IV_VALUE_MAX                (31)
+#define IV_DIGITS_MAX               (2)
+#define NATURES_MAX                 (25) // Number of natures
+#define NATURES_FILTER_MAX          (NATURES_MAX + 1) // Number of natures + 1 (the "none" filter)
+#define NATURE_FILTER_NONE          (0xFF) //when you don't want to filter for a Nature, this should be the index in the combobox
 
 /* Profile slots states */
 #define PSS_EMPTY                    (0x00)
@@ -89,11 +94,16 @@ enum {
     PROFILE_BAD_VERSION,
     PROFILE_BAD_WILD,
     PROFILE_BAD_MAC,
-    PROFILE_BAD_FILTER_ABILITY
+    PROFILE_BAD_FILTER_ABILITY,
+    PROFILE_BAD_FILTER_NATURE,
+    PROFILE_BAD_FILTER_IVS,
 };
 
 /* Indices of each language */
 enum { LANGUAGE__0, LANGUAGE_JP, LANGUAGE_EN, LANGUAGE_FR, LANGUAGE_IT, LANGUAGE_GE, LANGUAGE__6, LANGUAGE_SP, LANGUAGE_KO };
+
+/* Indices of each stat */
+enum { HP, AT, DF, SP, SA, SD };
 
 const u8 PROFILE_ErrorCodes[14][STRING_LENGTH_MAX] = {
     "OK",
@@ -144,9 +154,9 @@ typedef struct {
     u8 wild; //original wild target to be corrupted
     u8 mac[6]; //mac address
     u8 filter_ability;
-    u8 padding[3];
-    //there's space for an IV filter (4 bytes)
-    //Size: 32 bytes, padded to be the same size as RESULTDATA on purpose
+    u8 filter_nature;
+    u8 filter_ivs[STATS_MAX];
+    //Size: 36 bytes
 } PROFILE;
 
 /* Search parameters / profiles */
@@ -192,57 +202,30 @@ static BOOL IsValidIntString_dec(u8* b, u8 size) {
     return TRUE;
 }
 
-static u32 AsciiToInt_dec16(u8* b, u8 digits) {
-    /* Converts a buffer of 'digits' chars to an int */
-    /* Assuming 'digits' not greater than 5 */
-    u32 r = b[0] - 48;
-    for (u8 i = 1; i < digits; i++) {
-        r = r * 10 + b[i] - 48;
-    }
-    return r;
+static inline u32 AsciiToInt_dec16(const u8* b) {
+    /* Converts a buffer of chars to a u32 */
+    return strtoul(b, NULL, 10);
 }
 
-static u64 AsciiToInt_dec32(u8 b[U32_DIGITS_DEC_MAX]) {
-    /* Converts a buffer of 10 chars to an int */
-    u64 r = b[0];
-    for (u8 i = 1; i < U32_DIGITS_DEC_MAX; i++) {
-        r = r * 10 + b[i];
-    }
-    return r - 53333333328; //lemau
+static inline u64 AsciiToInt_dec32(const u8* b) {
+    /* Converts a buffer of chars to a u64 */
+    return strtoull(b, NULL, 10);
 }
 
-static u8 HexLetterToNumber(u8 n) {
-    /* Virtually apends the capital letters right after 9 in the ASCII table */
-    switch (n) {
-    case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
-        return n - 7;
-    default:
-        return n;
-    }
+static inline u32 AsciiToInt_hex32(const u8* b) {
+    /* Converts a buffer of chars in hex format to a u32 */
+    return strtoul(b, NULL, 16);
+}
+
+static inline u64 AsciiToInt_hex64(const u8* b) {
+    /* Converts a buffer of chars in hex format to a u64 */
+    return strtoull(b, NULL, 16);
 }
 
 static u32 BCD(u32 val) {
     /* Binary Coded Decimal for values under 100 */
     //better optimized when u32 instead of u8
     return val + 6 * (val / 10);
-}
-
-static u32 AsciiToInt_hex32(u8 b[U32_DIGITS_HEX_MAX]) {
-    /* Converts a buffer of 8 chars in hex format to an int */
-    u32 r = HexLetterToNumber(b[0]);
-    for (u8 i = 1; i < U32_DIGITS_HEX_MAX; i++) {
-        r = r * 16 + HexLetterToNumber(b[i]);
-    }
-    return r - 0x33333330; //kek
-}
-
-static u64 AsciiToInt_hex64(u8 b[MAC_DIGITS_HEX_MAX]) {
-    /* Converts a buffer of 8 chars in hex format to an int */
-    u64 r = HexLetterToNumber(b[0]);
-    for (u8 i = 1; i < MAC_DIGITS_HEX_MAX; i++) {
-        r = r * 16 + HexLetterToNumber(b[i]);
-    }
-    return r - 0x3333333333330ULL;
 }
 
 static void ZeroLeftPadTextInputInt(u8* b, u8 size) {
