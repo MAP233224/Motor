@@ -38,7 +38,7 @@ static int GetFileSize_mine(FILE* fp) {
 static void InitProfilesFile(void) {
     /* Create the PROFILES file and set all its data to zero */
     FILE* fp = fopen(ProfilesPath, "wb+");
-    u8 buffer[PROFILE_SLOTS_MAX * sizeof(PROFILE)] = { 0 };
+    u8 buffer[PROFILE_FILE_SIZE] = { 0 };
     fwrite(buffer, sizeof(buffer), 1, fp);
     fclose(fp);
 }
@@ -72,9 +72,10 @@ static APPSTATUS SaveProfileToSlot(u8 slot) {
 
 static int GetResultsCount(FILE* fp, BOOL hasProfileHeader) {
     /* Get the size of the file and divide it by the size of a RESULTDATA struct to get the number of results in the file */
-    int r = GetFileSize_mine(fp) / sizeof(RESULTDATA);
-    if (hasProfileHeader) { return r - 1; } //PROFILE and RESULTDATA structs are the same size
-    return r;
+    int count = GetFileSize_mine(fp);
+    if (hasProfileHeader) { count -= sizeof(PROFILE); }
+    count /= sizeof(RESULTDATA);
+    return count;
 }
 
 static void GetProfileFromResultsFile(PROFILE* p, FILE* fp) {
