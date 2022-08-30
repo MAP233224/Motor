@@ -14,8 +14,6 @@
 #define SPECIES_MAX         (494)   // Number of species
 #define MOVES_MAX           (468)   // Number of moves
 #define ITEMS_MAX           (468)   // Number of items (465 in Diamond and Pearl but it doesn't make a difference)
-#define NATURES_MAX         (25)    // Number of natures
-#define STATS_MAX           (6)     // Number of stats: Hit Points, Attack, Defense, Speed, Special Attack and Special Defense
 #define OWN_MOVES_MAX       (4)     // Maximum number of moves a PKMN can know at the same time
 #define STACK_OFFSET        (4)     // Misalignment between wild and seven
 #define KOREAN_OFFSET       (0x44)  // Korean RAM quirk
@@ -126,9 +124,6 @@ enum { OGW_DP_GIRATINA, OGW_DP_ARCEUS, OGW_DP_DIALGA, OGW_DP_PALKIA = OGW_DP_DIA
 
 /* OGWILD wilds, Platinum */
 enum { OGW_PT_GIRATINA_O, OGW_PT_GIRATINA_A, OGW_PT_DIALGA, OGW_PT_PALKIA, OGW_PT_UXIE, OGW_PT_AZELF, OGW_PT_ROTOM, OGW_PT_HEATRAN, OGW_PT_REGIGIGAS, OGW_PT_9, OGW_PT_10 };
-
-/* Indices of each stat */
-enum { HP, AT, DF, SP, SA, SD };
 
 /* Types */
 enum {
@@ -438,7 +433,7 @@ static void SetChecksum(PKMN* pkmn) {
 }
 
 static u16 GetGender(u32 pid, u16 species) {
-    /*  */
+    /* Retrieve gender from pid and species */
     if (species == 0x01E5) { //Heatran
         if (127 > (pid & 0xff)) { return 0x0001; }
         return 0x0000;
@@ -448,7 +443,7 @@ static u16 GetGender(u32 pid, u16 species) {
 
 static BOOL IsEgg(u32 ivs) {
     /* Check if the egg flag is set by looking at bit 30 of the ivs.  */
-    return (ivs & 0x40000000) == 0x40000000;
+    return (ivs >> 30) & 1;
 }
 
 static BOOL IsFatefulEncounter(u16 fate) {
@@ -499,12 +494,12 @@ static void EncryptCondition(PKMN* pkmn) {
 
 static void DecomposeIVs(u32 ivs, u8 iv_arr[STATS_MAX]) {
     /* Decompose IVs */
-    iv_arr[HP] = (ivs >> 0) & 31;
-    iv_arr[AT] = (ivs >> 5) & 31;
-    iv_arr[DF] = (ivs >> 10) & 31;
-    iv_arr[SP] = (ivs >> 15) & 31;
-    iv_arr[SA] = (ivs >> 20) & 31;
-    iv_arr[SD] = (ivs >> 25) & 31;
+    iv_arr[HP] = (ivs >> 0) & IV_VALUE_MAX;
+    iv_arr[AT] = (ivs >> 5) & IV_VALUE_MAX;
+    iv_arr[DF] = (ivs >> 10) & IV_VALUE_MAX;
+    iv_arr[SP] = (ivs >> 15) & IV_VALUE_MAX;
+    iv_arr[SA] = (ivs >> 20) & IV_VALUE_MAX;
+    iv_arr[SD] = (ivs >> 25) & IV_VALUE_MAX;
 }
 
 static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
@@ -533,7 +528,7 @@ static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
 }
 
 static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
-    /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize) from a given state */
+    /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
     pkmn->nature = (RngNext(&state) >> 16) / 0x0A3E;
     do { pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000); } while (pkmn->pid % NATURES_MAX != pkmn->nature); //roll PID until the 2 natures are the same
     pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
