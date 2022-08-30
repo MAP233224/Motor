@@ -29,6 +29,8 @@ HANDLE SearchThread[SEARCH_THREADS_MAX];
 u8 SearchThreadIndex[SEARCH_THREADS_MAX];
 u8 SearchThreadsMax; //maximum number of threads that will be allocated
 
+//todo: helpful text on input hover after 1 second
+
 /* Functions */
 
 static BOOL WINAPI CopySeedToClipboard(void) {
@@ -52,7 +54,6 @@ static BOOL WINAPI CopySeedToClipboard(void) {
     return TRUE;
 }
 
-
 static APPSTATUS SetProfileSlotState(u8 slot) {
     /* Set active state and redraw each button */
     FILE* fp = fopen(ProfilesPath, "rb");
@@ -74,25 +75,34 @@ static APPSTATUS SetProfileSlotState(u8 slot) {
 static APPSTATUS IsValidProfile(PROFILE* p) {
     /* Check each member of the PROFILE struct */
     /* TID, SID, Seed and Frames aren't checked because they can't technically be invalid */
-    if (p->filter_item >= ITEMS_MAX) { return PROFILE_BAD_FILTER_ITEM; }
-    if (p->filter_move >= MOVES_MAX) { return PROFILE_BAD_FILTER_MOVE; }
-    if (p->filter_species >= SPECIES_MAX) { return PROFILE_BAD_FILTER_SPECIES; }
-    if (p->filter_ability >= ABILITIES_MAX) { return PROFILE_BAD_FILTER_ABILITY; }
+    /* Critical */
     if (p->language >= LANGUAGES_MAX) { return PROFILE_BAD_LANGUAGE; }
     if (p->version >= VERSIONS_MAX) { return PROFILE_BAD_VERSION; }
     if (p->wild >= OG_WILDS_MAX) { return PROFILE_BAD_WILD; }
     if (OGW_LangVers[p->language][p->version][p->wild] == NULL) { return PROFILE_BAD_WILD; }
     //if (*(u64*)p->mac > MAC_VALUE_MAX) { return PROFILE_BAD_MAC; } //todo: not check or better check, this doesn't work
+    if (p->aslr > ASLR_VALUE_MAX) { return PROFILE_BAD_ASLR; }
     if (Aslrs[p->language][p->version >> 1][p->aslr] == 0) { return PROFILE_BAD_ASLR; }
+    /* Filters */
+    if (p->filter_item >= ITEMS_MAX) { return PROFILE_BAD_FILTER_ITEM; }
+    if (p->filter_move >= MOVES_MAX) { return PROFILE_BAD_FILTER_MOVE; }
+    if (p->filter_species >= SPECIES_MAX) { return PROFILE_BAD_FILTER_SPECIES; }
+    if (p->filter_ability >= ABILITIES_MAX) { return PROFILE_BAD_FILTER_ABILITY; }
+    if ((p->filter_nature != NATURE_FILTER_NONE) && (p->filter_nature >= NATURES_MAX)) { return PROFILE_BAD_FILTER_NATURE; }
+    for (u32 i = 0; i < STATS_MAX; i++)
+    {
+        if (p->filter_ivs[i] > IV_VALUE_MAX) { return PROFILE_BAD_FILTER_IVS; }
+    }
+
     return PROFILE_OK;
 }
 
 static APPSTATUS GetProfileFromWindows(void) {
     /* Get the search parameters from the input fields and set them in PROFILE_Current */
     /* Return an error code to identify which filed is wrong */
-    /* Note: the filters are automatically updated with their windows */
-    PROFILE p = { 0 }; //temp
-    memcpy(&p, &PROFILE_Current, sizeof(PROFILE)); //copies filters
+    /* Note: the filters are automatically updated with their windows, except Nature */
+    PROFILE p = { 0 };
+    memcpy(&p, &PROFILE_Current, sizeof(PROFILE)); //init with filters
 
     u8 str_tid[U16_DIGITS_DEC_MAX + 1] = { 0 };
     u8 str_sid[U16_DIGITS_DEC_MAX + 1] = { 0 };
@@ -106,15 +116,15 @@ static APPSTATUS GetProfileFromWindows(void) {
     p.language = GetLanguageFullIndex(p.language);
     p.wild = (u8)SendMessageA(HWND_WildInput, CB_GETCURSEL, 0, 0);
     GetWindowTextA(HWND_AslrInput, str_aslr, sizeof(str_aslr));
-    p.aslr = AsciiToInt_dec16(str_aslr, sizeof(str_aslr) - 1);
+    p.aslr = AsciiToInt_dec16(str_aslr);
     GetWindowTextA(HWND_TidInput, str_tid, sizeof(str_tid));
     GetWindowTextA(HWND_SidInput, str_sid, sizeof(str_sid));
     GetWindowTextA(HWND_SeedInput, str_seed, sizeof(str_seed));
     GetWindowTextA(HWND_FramesInput, str_frames, sizeof(str_frames));
     GetWindowTextA(HWND_MacInput, str_mac, sizeof(str_mac));
 
-    p.tid = AsciiToInt_dec16(str_tid, sizeof(str_tid) - 1);
-    p.sid = AsciiToInt_dec16(str_sid, sizeof(str_sid) - 1);
+    p.tid = AsciiToInt_dec16(str_tid);
+    p.sid = AsciiToInt_dec16(str_sid);
     p.seed = AsciiToInt_hex32(str_seed);
     p.frames = (u32)AsciiToInt_dec32(str_frames);
 
@@ -126,6 +136,9 @@ static APPSTATUS GetProfileFromWindows(void) {
     p.mac[4] = (mac >> 8) & 0xFF;
     p.mac[5] = (mac >> 0) & 0xFF;
 
+    u8 nature = (u8)SendMessageA(HWND_NatureFilterInput, CB_GETCURSEL, 0, 0);
+    p.filter_nature = (nature == NATURE_FILTER_NONE) ? NATURE_FILTER_NONE : NatureSortedToInternal[nature];
+
     APPSTATUS err = IsValidProfile(&p);
     if (err != PROFILE_OK) { return err; }
 
@@ -136,12 +149,12 @@ static APPSTATUS GetProfileFromWindows(void) {
 
 static void GetProfileRecapString(PROFILE* p, u8 str[512]) {
     /* Format a string with all the profile info */
-    sprintf(str, "Version: %s\nLanguage: %s\nTID: %05d\nSID: %05d\nWild: %s\nSeed: 0x%08X\nFrames: %u\nASLR: %u (0x%08X)\nMAC Address: %02X-%02X-%02X-%02X-%02X-%02X\n\nFilters:\nSpecies: %s\nItem: %s\nMove: %s\nAbility: %s",
+    sprintf(str, "Version: %s\nLanguage: %s\nTID: %05d\nSID: %05d\nWild: %s\nSeed: 0x%08X\nFrames: %u\nASLR: %u (0x%08X)\nMAC Address: %02X-%02X-%02X-%02X-%02X-%02X\n\nFilters:\nSpecies: %s\nItem: %s\nMove: %s\nAbility: %s\nNature: %s\nIVs: %02u / %02u / %02u / %02u / %02u / %02u",
         Versions[p->version],
         Languages[p->language],
         p->tid,
         p->sid,
-        OgWilds[p->version][p->wild], //grouped version
+        OgWilds[p->version][p->wild],
         p->seed,
         p->frames,
         p->aslr,
@@ -150,7 +163,9 @@ static void GetProfileRecapString(PROFILE* p, u8 str[512]) {
         Pokelist[p->filter_species],
         Items[p->filter_item],
         Moves[p->filter_move],
-        Abilities[p->filter_ability]
+        Abilities[p->filter_ability],
+        (p->filter_nature == NATURE_FILTER_NONE) ? "Anything" : Natures[p->filter_nature],
+        p->filter_ivs[HP], p->filter_ivs[AT], p->filter_ivs[DF], p->filter_ivs[SA], p->filter_ivs[SD], p->filter_ivs[SP]
     );
 }
 
@@ -172,6 +187,9 @@ static void SetWindowsFromProfile(PROFILE* p) {
     SetWindowTextA(HWND_ItemFilterInput, Items[p->filter_item]);
     SetWindowTextA(HWND_MoveFilterInput, Moves[p->filter_move]);
     SetWindowTextA(HWND_AbilityFilterInput, Abilities[p->filter_ability]);
+    int nature = (p->filter_nature == NATURE_FILTER_NONE) ? -1 : p->filter_nature;
+    SendMessageA(HWND_NatureFilterInput, CB_SETCURSEL, nature, 0);
+    for (u32 i = 0; i < STATS_MAX; i++) { SetWindowTextFromInt(HWND_IvInput[i], "%02u", p->filter_ivs[i]); }
 }
 
 static APPSTATUS LoadProfileFromSlot(PROFILE* p, u8 slot) {
@@ -258,10 +276,14 @@ static void ResetSearchParameters(void) {
     SendMessageA(HWND_VersionInput, CB_SETCURSEL, -1, 0);
     SendMessageA(HWND_LanguageInput, CB_SETCURSEL, -1, 0);
     SendMessageA(HWND_WildInput, CB_SETCURSEL, -1, 0);
+    SendMessageA(HWND_NatureFilterInput, CB_SETCURSEL, -1, 0);
     SetWindowTextA(HWND_SpeciesFilterInput, "SPECIES");
     SetWindowTextA(HWND_MoveFilterInput, "MOVE");
     SetWindowTextA(HWND_ItemFilterInput, "ITEM");
     SetWindowTextA(HWND_AbilityFilterInput, "ABILITY");
+
+    for (u32 i = 0; i < STATS_MAX; i++) { SetWindowTextA(HWND_IvInput[i], Stats[i]); }
+
     memset(&PROFILE_Current, 0, sizeof(PROFILE_Current));
 }
 
@@ -288,13 +310,13 @@ static APPSTATUS LoadResultsFileDetails(u8 path[PATH_REL_LENGTH_MAX]) {
     fclose(fp);
 
     u8 str_details[512] = { 0 };
-    sprintf(str_details, "%u results in this file.\nDouble-click to load.\n\nVersion         %s\nLanguage        %s\nTID             %05u\nSID             %05u\nWild            %s\nASLR            %02u (0x%08X)\nSeed            0x%08X\nFrames          %u\nMAC Address:    %02X-%02X-%02X-%02X-%02X-%02X\n\nFilters\n  Species       %s\n  Item          %s\n  Move          %s\n  Ability       %s",
+    sprintf(str_details, "%u results in this file.\nDouble-click to load.\n\nVersion         %s\nLanguage        %s\nTID             %05u\nSID             %05u\nWild            %s\nASLR            %02u (0x%08X)\nSeed            0x%08X\nFrames          %u\nMAC Address:    %02X-%02X-%02X-%02X-%02X-%02X\n\nFilters\n  Species       %s\n  Item          %s\n  Move          %s\n  Ability       %s\n  Nature       %s\n  IVs          %02u / %02u / %02u / %02u / %02u / %02u",
         results,
         Versions[p.version],
         Languages[p.language],
         p.tid,
         p.sid,
-        OgWilds[p.version][p.wild], //grouped version
+        OgWilds[p.version][p.wild],
         p.aslr, Aslrs[p.language][p.version >> 1][p.aslr], //grouped version
         p.seed,
         p.frames,
@@ -302,7 +324,9 @@ static APPSTATUS LoadResultsFileDetails(u8 path[PATH_REL_LENGTH_MAX]) {
         Pokelist[p.filter_species],
         Items[p.filter_item],
         Moves[p.filter_move],
-        Abilities[p.filter_ability]
+        Abilities[p.filter_ability],
+        (p.filter_nature == NATURE_FILTER_NONE) ? "Anything" : Natures[p.filter_nature],
+        p.filter_ivs[HP], p.filter_ivs[AT], p.filter_ivs[DF], p.filter_ivs[SA], p.filter_ivs[SD], p.filter_ivs[SP]
     );
     SetWindowTextA(HWND_DetailsList, str_details);
     return APP_RESUME;
@@ -314,7 +338,7 @@ static APPSTATUS LoadResultDetails(int idx) {
     FILE* fp = fopen(SearchDataCurrent.path, "rb");
     if (fp == NULL) { return APP_ERR_OPEN_FILE; } //couldn't open file
 
-    fseek(fp, (idx + 1) * sizeof(RESULTDATA), SEEK_SET); //go to index of selected result from in the file //+1 because of PROFILE header
+    fseek(fp, idx * sizeof(RESULTDATA) + sizeof(PROFILE), SEEK_SET); //go to index of selected result in the file
     fread(&ResultDataCurrent, sizeof(RESULTDATA), 1, fp); //read data and write to ResultDataCurrent
 
     //TODO: species sprite icon? bonus
@@ -369,29 +393,6 @@ static APPSTATUS LoadResultDetails(int idx) {
     return APP_RESUME;
 }
 
-//static BOOL GetRelativeResultsPath(u8 abs[PATH_ABS_LENGTH_MAX]) {
-//    /* Convert from absolute to relative RESULTS file path */
-//    const u8 dir[] = "/.results/"; //directory string, guarantees correct location
-//    u8 i = 0;
-//    u8 pos = 255; //default
-//    do { //seek dir string
-//        u8 sum = 0;
-//        for (u8 p = 0; p < sizeof(dir) - 1; p++) {
-//            sum += (dir[p] ^ abs[i + p]);
-//        }
-//        if (sum == 0) { //string match
-//            pos = i;
-//            break;
-//        }
-//        i++;
-//    } while (abs[i]); //reached end of abs
-//    if (pos == 255) { return FALSE; } //dir string not found in abs string
-//    u8 tmp[PATH_ABS_LENGTH_MAX] = { 0 };
-//    memcpy(tmp, &abs[pos + 1], PATH_ABS_LENGTH_MAX - pos);
-//    memcpy(abs, tmp, PATH_ABS_LENGTH_MAX);
-//    return TRUE; //sucess
-//}
-
 static void AddResultToList(RESULTDATA* result, int index) {
     /* Format a result string and add it to the results list */
     u8 str_summary[2 * STRING_LENGTH_MAX] = { 0 };
@@ -420,7 +421,6 @@ static APPSTATUS LoadResultsFromFile(u8* filepath) {
     SearchDataCurrent.results = GetResultsCount(fp, TRUE);
     if (SearchDataCurrent.results == -1) { return APP_ERR_NORESULTS; } //no results
 
-    //GetRelativeResultsPath(filepath);
     memcpy(SearchDataCurrent.path, filepath, sizeof(SearchDataCurrent.path));
 
     GetProfileFromResultsFile(&PROFILE_Load, fp);
@@ -437,11 +437,11 @@ static APPSTATUS LoadResultsFromFile(u8* filepath) {
 }
 
 static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
-    /* Multi-threaded search */
+    /* Multi-threaded Battle Corruption bruteforcing search algorithm */
 
     while (1) {
 
-        Sleep(1); //reduces CPU load
+        Sleep(20); //reduces CPU load
 
         u8 i = *(u8*)param; //retrieves search thread index
 
@@ -457,7 +457,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
             for (u32 frame = 0; frame < SearchDataCurrent.frames[i]; frame++) {
 
-                while (PauseSearch) { Sleep(1); } //wait for ConfirmAbortSearch
+                while (PauseSearch) { Sleep(20); } //wait for ConfirmAbortSearch
                 if (AbortSearch) { break; }
 
                 if (frame != 0) { RngNext(&seed); } //advance the RNG everytime, except on the 0th frame
@@ -569,6 +569,12 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
                 /* Get the new PID of the wild and deduce its new block order */
                 wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16);
+
+                /* Nature filter */
+                if (PROFILE_Current.filter_nature != NATURE_FILTER_NONE) {
+                    if (GetNatureId(wild.pid) != PROFILE_Current.filter_nature) { continue; }
+                }
+
                 SetBlocks(&wild);
 
                 /* Prepare result data */
@@ -592,7 +598,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
                 /* Get final moveset, IVs, Egg friendship, Form ID and Fateful Encounter flag - array out of bounds method */
                 for (u8 i = 0; i < OWN_MOVES_MAX; i++) { rd.moves[i] = seven.data[1 + wild.pos_b][STACK_OFFSET + i]; }
-                rd.ivs = (seven.data[1 + wild.pos_b][STACK_OFFSET + 8]) | (seven.data[1 + wild.pos_b][STACK_OFFSET + 9] << 16);//?
+                rd.ivs = (seven.data[1 + wild.pos_b][STACK_OFFSET + 8]) | (seven.data[1 + wild.pos_b][STACK_OFFSET + 9] << 16);
                 rd.fate = seven.data[2 + wild.pos_b][0]; //form id and fateful encouter flag will be derived from it
 
                 /* Move filter */
@@ -607,6 +613,13 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                     }
                 }
 
+                /* IV filter */
+                u8 ivs[STATS_MAX] = { 0 };
+                DecomposeIVs(rd.ivs, ivs);
+                for (u32 i = 0; i < STATS_MAX; i++) {
+                    if (ivs[i] < PROFILE_Current.filter_ivs[i]) goto NEXT;
+                }
+
                 rd.level = seven.cond[BLOCK_SIZE + STACK_OFFSET + 2] & 0xff;
                 rd.pokerus = seven.data[2 + wild.pos_d][1] & 0xff; //[13] of block D -> [1] of 2nd next block with offset
 
@@ -619,6 +632,8 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 AddResultToList(&rd, SearchDataCurrent.results); //add to results list window
 
                 SearchDataCurrent.results++;
+
+            NEXT:; //goto here if you need to break out of multiple loops and keep searching
             }
             /* Search end */
             AuthorizeSearchThreads[i] = FALSE;
@@ -675,10 +690,11 @@ static APPSTATUS GenerateResultsTextFile(void) {
     APPSTATUS err_profile = IsValidProfile(&p);
     if (err_profile != PROFILE_OK) { return err_profile; }
 
-    //TODO: too many calls to fprintf?
+    //todo: too many calls to fprintf?
     /* Header */
     fprintf(fp, "%s\nThis results file was generated automatically.\n\n[PROFILE]\n\n", MOTOR_VERSION);
     /* Profile */
+    //todo: use GetProfileRecapString
     fprintf(fp, "Version         %s\n", Versions[p.version]);
     fprintf(fp, "Language        %s\n", Languages[p.language]);
     fprintf(fp, "TID             %05u\n", p.tid);
@@ -693,6 +709,8 @@ static APPSTATUS GenerateResultsTextFile(void) {
     fprintf(fp, "  Item          %s\n", Items[p.filter_item]);
     fprintf(fp, "  Move          %s\n", Moves[p.filter_move]);
     fprintf(fp, "  Ability       %s\n", Abilities[p.filter_ability]);
+    fprintf(fp, "  Nature        %s\n", (p.filter_nature == NATURE_FILTER_NONE) ? "Anything" : Natures[p.filter_nature]);
+    fprintf(fp, "  IVs           %02u / %02u / %02u / %02u / %02u / %02u\n", p.filter_ivs[HP], p.filter_ivs[AT], p.filter_ivs[DF], p.filter_ivs[SA], p.filter_ivs[SD], p.filter_ivs[SP]);
 
     fprintf(fp, "\n[RESULTS]\n\n");
 
@@ -798,7 +816,7 @@ static APPSTATUS MotorSearch(void) {
 
     while (1) {
 
-        Sleep(1); //reduces CPU load
+        Sleep(20); //reduces CPU load
 
         if (PauseSearch) {
             if (ConfirmAbortSearch() == APP_ABORT_SEARCH) {
@@ -833,7 +851,7 @@ static DWORD WINAPI MotorThreadProc(LPVOID param) {
 
     while (1) {
 
-        Sleep(1); //reduces CPU load
+        Sleep(20); //reduces CPU load
 
         if (AuthorizeSearch) {
 
@@ -970,9 +988,11 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
     case WM_SETCURSOR:
     {
         if (LOWORD(lParam) == HTCLIENT) { //cursor is in the client area of a window
+
             HWND hwnd = (HWND)wParam;
-            int menu = (int)GetMenu(hwnd);
-            switch (menu)
+
+            //todo: clean up, select by class: edit control, list, button, other
+            switch (GetDlgCtrlID(hwnd))
             {
             case ID_TID_INPUT:
             case ID_SID_INPUT:
@@ -984,6 +1004,12 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             case ID_ITEM_FILTER:
             case ID_MOVE_FILTER:
             case ID_ABILITY_FILTER:
+            case ID_IV_FILTER + 0:
+            case ID_IV_FILTER + 1:
+            case ID_IV_FILTER + 2:
+            case ID_IV_FILTER + 3:
+            case ID_IV_FILTER + 4:
+            case ID_IV_FILTER + 5:
                 SetCursor(LoadCursorA(NULL, (LPCSTR)IDC_IBEAM));
                 break;
             case ID_LANGUAGES_LIST:
@@ -993,11 +1019,13 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             case ID_SAVE_BUTTON:
             case ID_RESET_BUTTON:
             case ID_SEARCH_BUTTON:
+            case ID_NATURE_FILTER:
                 SetCursor(LoadCursorA(NULL, (LPCSTR)IDC_HAND));
                 break;
             default:
                 SetCursor(LoadCursorA(NULL, (LPCSTR)IDC_ARROW));
             }
+            //todo: don't re-select when typing
             SendMessageA(hwnd, EM_SETSEL, 0, -1); //select all chars in an edit control
         }
         return TRUE;
@@ -1016,13 +1044,15 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         {
             if (AuthorizeSearch) { break; } //search is running, don't process commands below
 
-            switch (LOWORD(wParam)) //control id
+            u16 id = LOWORD(wParam); //control id
+
+            switch (id)
             {
             case ID_TID_INPUT:
-                SetTextInput_dec16(HWND_TidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
+                SetTextInput_dec16(HWND_TidInput, 0, U16_VALUE_MAX, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
                 break;
             case ID_SID_INPUT:
-                SetTextInput_dec16(HWND_SidInput, 0, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
+                SetTextInput_dec16(HWND_SidInput, 0, U16_VALUE_MAX, U16_VALUE_MAX, U16_DIGITS_DEC_MAX);
                 break;
             case ID_SEED_INPUT:
                 SetTextInput_hex32(HWND_SeedInput);
@@ -1048,6 +1078,14 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             case ID_ABILITY_FILTER:
                 SetFilterInput(HWND_AbilityFilterInput, Abilities, ABILITIES_MAX, (u16*)&PROFILE_Current.filter_ability);
                 break;
+            default: //handle ivs
+            {
+                if (ID_GET_MULT(id) == ID_MULT_IVS)
+                {
+                    u8 i = ID_GET_ELEM(id) % STATS_MAX;
+                    PROFILE_Current.filter_ivs[StatVisualToInternal[i]] = (u8)SetTextInput_dec16(HWND_IvInput[i], 0, IV_VALUE_MAX, 0, IV_DIGITS_MAX);
+                }
+            }
             }
             break;
         }
@@ -1081,6 +1119,18 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             }
             break;
         }
+        case CBN_CLOSEUP:
+        {
+            /* Nature filter, select invalid (-1) if "(none)" was p�cked */
+            if (LOWORD(wParam) == ID_NATURE_FILTER)
+            {
+                if (SendMessageA((HWND)lParam, CB_GETCURSEL, 0, 0) == 0)
+                {
+                    SendMessageA(HWND_NatureFilterInput, CB_SETCURSEL, -1, 0);
+                }
+            }
+            break;
+        }
         }
         return 0;
     }
@@ -1091,30 +1141,42 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         HWND hwnd = (HWND)lParam;
         HDC hdc = (HDC)wParam;
         RECT rct = { 0 };
-        /* Compare the addresses, known at run time */
-        if (hwnd == HWND_ItemFilterInput ||
-            hwnd == HWND_SpeciesFilterInput ||
-            hwnd == HWND_MoveFilterInput ||
-            hwnd == HWND_AbilityFilterInput) {
+
+        switch (ID_GET_TYPE(GetDlgCtrlID(hwnd)))
+        {
+        case ID_TYPE_FILTER:
+        {
             SelectObject(hdc, HPEN_Pump_h);
             SetTextColor(hdc, MOTOR_COLOR_PUMP_H);
+            break;
         }
-        else {
+        case ID_TYPE_SPARAM:
+        {
             SelectObject(hdc, HPEN_Teal_h);
             SetTextColor(hdc, MOTOR_COLOR_TEAL_H);
+            break;
+        }
         }
 
         SelectObject(hdc, HBRUSH_Dark);
         Edit_GetRect(hwnd, &rct);
 
-        if (rct.right != TEXT_INPUT_WIDTH) { //dirty but detects comboboxes
+        if (rct.right == IV_INPUT_WIDTH) //IV inputs
+        {
+            RoundRect(hdc, -1, -1, IV_INPUT_WIDTH + 1, TEXT_INPUT_HEIGHT + 1, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S);
+        }
+        else if (rct.right != TEXT_INPUT_WIDTH) //comboboxes
+        {
             RoundRect(hdc, -1, -1, TEXT_INPUT_WIDTH, COMBOBOX_HEIGHT + 7, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S);
         }
-        else {
-            RoundRect(hdc, -1, -1, TEXT_INPUT_WIDTH + 1, TEXT_INPUT_HEIGHT + 1, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S); //edit
+        else //Large text inputs
+        {
+            RoundRect(hdc, -1, -1, TEXT_INPUT_WIDTH + 1, TEXT_INPUT_HEIGHT + 1, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S);
         }
         SelectObject(hdc, myFont);
         SetBkColor(hdc, MOTOR_COLOR_DARK);
+        //SetBkColor(hdc, MOTOR_COLOR_DEBUG);
+
         return (LRESULT)HBRUSH_Dark; //need to return handle to brush for use
     }
 
@@ -1174,17 +1236,22 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
                 SendMessageA(HWND_WildInput, CB_SETCURSEL, -1, 0); //solves edge case when selecting a wild before the version (wrong display in the edit control)
                 //Note: this is being sent every time you click VERSION, so your selection of WILD is reset when you just peek at the VERSION options 
             }
-            return DrawList(lpdis, label);
+            return DrawList(lpdis, label, sizeof(Versions[0]), MOTOR_COLOR_TEAL_H);
         }
         case ID_LANGUAGES_LIST:
         {
             u8* label = (lpdis->itemID >= LANGUAGES_ACT_MAX) ? "LANGUAGE       " : LanguagesActual[lpdis->itemID];
-            return DrawList(lpdis, label);
+            return DrawList(lpdis, label, sizeof(LanguagesActual[0]), MOTOR_COLOR_TEAL_H);
         }
         case ID_WILDS_LIST:
         {
             u8* label = (lpdis->itemID >= OG_WILDS_MAX) ? "WILD           " : OgWilds[PROFILE_Current.version][lpdis->itemID];
-            return DrawList(lpdis, label);
+            return DrawList(lpdis, label, sizeof(OgWilds[0][0]), MOTOR_COLOR_TEAL_H);
+        }
+        case ID_NATURE_FILTER:
+        {
+            u8* label = (lpdis->itemID >= NATURES_FILTER_MAX) ? "NATURE " : NaturesSorted[lpdis->itemID];
+            return DrawList(lpdis, label, sizeof(NaturesSorted[0]), MOTOR_COLOR_PUMP_H);
         }
         }
         return TRUE;
@@ -1275,7 +1342,7 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
                 //todo: create/use a worker thread?
                 u8 str_year[YEAR_DIGITS_DEC_MAX + 1] = { 0 };
                 GetWindowTextA(HWND_YearFilter, str_year, sizeof(str_year));
-                u8 year = AsciiToInt_dec16(str_year, sizeof(str_year) - 1) - YEAR_VALUE_MIN; //from 2000~2099 to 0~99
+                u8 year = AsciiToInt_dec16(str_year) - YEAR_VALUE_MIN; //from 2000~2099 to 0~99
                 //SeedToTime(ReversedSeedCurrent.reversed, &PROFILE_Load, year);
                 SeedToTime_groups(ReversedSeedCurrent.reversed, &PROFILE_Load, year);
                 MotorSearchAslr(&ReversedSeedCurrent, &PROFILE_Load);
@@ -1289,7 +1356,7 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         }
         case EN_KILLFOCUS:
         {
-            SetTextInput_dec16(HWND_YearFilter, YEAR_VALUE_MIN, YEAR_VALUE_MAX, YEAR_DIGITS_DEC_MAX);
+            SetTextInput_dec16(HWND_YearFilter, YEAR_VALUE_MIN, YEAR_VALUE_MAX, YEAR_VALUE_MIN, YEAR_DIGITS_DEC_MAX);
             break;
         }
         }
@@ -1440,7 +1507,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     Esketit();
 
     int errorCreateWindows = CreateWindows(hInstance);
-    if (errorCreateWindows != 0) { return errorCreateWindows; }
+    if (errorCreateWindows) { return errorCreateWindows; }
 
     /* Show the main window and its children windows */
     ShowWindow(HWND_AppMain, nCmdShow);
@@ -1458,6 +1525,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     SendMessageA(HWND_AslrInput, EM_SETLIMITTEXT, ASLR_DIGITS_DEC_MAX, 0);
     SendMessageA(HWND_MacInput, EM_SETLIMITTEXT, MAC_DIGITS_HEX_MAX, 0);
     SendMessageA(HWND_YearFilter, EM_SETLIMITTEXT, 4, 0); //2000->2099
+    for (u32 i = 0; i < STATS_MAX; i++) { SendMessageA(HWND_IvInput[i], EM_SETLIMITTEXT, IV_DIGITS_MAX, 0); } //00->31
 
     /* Progress bar init */
     SendMessageA(HWND_ProgressBar, PBM_SETBARCOLOR, 0, MOTOR_COLOR_TEAL);
@@ -1466,7 +1534,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     /* Populate combo boxes */
     for (u8 i = 0; i < LANGUAGES_ACT_MAX; i++) { SendMessageA(HWND_LanguageInput, CB_ADDSTRING, 0, (LPARAM)LanguagesActual[i]); }
     for (u8 i = 0; i < VERSIONS_MAX; i++) { SendMessageA(HWND_VersionInput, CB_ADDSTRING, 0, (LPARAM)Versions[i]); }
-    for (u8 i = 0; i < OG_WILDS_MAX; i++) { SendMessageA(HWND_WildInput, CB_ADDSTRING, 0, (LPARAM)OgWilds[VERSION_DIAMOND][i]); } //TODO: remove last element if version is Platinum
+    for (u8 i = 0; i < OG_WILDS_MAX; i++) { SendMessageA(HWND_WildInput, CB_ADDSTRING, 0, (LPARAM)OgWilds[VERSION_DIAMOND][i]); } //todo: remove last element if version is Platinum
+    for (u8 i = 0; i < NATURES_FILTER_MAX; i++) { SendMessageA(HWND_NatureFilterInput, CB_ADDSTRING, 0, (LPARAM)NaturesSorted[i]); }
 
     /* Create .results and .profiles directories if they don't already exist */
     SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES) };
