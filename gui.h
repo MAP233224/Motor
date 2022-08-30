@@ -49,6 +49,7 @@
 #define SEEDTIME_WIDTH                  (DETAILS_WIDTH - TEXT_INPUT_WIDTH - 3 * APP_WINDOW_PADDING_S)
 /* Profile slot buttons */
 #define PROFILE_SLOT_BUTTON_WIDTH       (26)
+#define IV_INPUT_WIDTH                  (24)
 
 /* Motor's Color Palette #GraphicDesignIsMyPassion */
 //note: #RRGGBB -> 0xBBGGRR
@@ -68,37 +69,50 @@
 #define MBL_ERROR                       ("Error")
 #define MBL_NOTICE                      ("Notice")
 
-/* HMENU Identifiers */
-enum {
-    ID_SEARCH_PARAMETERS = 100,
-    ID_SEARCH_BUTTON,
-    //ID_SEARCH_INPUT, //todo: replace by individual filters: tid, sid, aslr, etc...
-    ID_TID_INPUT,
-    ID_SID_INPUT,
-    ID_SEED_INPUT,
-    ID_ASLR_INPUT,
-    ID_FRAMES_INPUT,
-    ID_MAC_INPUT,
-    ID_SPECIES_FILTER,
-    ID_ITEM_FILTER,
-    ID_MOVE_FILTER,
-    ID_ABILITY_FILTER,
-    ID_SAVE_BUTTON,
-    ID_LOAD_BUTTON,
-    ID_RESET_BUTTON,
-    ID_VERSIONS_LIST,
-    ID_LANGUAGES_LIST,
-    ID_WILDS_LIST,
-    ID_PROFILE_SLOT_BUTTON = 0x1000, //for bitmask
-
-    ID_RESULTS = 200,
-    ID_RESULTS_BUTTON,
-    ID_RESULTS_LIST,
-    ID_SEED_TO_TIME_BUTTON,
-    ID_YEAR_FILTER,
-    ID_DETAILS,
-    ID_SEARCH_PROGRESS_BAR
-};
+/* HMENU identifiers (should be u16) */
+#define ID_GET_TYPE(id) ((id) & 0xF000) //Search Parameter, Filter, Result or Parent
+#define ID_GET_MULT(id) ((id) & 0x0F00) //for PROFILES and IVS (multiple instances)
+#define ID_GET_ELEM(id) ((id) & 0x00FF) //element id (for multiple instances)
+/* Bitmasks */
+#define ID_TYPE_SPARAM   (0x1000)
+#define ID_TYPE_FILTER   (0x2000)
+#define ID_TYPE_RESULT   (0x4000)
+#define ID_TYPE_PARENT   (0x8000) //reserved for parent windows
+#define ID_MULT_PROFILES (0x0100)
+#define ID_MULT_IVS      (0x0200)
+/* Profiles */
+#define ID_PROFILE_SLOT_BUTTON (ID_MULT_PROFILES)
+/* Search parameters (mandatory inputs) */
+#define ID_TID_INPUT      (ID_TYPE_SPARAM | 0x00)
+#define ID_SID_INPUT      (ID_TYPE_SPARAM | 0x01)
+#define ID_SEED_INPUT     (ID_TYPE_SPARAM | 0x02)
+#define ID_ASLR_INPUT     (ID_TYPE_SPARAM | 0x03)
+#define ID_FRAMES_INPUT   (ID_TYPE_SPARAM | 0x04)
+#define ID_MAC_INPUT      (ID_TYPE_SPARAM | 0x05)
+#define ID_SAVE_BUTTON    (ID_TYPE_SPARAM | 0x06)
+#define ID_LOAD_BUTTON    (ID_TYPE_SPARAM | 0x07)
+#define ID_RESET_BUTTON   (ID_TYPE_SPARAM | 0x08)
+#define ID_VERSIONS_LIST  (ID_TYPE_SPARAM | 0x09)
+#define ID_LANGUAGES_LIST (ID_TYPE_SPARAM | 0x0A)
+#define ID_WILDS_LIST     (ID_TYPE_SPARAM | 0x0B)
+#define ID_SEARCH_BUTTON  (ID_TYPE_SPARAM | 0x0C)
+/* Search filters (optional inputs) */
+#define ID_SPECIES_FILTER (ID_TYPE_FILTER | 0x00)
+#define ID_ITEM_FILTER    (ID_TYPE_FILTER | 0x01)
+#define ID_MOVE_FILTER    (ID_TYPE_FILTER | 0x02)
+#define ID_ABILITY_FILTER (ID_TYPE_FILTER | 0x03)
+#define ID_NATURE_FILTER  (ID_TYPE_FILTER | 0x04)
+#define ID_IV_FILTER      (ID_TYPE_FILTER | ID_MULT_IVS | 0x00)
+/* Result sub windows */
+#define ID_RESULTS_BUTTON      (ID_TYPE_RESULT | 0x00)
+#define ID_RESULTS_LIST        (ID_TYPE_RESULT | 0x01)
+#define ID_SEED_TO_TIME_BUTTON (ID_TYPE_RESULT | 0x02)
+#define ID_YEAR_FILTER         (ID_TYPE_RESULT | 0x03)
+#define ID_DETAILS             (ID_TYPE_RESULT | 0x04)
+#define ID_SEARCH_PROGRESS_BAR (ID_TYPE_RESULT | 0x05)
+/* Parent windows */
+#define ID_SEARCH_PARAMETERS (ID_TYPE_PARENT | 0x00)
+#define ID_RESULTS           (ID_TYPE_PARENT | 0x01)
 
 /* Preprocessor macros */
 #define DeclareWindowAndClass(name) HWND HWND_##name; WNDCLASSEXA WC_##name;
@@ -111,6 +125,42 @@ const INT MySysElements[SYS_ELEMENTS] = { COLOR_HIGHLIGHT, COLOR_HIGHLIGHTTEXT }
 //TODO: dynamically allocate memory for this
 //48 KB
 u8 ResultsListStrings[1500][2 * STRING_LENGTH_MAX] = { 0 };
+
+const u8 Stats[STATS_MAX][3] = { "HP", "AT", "DF", "SA", "SD", "SP" };
+
+enum { 
+    NATURE_HARDY,
+    NATURE_LONELY,
+    NATURE_BRAVE,
+    NATURE_ADAMANT,
+    NATURE_NAUGHTY,
+    NATURE_BOLD,
+    NATURE_DOCILE,
+    NATURE_RELAXED,
+    NATURE_IMPISH,
+    NATURE_LAX,
+    NATURE_TIMID,
+    NATURE_HASTY,
+    NATURE_SERIOUS,
+    NATURE_JOLLY,
+    NATURE_NAIVE,
+    NATURE_MODEST,
+    NATURE_MILD,
+    NATURE_QUIET,
+    NATURE_BASHFUL,
+    NATURE_RASH,
+    NATURE_CALM,
+    NATURE_GENTLE,
+    NATURE_SASSY,
+    NATURE_CAREFUL,
+    NATURE_QUIRKY
+};
+
+const u8 NaturesSorted[NATURES_FILTER_MAX][8] = { "(none)", "Adamant", "Bashful", "Bold", "Brave", "Calm", "Careful", "Docile", "Gentle", "Hardy", "Hasty", "Impish", "Jolly", "Lax", "Lonely", "Mild", "Modest", "Naive", "Naughty", "Quiet", "Quirky", "Rash", "Relaxed", "Sassy", "Serious", "Timid" };
+
+const u8 NatureSortedToInternal[NATURES_FILTER_MAX] = { NATURE_FILTER_NONE, NATURE_ADAMANT, NATURE_BASHFUL, NATURE_BOLD, NATURE_BRAVE, NATURE_CALM, NATURE_CAREFUL, NATURE_DOCILE, NATURE_GENTLE, NATURE_HARDY, NATURE_HASTY, NATURE_IMPISH, NATURE_JOLLY, NATURE_LAX, NATURE_LONELY, NATURE_MILD, NATURE_MODEST, NATURE_NAIVE, NATURE_NAUGHTY, NATURE_QUIET, NATURE_QUIRKY, NATURE_RASH, NATURE_RELAXED, NATURE_SASSY, NATURE_SERIOUS, NATURE_TIMID };
+
+const u8 StatVisualToInternal[STATS_MAX] = { HP, AT, DF, SA, SD, SP };
 
 /* Windows and classes */
 DeclareWindowAndClass(AppMain)
@@ -125,6 +175,7 @@ DeclareWindowAndClass(DetailsList)
 DeclareWindowAndClass(CopyButton)
 DeclareWindowAndClass(YearFilter)
 
+DeclareWindowAndClass(IvInput[STATS_MAX])
 DeclareWindowAndClass(ProfileSlotButton[PROFILE_SLOTS_MAX])
 DeclareWindowAndClass(SearchParameters)
 DeclareWindowAndClass(TidInput)
@@ -140,6 +191,7 @@ DeclareWindowAndClass(SpeciesFilterInput)
 DeclareWindowAndClass(MoveFilterInput)
 DeclareWindowAndClass(ItemFilterInput)
 DeclareWindowAndClass(AbilityFilterInput)
+DeclareWindowAndClass(NatureFilterInput)
 DeclareWindowAndClass(ResetSearchParams)
 DeclareWindowAndClass(LoadSearchParams)
 DeclareWindowAndClass(SaveSearchParams)
@@ -218,6 +270,26 @@ static HBRUSH GetBrushFromColor(int color) {
     return HBRUSH_Debug;
 }
 
+static HBRUSH GetDarkBrushFromColor(int color) {
+    /* Return the dark HBRUSH corresponding to a MOTOR_COLOR */
+    switch (color)
+    {
+    case MOTOR_COLOR_TEAL_H: return HBRUSH_Teal;
+    case MOTOR_COLOR_PUMP_H: return HBRUSH_Pump;
+    }
+    return HBRUSH_Debug;
+}
+
+static int GetDarkColor(int color) {
+    /* Return the dark HBRUSH corresponding to a MOTOR_COLOR */
+    switch (color)
+    {
+    case MOTOR_COLOR_TEAL_H: return MOTOR_COLOR_TEAL;
+    case MOTOR_COLOR_PUMP_H: return MOTOR_COLOR_PUMP;
+    }
+    return MOTOR_COLOR_DEBUG;
+}
+
 static HPEN GetPenFromColor(int color) {
     /* Return the HPEN corresponding to a MOTOR_COLOR */
     switch (color)
@@ -268,28 +340,27 @@ static BOOL DrawButton(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 length) 
     return TRUE;
 }
 
-static BOOL DrawList(LPDRAWITEMSTRUCT lpdis, u8* label) {
+static BOOL DrawList(LPDRAWITEMSTRUCT lpdis, u8* label, u32 length, int color) {
     /* Draws a combobox control: drop down list and static text at the top */
     if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED)) { //mouse hover highlight
-        SelectObject(lpdis->hDC, HBRUSH_Pump);
-        SelectObject(lpdis->hDC, HPEN_Pump);
+        SelectObject(lpdis->hDC, GetDarkBrushFromColor(color));
         Rectangle(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom);
-        SetBkColor(lpdis->hDC, MOTOR_COLOR_PUMP);
+        SetBkColor(lpdis->hDC, GetDarkColor(color));
         SetTextColor(lpdis->hDC, MOTOR_COLOR_GRAY);
     }
     else if (lpdis->itemState < 2) { //hack: avoids drawing Rectangle on the static text
         SelectObject(lpdis->hDC, HBRUSH_Dark);
-        SelectObject(lpdis->hDC, HPEN_Teal_h);
+        SelectObject(lpdis->hDC, GetPenFromColor(color));
         Rectangle(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom);
         SetBkColor(lpdis->hDC, MOTOR_COLOR_DARK);
-        SetTextColor(lpdis->hDC, MOTOR_COLOR_TEAL_H);
+        SetTextColor(lpdis->hDC, color);
     }
     else { //static text
         SetBkColor(lpdis->hDC, MOTOR_COLOR_DARK);
-        SetTextColor(lpdis->hDC, MOTOR_COLOR_TEAL_H);
+        SetTextColor(lpdis->hDC, color);
     }
     SelectObject(lpdis->hDC, myFont);
-    DrawTextA(lpdis->hDC, label, STRING_LENGTH_MAX, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER);
+    DrawTextA(lpdis->hDC, label, length, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER);
     return TRUE;
 }
 
@@ -308,21 +379,28 @@ static BOOL DrawResultsList(LPDRAWITEMSTRUCT lpdis) {
     return TRUE;
 }
 
-static HWND GetNextSearchParamTabStop(HWND current) {
+static HWND GetNextSearchParamTabStop(HWND cur) {
     /* There's probably a better way to do this */
-    if (current == HWND_TidInput) { return HWND_SidInput; }
-    if (current == HWND_SidInput) { return HWND_AslrInput; }
-    if (current == HWND_AslrInput) { return HWND_SeedInput; }
-    if (current == HWND_SeedInput) { return HWND_FramesInput; }
-    if (current == HWND_FramesInput) { return HWND_VersionInput; }
-    if (current == HWND_VersionInput) { return HWND_LanguageInput; }
-    if (current == HWND_LanguageInput) { return HWND_WildInput; }
-    if (current == HWND_WildInput) { return HWND_MacInput; }
-    if (current == HWND_MacInput) { return HWND_SpeciesFilterInput; }
-    if (current == HWND_SpeciesFilterInput) { return HWND_ItemFilterInput; }
-    if (current == HWND_ItemFilterInput) { return HWND_MoveFilterInput; }
-    if (current == HWND_MoveFilterInput) { return HWND_AbilityFilterInput; }
-    if (current == HWND_AbilityFilterInput) { return HWND_TidInput; }
+    if (cur == HWND_TidInput)           return HWND_SidInput;
+    if (cur == HWND_SidInput)           return HWND_AslrInput;
+    if (cur == HWND_AslrInput)          return HWND_SeedInput;
+    if (cur == HWND_SeedInput)          return HWND_FramesInput;
+    if (cur == HWND_FramesInput)        return HWND_VersionInput;
+    if (cur == HWND_VersionInput)       return HWND_LanguageInput;
+    if (cur == HWND_LanguageInput)      return HWND_WildInput;
+    if (cur == HWND_WildInput)          return HWND_MacInput;
+    if (cur == HWND_MacInput)           return HWND_SpeciesFilterInput;
+    if (cur == HWND_SpeciesFilterInput) return HWND_ItemFilterInput;
+    if (cur == HWND_ItemFilterInput)    return HWND_MoveFilterInput;
+    if (cur == HWND_MoveFilterInput)    return HWND_AbilityFilterInput;
+    if (cur == HWND_AbilityFilterInput) return HWND_NatureFilterInput;
+    if (cur == HWND_NatureFilterInput)  return HWND_IvInput[0];
+    if (cur == HWND_IvInput[0])         return HWND_IvInput[1];
+    if (cur == HWND_IvInput[1])         return HWND_IvInput[2];
+    if (cur == HWND_IvInput[2])         return HWND_IvInput[3];
+    if (cur == HWND_IvInput[3])         return HWND_IvInput[4];
+    if (cur == HWND_IvInput[4])         return HWND_IvInput[5];
+    if (cur == HWND_IvInput[5])         return HWND_TidInput;
     return HWND_TidInput;
 }
 
@@ -360,7 +438,7 @@ static void SetFilterInput(HWND hInput, const u8 strarr[][STRING_LENGTH_MAX], u1
         }
     }
     else { //Number string
-        u32 value = AsciiToInt_dec16(b, FILTER_DIGITS_MAX);
+        u32 value = AsciiToInt_dec16(b);
         if (value >= max) {
             *pparam = 0;
             SetWindowTextA(hInput, "Anything"); //default
@@ -372,17 +450,19 @@ static void SetFilterInput(HWND hInput, const u8 strarr[][STRING_LENGTH_MAX], u1
     }
 }
 
-static void SetTextInput_dec16(HWND hInput, u16 min, u16 max, u8 digits) {
-    /* TID, SID, Year  */
+static u32 SetTextInput_dec16(HWND hInput, u16 min, u16 max, u16 def, u8 digits) {
+    /* TID, SID, Year, IVs  */
     u8 b[U16_DIGITS_DEC_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_dec16
     GetWindowTextA(hInput, b, digits + 1);
     ZeroLeftPadTextInputInt(b, digits);
-    u32 value = AsciiToInt_dec16(b, digits);
+    u32 value = AsciiToInt_dec16(b);
     if (value < min || value > max || !IsValidIntString_dec(b, digits))
     {
-        sprintf(b, "%u", max);
+        const u8 format[] = { '%', '0', digits + 0x30, 'u', 0 }; //prepare the format string
+        sprintf(b, format, def);
     }
     SetWindowTextA(hInput, b);
+    return value;
 }
 
 static void SetTextInput_dec32(HWND hInput) {
@@ -419,7 +499,7 @@ static void SetTextInput_aslr(HWND hInput) {
     u8 b[ASLR_DIGITS_DEC_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_aslr
     GetWindowTextA(hInput, b, ASLR_DIGITS_DEC_MAX + 1);
     ZeroLeftPadTextInputInt(b, ASLR_DIGITS_DEC_MAX);
-    u32 value = AsciiToInt_dec16(b, ASLR_DIGITS_DEC_MAX);
+    u32 value = AsciiToInt_dec16(b);
     if (value > ASLR_VALUE_MAX || !IsValidIntString_dec(b, ASLR_DIGITS_DEC_MAX)) {
         SetWindowTextA(hInput, "11"); //not always 11, depends on language and version
     }
@@ -435,7 +515,7 @@ static void SetTextInput_mac(HWND hInput) {
     ZeroLeftPadTextInputInt(b, MAC_DIGITS_HEX_MAX);
     u64 value = AsciiToInt_hex64(b);
     if (value > MAC_VALUE_MAX || !IsValidIntString_hex(b, MAC_DIGITS_HEX_MAX)) {
-        SetWindowTextA(hInput, "010203040506");
+        SetWindowTextA(hInput, "000000000000");
     }
     else {
         sprintf(b, "%012llX", value);
@@ -633,7 +713,7 @@ static int CreateWindows(HINSTANCE hInstance) {
     HWND_DetailsList = CreateWindowA(
         "STATIC", //system class
         "",
-        WS_VISIBLE | WS_CHILD,// | SS_OWNERDRAW,
+        WS_VISIBLE | WS_CHILD,
         APP_WINDOW_PADDING_S,
         APP_WINDOW_PADDING_S,
         DETAILS_WIDTH - 2 * APP_WINDOW_PADDING_S,
@@ -865,6 +945,20 @@ static int CreateWindows(HINSTANCE hInstance) {
         NULL
     );
 
+    HWND_NatureFilterInput = CreateWindowA(
+        "COMBOBOX", //system class
+        "NATURE",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED, //WS_VSCROLL if you don't want to display the full size
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        COMBOBOX_HEIGHT * (NATURES_FILTER_MAX + 2), // /2 and WS_VSCROLL if you don't want to display the full size
+        HWND_SearchParameters,
+        (HMENU)ID_NATURE_FILTER,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
     HWND_ResetSearchParams = CreateWindowA(
         "BUTTON", //system class
         "RESET",
@@ -908,7 +1002,7 @@ static int CreateWindows(HINSTANCE hInstance) {
     );
 
     /* Profile slot buttons */
-    for (u8 i = 0; i < PROFILE_SLOTS_MAX; i++) {
+    for (u32 i = 0; i < PROFILE_SLOTS_MAX; i++) {
         HWND_ProfileSlotButton[i] = CreateWindowA(
             "BUTTON",
             "P1",
@@ -924,9 +1018,24 @@ static int CreateWindows(HINSTANCE hInstance) {
         );
     }
 
+    /* IV input */
+    for (u32 i = 0; i < STATS_MAX; i++) {
+        HWND_IvInput[i] = CreateWindowA(
+            "EDIT",
+            Stats[i],
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
+            APP_WINDOW_PADDING_S + 3 * (TEXT_INPUT_WIDTH + APP_WINDOW_PADDING_S) + (IV_INPUT_WIDTH + APP_WINDOW_PADDING_S) * i,
+            APP_WINDOW_PADDING_S,
+            IV_INPUT_WIDTH,
+            TEXT_INPUT_HEIGHT,
+            HWND_SearchParameters,
+            (HMENU)(ID_IV_FILTER + i),
+            HINSTANCE_SearchWindow,
+            NULL
+        );
+    }
+
     if (!HWND_AppMain) { return APP_ERR_MAIN_CREATE; } //abort if failed to create main window
-
-
 
     return 0; //success
 }
