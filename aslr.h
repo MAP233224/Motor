@@ -9,7 +9,7 @@
 
 #define BUFFER_SIZE     (8)
 #define DIGEST_SIZE     (16)
-#define OFFSETS_MAX     (256)
+#define OFFSETS_MAX     (257) //0 to 256
 #define SETUPS_MAX      (8)
 #define HOUR_MAX        (23)
 #define MONTHS_MAX      (12)
@@ -90,8 +90,8 @@ typedef struct {
 
 typedef struct {
 
-    u8 setups_count[OFFSETS_MAX / 4]; //counts how many setups have been added for this offset
-    DATETIME_EX datetime_ex[OFFSETS_MAX / 4][SETUPS_MAX];
+    u8 setups_count[1 + OFFSETS_MAX / 4]; //counts how many setups have been added for this offset
+    DATETIME_EX datetime_ex[1 + OFFSETS_MAX / 4][SETUPS_MAX];
 
 } DATETIME_BUF;
 
@@ -481,7 +481,7 @@ static APPSTATUS SeedToTime_groups(u32 seed, PROFILE* pf, u8 year) {
                         buffer[3] = GetRTCLow(&dt);
                         buffer[4] = GetRTCHigh(&dt);
 
-                        u8 offset = MD5GetHeapOffset(pf, &dt, buffer); //currently ignoring offset 256
+                        u32 offset = MD5GetHeapOffset(pf, &dt, buffer); //currently ignoring offset 256
 
                         int hour_aslr = dt.hour - (dt.minute > minute); //checking underflow
                         if (hour_aslr >= 0)
@@ -498,7 +498,7 @@ static APPSTATUS SeedToTime_groups(u32 seed, PROFILE* pf, u8 year) {
     }
 
     /* Print DATETIME_EX buffer */
-    for (u32 i = 0; i < OFFSETS_MAX / 4; i++)
+    for (u32 i = 0; i < 1 + OFFSETS_MAX / 4; i++)
     {
         fprintf(fp, "%02u\n", i); //offset/4
         for (u32 j = 0; j < SETUPS_MAX; j++)
