@@ -57,7 +57,7 @@ typedef int APPSTATUS;
 #define IV_DIGITS_MAX               (2)
 #define NATURES_MAX                 (25) // Number of natures
 #define NATURES_FILTER_MAX          (NATURES_MAX + 1) // Number of natures + 1 (the "none" filter)
-#define NATURE_FILTER_NONE          (0xFF) //when you don't want to filter for a Nature, this should be the index in the combobox
+#define NATURE_FILTER_NONE          (0xFF) //when you don't want to filter for a Nature, this should be the value in the PROFILE struct
 
 /* Profile slots states */
 #define PSS_EMPTY                    (0x00)
@@ -105,13 +105,13 @@ enum { LANGUAGE__0, LANGUAGE_JP, LANGUAGE_EN, LANGUAGE_FR, LANGUAGE_IT, LANGUAGE
 /* Indices of each stat */
 enum { HP, AT, DF, SP, SA, SD };
 
-const u8 PROFILE_ErrorCodes[14][STRING_LENGTH_MAX] = {
+const u8 PROFILE_ErrorCodes[][STRING_LENGTH_MAX] = {
     "OK",
     "FRAMES",
     "SEED",
-    "FILTER_SPECIES",
-    "FILTER_MOVE",
-    "FILTER_ITEM",
+    "SPECIES_FILTER",
+    "MOVE_FILTER",
+    "ITEM_FILTER",
     "TID",
     "SID",
     "ASLR",
@@ -119,7 +119,9 @@ const u8 PROFILE_ErrorCodes[14][STRING_LENGTH_MAX] = {
     "VERSION",
     "WILD",
     "MAC ADDRESS",
-    "FILTER_ABILITY"
+    "ABILITY_FILTER",
+    "NATURE_FILTER",
+    "IVS_FILTER",
 };
 
 //RESULTDATA should be in motor.h but it needs to be used by io.h
