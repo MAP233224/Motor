@@ -14,6 +14,8 @@ Each user will need to provide several things to the application:
 - their desired Species ID (optional, from Bulbasaur to Arceus https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_IV))
 - their desired Item ID (optional, from Master Ball to Secret Key https://bulbapedia.bulbagarden.net/wiki/List_of_items_by_index_number_(Generation_IV))
 - their desired Move ID (optional, from Pound to Shadow Force https://bulbapedia.bulbagarden.net/wiki/List_of_moves)
+- their desired Nature (optional)
+- their desired minimum IVs (optional)
 
 You can save/load these parameters to/from 1 of 8 possible profile slots.  
 Upon launching the search, the application will go through each seed in the specified frame range and output every successful hit.  
