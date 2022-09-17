@@ -25,6 +25,7 @@
 #define LOAD_BUTTON_HEIGHT              (SAVE_BUTTON_HEIGHT)
 #define RESET_BUTTON_HEIGHT             (SAVE_BUTTON_HEIGHT)//(TEXT_INPUT_HEIGHT)
 #define COMBOBOX_HEIGHT                 (20)
+#define LIST_ITEM_HEIGHT                (20)
 /* Dimensions - Search Parameters sub window */
 #define SEARCH_PARAMS_X                 (APP_WINDOW_PADDING_M)
 #define SEARCH_PARAMS_Y                 (3 * BASE_HEIGHT / 5)
@@ -122,13 +123,12 @@
 HFONT myFont;
 DWORD MyOldSysColors[SYS_ELEMENTS] = { 0 };
 const INT MySysElements[SYS_ELEMENTS] = { COLOR_HIGHLIGHT, COLOR_HIGHLIGHTTEXT };
-//TODO: dynamically allocate memory for this
-//48 KB
+//todo: dynamically allocate memory for ResultsListStrings (currently static 48 KB allocated)
 u8 ResultsListStrings[1500][2 * STRING_LENGTH_MAX] = { 0 };
 
 const u8 Stats[STATS_MAX][3] = { "HP", "AT", "DF", "SA", "SD", "SP" };
 
-enum { 
+enum {
     NATURE_HARDY,
     NATURE_LONELY,
     NATURE_BRAVE,
@@ -156,8 +156,10 @@ enum {
     NATURE_QUIRKY
 };
 
+/* List of Natures sorted alphabetically */
 const u8 NaturesSorted[NATURES_FILTER_MAX][8] = { "(none)", "Adamant", "Bashful", "Bold", "Brave", "Calm", "Careful", "Docile", "Gentle", "Hardy", "Hasty", "Impish", "Jolly", "Lax", "Lonely", "Mild", "Modest", "Naive", "Naughty", "Quiet", "Quirky", "Rash", "Relaxed", "Sassy", "Serious", "Timid" };
 
+/* Conversion table for alphabetical to internal Natures ordering */
 const u8 NatureSortedToInternal[NATURES_FILTER_MAX] = { NATURE_FILTER_NONE, NATURE_ADAMANT, NATURE_BASHFUL, NATURE_BOLD, NATURE_BRAVE, NATURE_CALM, NATURE_CAREFUL, NATURE_DOCILE, NATURE_GENTLE, NATURE_HARDY, NATURE_HASTY, NATURE_IMPISH, NATURE_JOLLY, NATURE_LAX, NATURE_LONELY, NATURE_MILD, NATURE_MODEST, NATURE_NAIVE, NATURE_NAUGHTY, NATURE_QUIET, NATURE_QUIRKY, NATURE_RASH, NATURE_RELAXED, NATURE_SASSY, NATURE_SERIOUS, NATURE_TIMID };
 
 const u8 StatVisualToInternal[STATS_MAX] = { HP, AT, DF, SA, SD, SP };
@@ -175,27 +177,27 @@ DeclareWindowAndClass(DetailsList)
 DeclareWindowAndClass(CopyButton)
 DeclareWindowAndClass(YearFilter)
 
-DeclareWindowAndClass(IvInput[STATS_MAX])
-DeclareWindowAndClass(ProfileSlotButton[PROFILE_SLOTS_MAX])
-DeclareWindowAndClass(SearchParameters)
-DeclareWindowAndClass(TidInput)
-DeclareWindowAndClass(SidInput)
-DeclareWindowAndClass(VersionInput)
-DeclareWindowAndClass(LanguageInput)
-DeclareWindowAndClass(AslrInput)
-DeclareWindowAndClass(WildInput)
-DeclareWindowAndClass(SeedInput)
-DeclareWindowAndClass(FramesInput)
-DeclareWindowAndClass(MacInput)
-DeclareWindowAndClass(SpeciesFilterInput)
-DeclareWindowAndClass(MoveFilterInput)
-DeclareWindowAndClass(ItemFilterInput)
-DeclareWindowAndClass(AbilityFilterInput)
-DeclareWindowAndClass(NatureFilterInput)
-DeclareWindowAndClass(ResetSearchParams)
-DeclareWindowAndClass(LoadSearchParams)
-DeclareWindowAndClass(SaveSearchParams)
-DeclareWindowAndClass(SearchButton)
+DeclareWindowAndClass(search_parameters)
+DeclareWindowAndClass(profile_slot[PROFILE_SLOTS_MAX])
+DeclareWindowAndClass(tid_param)
+DeclareWindowAndClass(sid_param)
+DeclareWindowAndClass(version_param)
+DeclareWindowAndClass(language_param)
+DeclareWindowAndClass(aslr_param)
+DeclareWindowAndClass(wild_param)
+DeclareWindowAndClass(seed_param)
+DeclareWindowAndClass(frames_param)
+DeclareWindowAndClass(mac_param)
+DeclareWindowAndClass(species_filter)
+DeclareWindowAndClass(move_filter)
+DeclareWindowAndClass(item_filter)
+DeclareWindowAndClass(ability_filter)
+DeclareWindowAndClass(nature_filter)
+DeclareWindowAndClass(iv_filter[STATS_MAX])
+DeclareWindowAndClass(reset_button)
+DeclareWindowAndClass(load_button)
+DeclareWindowAndClass(save_button)
+DeclareWindowAndClass(search_button)
 
 /* Brushes and pens */
 DeclareBrushAndPen(Dark)
@@ -381,27 +383,27 @@ static BOOL DrawResultsList(LPDRAWITEMSTRUCT lpdis) {
 
 static HWND GetNextSearchParamTabStop(HWND cur) {
     /* There's probably a better way to do this */
-    if (cur == HWND_TidInput)           return HWND_SidInput;
-    if (cur == HWND_SidInput)           return HWND_AslrInput;
-    if (cur == HWND_AslrInput)          return HWND_SeedInput;
-    if (cur == HWND_SeedInput)          return HWND_FramesInput;
-    if (cur == HWND_FramesInput)        return HWND_VersionInput;
-    if (cur == HWND_VersionInput)       return HWND_LanguageInput;
-    if (cur == HWND_LanguageInput)      return HWND_WildInput;
-    if (cur == HWND_WildInput)          return HWND_MacInput;
-    if (cur == HWND_MacInput)           return HWND_SpeciesFilterInput;
-    if (cur == HWND_SpeciesFilterInput) return HWND_ItemFilterInput;
-    if (cur == HWND_ItemFilterInput)    return HWND_MoveFilterInput;
-    if (cur == HWND_MoveFilterInput)    return HWND_AbilityFilterInput;
-    if (cur == HWND_AbilityFilterInput) return HWND_NatureFilterInput;
-    if (cur == HWND_NatureFilterInput)  return HWND_IvInput[0];
-    if (cur == HWND_IvInput[0])         return HWND_IvInput[1];
-    if (cur == HWND_IvInput[1])         return HWND_IvInput[2];
-    if (cur == HWND_IvInput[2])         return HWND_IvInput[3];
-    if (cur == HWND_IvInput[3])         return HWND_IvInput[4];
-    if (cur == HWND_IvInput[4])         return HWND_IvInput[5];
-    if (cur == HWND_IvInput[5])         return HWND_TidInput;
-    return HWND_TidInput;
+    if (cur == HWND_tid_param)           return HWND_sid_param;
+    if (cur == HWND_sid_param)           return HWND_aslr_param;
+    if (cur == HWND_aslr_param)          return HWND_seed_param;
+    if (cur == HWND_seed_param)          return HWND_frames_param;
+    if (cur == HWND_frames_param)        return HWND_version_param;
+    if (cur == HWND_version_param)       return HWND_language_param;
+    if (cur == HWND_language_param)      return HWND_wild_param;
+    if (cur == HWND_wild_param)          return HWND_mac_param;
+    if (cur == HWND_mac_param)           return HWND_species_filter;
+    if (cur == HWND_species_filter) return HWND_item_filter;
+    if (cur == HWND_item_filter)    return HWND_move_filter;
+    if (cur == HWND_move_filter)    return HWND_ability_filter;
+    if (cur == HWND_ability_filter) return HWND_nature_filter;
+    if (cur == HWND_nature_filter)  return HWND_iv_filter[0];
+    if (cur == HWND_iv_filter[0])         return HWND_iv_filter[1];
+    if (cur == HWND_iv_filter[1])         return HWND_iv_filter[2];
+    if (cur == HWND_iv_filter[2])         return HWND_iv_filter[3];
+    if (cur == HWND_iv_filter[3])         return HWND_iv_filter[4];
+    if (cur == HWND_iv_filter[4])         return HWND_iv_filter[5];
+    if (cur == HWND_iv_filter[5])         return HWND_tid_param;
+    return HWND_tid_param;
 }
 
 static APPSTATUS ConfirmAbortSearch(void) {
@@ -598,10 +600,9 @@ static int CreateWindows(HINSTANCE hInstance) {
 
     if (!HWND_ProgressBar) { return GetLastError(); }
 
-    { //Progress bar style
-        LONG style = GetWindowLongA(HWND_ProgressBar, GWL_EXSTYLE) ^ WS_EX_STATICEDGE; //removes border
-        SetWindowLongA(HWND_ProgressBar, GWL_EXSTYLE, style);
-    }
+    /* Progress bar style */
+    LONG pb_style = GetWindowLongA(HWND_ProgressBar, GWL_EXSTYLE) ^ WS_EX_STATICEDGE; //removes border
+    SetWindowLongA(HWND_ProgressBar, GWL_EXSTYLE, pb_style);
 
     WC_Results.cbSize = sizeof(WNDCLASSEXA);
     WC_Results.style = CS_OWNDC; //already inherit from parent?
@@ -724,16 +725,16 @@ static int CreateWindows(HINSTANCE hInstance) {
         NULL
     );
 
-    WC_SearchParameters.cbSize = sizeof(WNDCLASSEXA);
-    WC_SearchParameters.style = CS_OWNDC;
-    WC_SearchParameters.lpfnWndProc = &SearchParametersProc;
-    WC_SearchParameters.hInstance = HINSTANCE_AppMain;
-    WC_SearchParameters.lpszClassName = "WC_SearchParameters";
+    WC_search_parameters.cbSize = sizeof(WNDCLASSEXA);
+    WC_search_parameters.style = CS_OWNDC;
+    WC_search_parameters.lpfnWndProc = &SearchParametersProc;
+    WC_search_parameters.hInstance = HINSTANCE_AppMain;
+    WC_search_parameters.lpszClassName = "WC_search_parameters";
 
-    if (!RegisterClassExA(&WC_SearchParameters)) { return GetLastError(); }
+    if (!RegisterClassExA(&WC_search_parameters)) { return GetLastError(); }
 
-    HWND_SearchParameters = CreateWindowA(
-        WC_SearchParameters.lpszClassName,
+    HWND_search_parameters = CreateWindowA(
+        WC_search_parameters.lpszClassName,
         NULL,
         WS_VISIBLE | WS_CHILD,
         SEARCH_PARAMS_X,
@@ -747,9 +748,9 @@ static int CreateWindows(HINSTANCE hInstance) {
     );
 
     /* Handle to instance of the Search Parameter Window, referenced by its children */
-    HINSTANCE HINSTANCE_SearchWindow = (HINSTANCE)GetWindowLongPtrA(HWND_SearchParameters, GWLP_HINSTANCE);
+    HINSTANCE HINSTANCE_SearchWindow = (HINSTANCE)GetWindowLongPtrA(HWND_search_parameters, GWLP_HINSTANCE);
 
-    HWND_SearchButton = CreateWindowA(
+    HWND_search_button = CreateWindowA(
         "BUTTON", //system class
         "SEARCH",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
@@ -757,13 +758,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         SEARCH_BUTTON_Y,
         SEARCH_BUTTON_WIDTH,
         SEARCH_BUTTON_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_SEARCH_BUTTON,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_TidInput = CreateWindowA(
+    HWND_tid_param = CreateWindowA(
         "EDIT", //system class
         "TID",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -771,13 +772,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_TID_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_SidInput = CreateWindowA(
+    HWND_sid_param = CreateWindowA(
         "EDIT", //system class
         "SID",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -785,13 +786,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         TEXT_INPUT_HEIGHT + 2 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_SID_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_VersionInput = CreateWindowA(
+    HWND_version_param = CreateWindowA(
         "COMBOBOX", //system class
         "VERSION",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED,
@@ -799,13 +800,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         COMBOBOX_HEIGHT * (VERSIONS_MAX + 2), //why +2?
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_VERSIONS_LIST,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_LanguageInput = CreateWindowA(
+    HWND_language_param = CreateWindowA(
         "COMBOBOX", //system class
         "LANGUAGE",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED,
@@ -813,13 +814,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         TEXT_INPUT_HEIGHT + 3 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         COMBOBOX_HEIGHT * (LANGUAGES_ACT_MAX + 2),
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_LANGUAGES_LIST,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_WildInput = CreateWindowA(
+    HWND_wild_param = CreateWindowA(
         "COMBOBOX", //system class
         "WILD",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED,
@@ -827,13 +828,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         2 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         COMBOBOX_HEIGHT * (OG_WILDS_MAX + 2),
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_WILDS_LIST,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_AslrInput = CreateWindowA(
+    HWND_aslr_param = CreateWindowA(
         "EDIT", //system class
         "ASLR",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -841,13 +842,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         2 * TEXT_INPUT_HEIGHT + 3 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_ASLR_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_SeedInput = CreateWindowA(
+    HWND_seed_param = CreateWindowA(
         "EDIT", //system class
         "SEED",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_UPPERCASE | ES_CENTER,
@@ -855,13 +856,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         3 * TEXT_INPUT_HEIGHT + 4 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_SEED_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_FramesInput = CreateWindowA(
+    HWND_frames_param = CreateWindowA(
         "EDIT", //system class
         "FRAMES",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -869,13 +870,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_FRAMES_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_MacInput = CreateWindowA(
+    HWND_mac_param = CreateWindowA(
         "EDIT", //system class
         "MAC",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_UPPERCASE | ES_CENTER,
@@ -883,13 +884,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_MAC_INPUT,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_SpeciesFilterInput = CreateWindowA(
+    HWND_species_filter = CreateWindowA(
         "EDIT", //system class
         "SPECIES",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -897,13 +898,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_SPECIES_FILTER,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_ItemFilterInput = CreateWindowA(
+    HWND_item_filter = CreateWindowA(
         "EDIT", //system class
         "ITEM",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -911,13 +912,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         TEXT_INPUT_HEIGHT + 2 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_ITEM_FILTER,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_MoveFilterInput = CreateWindowA(
+    HWND_move_filter = CreateWindowA(
         "EDIT", //system class
         "MOVE",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -925,13 +926,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         2 * TEXT_INPUT_HEIGHT + 3 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_MOVE_FILTER,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_AbilityFilterInput = CreateWindowA(
+    HWND_ability_filter = CreateWindowA(
         "EDIT", //system class
         "ABILITY",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -939,27 +940,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         3 * TEXT_INPUT_HEIGHT + 4 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         TEXT_INPUT_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_ABILITY_FILTER,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_NatureFilterInput = CreateWindowA(
-        "COMBOBOX", //system class
-        "NATURE",
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED, //WS_VSCROLL if you don't want to display the full size
-        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
-        4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
-        TEXT_INPUT_WIDTH,
-        COMBOBOX_HEIGHT * (NATURES_FILTER_MAX + 2), // /2 and WS_VSCROLL if you don't want to display the full size
-        HWND_SearchParameters,
-        (HMENU)ID_NATURE_FILTER,
-        HINSTANCE_SearchWindow,
-        NULL
-    );
-
-    HWND_ResetSearchParams = CreateWindowA(
+    HWND_reset_button = CreateWindowA(
         "BUTTON", //system class
         "RESET",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
@@ -967,13 +954,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         5 * TEXT_INPUT_HEIGHT + 6 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         RESET_BUTTON_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_RESET_BUTTON,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_LoadSearchParams = CreateWindowA(
+    HWND_load_button = CreateWindowA(
         "BUTTON", //system class
         "LOAD",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
@@ -981,13 +968,13 @@ static int CreateWindows(HINSTANCE hInstance) {
         5 * TEXT_INPUT_HEIGHT + 6 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         LOAD_BUTTON_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_LOAD_BUTTON,
         HINSTANCE_SearchWindow,
         NULL
     );
 
-    HWND_SaveSearchParams = CreateWindowA(
+    HWND_save_button = CreateWindowA(
         "BUTTON", //system class
         "SAVE",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
@@ -995,7 +982,7 @@ static int CreateWindows(HINSTANCE hInstance) {
         5 * TEXT_INPUT_HEIGHT + 6 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         SAVE_BUTTON_HEIGHT,
-        HWND_SearchParameters,
+        HWND_search_parameters,
         (HMENU)ID_SAVE_BUTTON,
         HINSTANCE_SearchWindow,
         NULL
@@ -1003,7 +990,7 @@ static int CreateWindows(HINSTANCE hInstance) {
 
     /* Profile slot buttons */
     for (u32 i = 0; i < PROFILE_SLOTS_MAX; i++) {
-        HWND_ProfileSlotButton[i] = CreateWindowA(
+        HWND_profile_slot[i] = CreateWindowA(
             "BUTTON",
             "P1",
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_OWNERDRAW,
@@ -1011,16 +998,30 @@ static int CreateWindows(HINSTANCE hInstance) {
             SAVE_BUTTON_HEIGHT + 5 * TEXT_INPUT_HEIGHT + 7 * APP_WINDOW_PADDING_S,
             PROFILE_SLOT_BUTTON_WIDTH,
             PROFILE_SLOT_BUTTON_WIDTH,
-            HWND_SearchParameters,
+            HWND_search_parameters,
             (HMENU)(ID_PROFILE_SLOT_BUTTON + i),
             HINSTANCE_SearchWindow,
             NULL
         );
     }
 
+    HWND_nature_filter = CreateWindowA(
+        "COMBOBOX", //system class
+        "NATURE",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED, //WS_VSCROLL if you don't want to display the full size
+        3 * TEXT_INPUT_WIDTH + 4 * APP_WINDOW_PADDING_S,
+        1 * TEXT_INPUT_HEIGHT + 2 * APP_WINDOW_PADDING_S,
+        TEXT_INPUT_WIDTH,
+        COMBOBOX_HEIGHT * (NATURES_FILTER_MAX + 2), // /2 and WS_VSCROLL if you don't want to display the full size
+        HWND_search_parameters,
+        (HMENU)ID_NATURE_FILTER,
+        HINSTANCE_SearchWindow,
+        NULL
+    );
+
     /* IV input */
     for (u32 i = 0; i < STATS_MAX; i++) {
-        HWND_IvInput[i] = CreateWindowA(
+        HWND_iv_filter[i] = CreateWindowA(
             "EDIT",
             Stats[i],
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_CENTER,
@@ -1028,7 +1029,7 @@ static int CreateWindows(HINSTANCE hInstance) {
             APP_WINDOW_PADDING_S,
             IV_INPUT_WIDTH,
             TEXT_INPUT_HEIGHT,
-            HWND_SearchParameters,
+            HWND_search_parameters,
             (HMENU)(ID_IV_FILTER + i),
             HINSTANCE_SearchWindow,
             NULL
