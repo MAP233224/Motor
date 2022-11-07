@@ -385,10 +385,10 @@ const OGWILD* OGW_LangVers[LANGUAGES_MAX][VERSIONS_MAX][OG_WILDS_MAX] = {
 
 static u32 GetNatureId(u32 pid) {
     /* Get the ID of the Nature (from 0 to 24), provided the PID. */
-    return pid % NATURES_MAX;
-    //below: optimized to avoid div instruction, faster on i7-6700K but slower on i5-11600K
-    //u32 x = 0x51EB851F;
-    //return pid - NATURES_MAX * (((u64)x * pid) >> 35);
+    //return pid % NATURES_MAX; //naive
+    // optimized to avoid div instruction
+    u32 x = 0x51EB851F;
+    return pid - NATURES_MAX * (((u64)x * pid) >> 35);
 }
 
 static u8 GetFormId(u16 fate) {
@@ -485,6 +485,21 @@ static void EncryptBlocks(PKMN* pkmn) {
     }
 }
 
+static void EncryptBlocksChecksumZero(PKMN* pkmn) {
+    /* Fast encryption with precomputed RNG XOR mask (checksum == 0) */
+    static const u64 xordata[16] =
+    {
+        0x31b05271e97e0000, 0x67dbafc5e2cc8e42, 0xcac5fc5eef2cfc33, 0xcba77abc993debd6,
+        0x618d27a691785dd6, 0x3080375dcfb81692, 0xfee7321348fb407c, 0x1d29639e3d69dfa3,
+        0xa39792686296ea8d, 0xaa8931aa6e031c49, 0xe0c682d9c3ead3c5, 0x24285a5f4e3b945c,
+        0x007f7b8ebfe1fbb3, 0x38b6bfd1c84840c4, 0xbe347d23fb23903b, 0xba84dfc5706ada00,
+    };
+    u64* pkdata = (u64*)pkmn->data;
+    for (u32 i = 0; i < 16; i++) {
+        pkdata[i] ^= xordata[i];
+    }
+}
+
 static void EncryptCondition(PKMN* pkmn) {
     /* LCRNG is seeded with the PID */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of Condition data */
@@ -495,14 +510,14 @@ static void EncryptCondition(PKMN* pkmn) {
     }
 }
 
-static void DecomposeIVs(u32 ivs, u8 iva[STATS_MAX]) {
-    /* Decompose IVs */
-    iva[HP] = (ivs >> 0) & IV_VALUE_MAX;
-    iva[AT] = (ivs >> 5) & IV_VALUE_MAX;
-    iva[DF] = (ivs >> 10) & IV_VALUE_MAX;
-    iva[SP] = (ivs >> 15) & IV_VALUE_MAX;
-    iva[SA] = (ivs >> 20) & IV_VALUE_MAX;
-    iva[SD] = (ivs >> 25) & IV_VALUE_MAX;
+static void DecomposeIVs(u32 p, u8 ivs[STATS_MAX]) {
+    /* Decompose 5-bit packed IVs into individual u8 buffers */
+    ivs[HP] = (p >> 0) & IV_VALUE_MAX;
+    ivs[AT] = (p >> 5) & IV_VALUE_MAX;
+    ivs[DF] = (p >> 10) & IV_VALUE_MAX;
+    ivs[SP] = (p >> 15) & IV_VALUE_MAX;
+    ivs[SA] = (p >> 20) & IV_VALUE_MAX;
+    ivs[SD] = (p >> 25) & IV_VALUE_MAX;
 }
 
 static u32 GetIVs(u8 ivs[STATS_MAX]) {
@@ -663,12 +678,10 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         seven.data[seven.pos_a][13] = 0x0000;
         seven.data[seven.pos_a][14] = 0x0001;
         seven.data[seven.pos_a][15] = 0x0000;
-        /* Block C, B, D and Condition data - array out of bounds method */
-        u16* wild_data = (u16*)(&wild.pid);
-        u16* seven_data = (u16*)(&seven.data[1]);
-        for (u8 i = 0; i < (BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET; i++) { seven_data[i] = wild_data[i]; }
+        /* Block C, B, D and Condition data */
+        memcpy(&seven.data[1], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
 
-        EncryptBlocks(&seven);
+        EncryptBlocksChecksumZero(&seven);
 
         fprintf(fp, "%02u    %08X    ", offset / 4, aslr);
 
