@@ -539,12 +539,10 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 seven.data[seven.pos_a][13] = 0x0000;
                 seven.data[seven.pos_a][14] = 0x0001;
                 seven.data[seven.pos_a][15] = 0x0000;
-                /* Block C, B, D and Condition data - array out of bounds method */
-                u16* wild_data = (u16*)(&wild.pid);
-                u16* seven_data = (u16*)(&seven.data[1]);
-                for (u8 i = 0; i < (BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET; i++) { seven_data[i] = wild_data[i]; }
+                /* Block C, B, D and Condition data */
+                memcpy(&seven.data[1], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
 
-                EncryptBlocks(&seven);
+                EncryptBlocksChecksumZero(&seven);
 
                 /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu */
                 if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; }
