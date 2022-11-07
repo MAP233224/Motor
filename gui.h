@@ -1009,8 +1009,8 @@ static int CreateWindows(HINSTANCE hInstance) {
         "COMBOBOX", //system class
         "NATURE",
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_UPPERCASE | CBS_HASSTRINGS | CBS_OWNERDRAWFIXED, //WS_VSCROLL if you don't want to display the full size
-        3 * TEXT_INPUT_WIDTH + 4 * APP_WINDOW_PADDING_S,
-        1 * TEXT_INPUT_HEIGHT + 2 * APP_WINDOW_PADDING_S,
+        2 * TEXT_INPUT_WIDTH + 3 * APP_WINDOW_PADDING_S,
+        4 * TEXT_INPUT_HEIGHT + 5 * APP_WINDOW_PADDING_S,
         TEXT_INPUT_WIDTH,
         COMBOBOX_HEIGHT * (NATURES_FILTER_MAX + 2), // /2 and WS_VSCROLL if you don't want to display the full size
         HWND_search_parameters,
