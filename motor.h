@@ -10,6 +10,7 @@
 #define BLOCK_SIZE          (16)    // Number of 16-bit words in 128 bytes, the size of PKMN Block data
 #define COND_SIZE           (50)    // Number of 16-bit words in 100 bytes, the size of PKMN Condition data
 #define COND_SIZE_S         (33)    // Utility: stop earlier to avoid needless encryption
+#define COND_SIZE_XS        (5)     // Utility: stop even earlier to avoid needless encryption
 #define ABILITIES_MAX       (124)   // Number of abilities
 #define SPECIES_MAX         (494)   // Number of species
 #define MOVES_MAX           (468)   // Number of moves
@@ -24,6 +25,13 @@
 #define MIN_DELAY_DPPT      (700)   // Minimum delay you can get in DPPT from a Save&Quit
 #define MAX_DELAY_DPPT      (MIN_DELAY_DPPT + SEED_OFF_C)
 #define TYPES_MAX           (18)    // Total number of types, including ???
+#define NAME_CHARS_MAX      (11)
+
+// Seven's PID is static (0x00005544), so its block order is always ACBD
+#define SEVEN_BLOCK_A (0)
+#define SEVEN_BLOCK_C (1)
+#define SEVEN_BLOCK_B (2)
+#define SEVEN_BLOCK_D (3)
 
 #define NAME_ROTOM          {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}
 #define NAME_ROTOM_JP       {0x013C, 0x0139, 0x013E, 0x0139, 0x0137, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}
@@ -63,19 +71,6 @@
 #define NAME_HEATRAN        {0x0132, 0x012F, 0x012B, 0x013E, 0x013C, 0x012B, 0x0138, 0xFFFF, 0x0000, 0x0000, 0x0000}
 #define NAME_HEATRAN_JP     {0x0083, 0x00F1, 0x007A, 0x009A, 0x00A1, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}
 #define NAME_HEATRAN_KO     {0x0D27, 0x061B, 0x06A3, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}
-
-#define STATS_ROTOM         {50, 50, 77, 91, 95, 77}
-#define STATS_DIALGA        {100, 120, 120, 90, 150, 100}
-#define STATS_PALKIA        {90, 120, 100, 100, 150, 120}
-#define STATS_GIRATINA_A    {150, 100, 120, 90, 100, 120}
-#define STATS_GIRATINA_O    {150, 120, 100, 100, 90, 120}
-#define STATS_ARCEUS        {120, 120, 120, 120, 120, 120}
-#define STATS_UXIE          {75, 75, 130, 95, 75, 130}
-#define STATS_AZELF         {75, 125, 70, 115, 70, 125}
-#define STATS_DARKRAI       {70, 90, 90, 125, 90, 135}
-#define STATS_SHAYMIN       {100, 100, 100, 100, 100, 100}
-#define STATS_HEATRAN       {91, 90, 106, 77, 130, 106}
-#define STATS_REGIGIGAS     {110, 160, 110, 110, 100, 80}
 
 #define MOVES_GIRATINA_DP   {0x01D3, 0x0179, 0x019E, 0x00A3}
 #define MOVES_ARCEUS_DP     {0x011F, 0x00F8, 0x0069, 0x003F}
@@ -215,14 +210,13 @@ typedef struct {
     u16 species;
     u16 item;
     u16 level;
-    u16 bstats[STATS_MAX];
     u16 xp1;
     u16 xp2;
     u16 frab; //friendship and ability concatenated
     u16 moves[OWN_MOVES_MAX];
     u16 pp1and2;
     u16 pp3and4;
-    u16 name[11];
+    u16 name[NAME_CHARS_MAX];
     u16 gfx[8]; //remains of graphical data from the current map
     //Size: 74 bytes
 } OGWILD;
@@ -260,77 +254,77 @@ typedef struct {
 } HIDDENPOWER;
 
 /* Every static encounters */
-const OGWILD dp_giratina = { 0x01E7, 0, 70, STATS_GIRATINA_A, 0x8ACE, 0x0006, 0x2E00, MOVES_GIRATINA_DP, 0x0F05, 0x140A, NAME_GIRATINA, GFX_GIRATINA_DP };
-const OGWILD dp_arceus = { 0x01ED, 0, 80, STATS_ARCEUS, 0xC400, 0x0009, 0x7900, MOVES_ARCEUS_DP, 0x0F14, 0x050A, NAME_ARCEUS, GFX_ARCEUS_DP };
-const OGWILD dp_shaymin = { 0x01EC, 0x009D, 30, STATS_SHAYMIN, 0x5500, 0x0000, 0x1E64, MOVES_SHAYMIN_DP, 0x1428, 0x050A, NAME_SHAYMIN, GFX_SHAYMIN_DP };
-const OGWILD dp_darkrai = { 0x01EB, 0, 40, STATS_DARKRAI, 0x3880, 0x0001, 0x7B00, MOVES_DARKRAI_DP, 0x141E, 0x0F14, NAME_DARKRAI, GFX_DARKRAI_DP };
-const OGWILD dp_uxie = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE, GFX_CAVERN_DP };
-const OGWILD dp_azelf = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF, GFX_CAVERN_DP };
-const OGWILD dp_rotom = { 0x01DF, 0, 15, STATS_ROTOM, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM, GFX_ROTOM_DP };
-const OGWILD dp_uxie_fr = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_FR, GFX_CAVERN_DP };
-const OGWILD dp_azelf_fr = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_FR, GFX_CAVERN_DP };
-const OGWILD dp_motisma = { 0x01DF, 0, 15, STATS_ROTOM, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_FR, GFX_ROTOM_DP };
-const OGWILD dp_uxie_ge = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_GE, GFX_CAVERN_DP };
-const OGWILD dp_azelf_ge = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_GE, GFX_CAVERN_DP };
-const OGWILD dp_giratina_jp = { 0x01E7, 0, 70, STATS_GIRATINA_A, 0x8ACE, 0x0006, 0x2E00, MOVES_GIRATINA_DP, 0x0F05, 0x140A, NAME_GIRATINA_JP, GFX_GIRATINA_DP };
-const OGWILD dp_arceus_jp = { 0x01ED, 0, 80, STATS_ARCEUS, 0xC400, 0x0009, 0x7900, MOVES_ARCEUS_DP, 0x0F14, 0x050A, NAME_ARCEUS_JP, GFX_ARCEUS_DP };
-const OGWILD dp_shaymin_jp = { 0x01EC, 0x009D, 30, STATS_SHAYMIN, 0x5500, 0x0000, 0x1E64, MOVES_SHAYMIN_DP, 0x1428, 0x050A, NAME_SHAYMIN_JP, GFX_SHAYMIN_DP };
-const OGWILD dp_darkrai_jp = { 0x01EB, 0, 40, STATS_DARKRAI, 0x3880, 0x0001, 0x7B00, MOVES_DARKRAI_DP, 0x141E, 0x0F14, NAME_DARKRAI_JP, GFX_DARKRAI_DP };
-const OGWILD dp_uxie_jp = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_JP, GFX_CAVERN_DP };
-const OGWILD dp_azelf_jp = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_JP, GFX_CAVERN_DP };
-const OGWILD dp_rotom_jp = { 0x01DF, 0, 15, STATS_ROTOM, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_JP, GFX_ROTOM_DP };
-const OGWILD dp_giratina_ko = { 0x01E7, 0, 70, STATS_GIRATINA_A, 0x8ACE, 0x0006, 0x2E00, MOVES_GIRATINA_DP, 0x0F05, 0x140A, NAME_GIRATINA_KO, GFX_GIRATINA_DP };
-const OGWILD dp_arceus_ko = { 0x01ED, 0, 80, STATS_ARCEUS, 0xC400, 0x0009, 0x7900, MOVES_ARCEUS_DP, 0x0F14, 0x050A, NAME_ARCEUS_KO, GFX_ARCEUS_DP };
-const OGWILD dp_shaymin_ko = { 0x01EC, 0x009D, 30, STATS_SHAYMIN, 0x5500, 0x0000, 0x1E64, MOVES_SHAYMIN_DP, 0x1428, 0x050A, NAME_SHAYMIN_KO, GFX_SHAYMIN_DP };
-const OGWILD dp_darkrai_ko = { 0x01EB, 0, 40, STATS_DARKRAI, 0x3880, 0x0001, 0x7B00, MOVES_DARKRAI_DP, 0x141E, 0x0F14, NAME_DARKRAI_KO, GFX_DARKRAI_DP };
-const OGWILD dp_uxie_ko = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_KO, GFX_CAVERN_DP };
-const OGWILD dp_azelf_ko = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_KO, GFX_CAVERN_DP };
-const OGWILD dp_rotom_ko = { 0x01DF, 0, 15, STATS_ROTOM, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_KO, GFX_ROTOM_DP };
-const OGWILD dp_dialga = { 0x01E3, 0, 47, STATS_DIALGA, 0xFAF2, 0x0001, 0x2E00, MOVES_DIALGA_DP, 0x0523, 0x050F, NAME_DIALGA, GFX_PILLARS_DP };
-const OGWILD dp_palkia = { 0x01E4, 0, 47, STATS_PALKIA, 0xFAF2, 0x0001, 0x2E00, MOVES_PALKIA_DP, 0x0514, 0x050F, NAME_PALKIA, GFX_PILLARS_DP };
-const OGWILD dp_dialga_jp = { 0x01E3, 0, 47, STATS_DIALGA, 0xFAF2, 0x0001, 0x2E00, MOVES_DIALGA_DP, 0x0523, 0x050F, NAME_DIALGA_JP, GFX_PILLARS_DP };
-const OGWILD dp_palkia_jp = { 0x01E4, 0, 47, STATS_PALKIA, 0xFAF2, 0x0001, 0x2E00, MOVES_PALKIA_DP, 0x0514, 0x050F, NAME_PALKIA_JP, GFX_PILLARS_DP };
-const OGWILD dp_dialga_ko = { 0x01E3, 0, 47, STATS_DIALGA, 0xFAF2, 0x0001, 0x2E00, MOVES_DIALGA_DP, 0x0523, 0x050F, NAME_DIALGA_KO, GFX_PILLARS_DP };
-const OGWILD dp_palkia_ko = { 0x01E4, 0, 47, STATS_PALKIA, 0xFAF2, 0x0001, 0x2E00, MOVES_PALKIA_DP, 0x0514, 0x050F, NAME_PALKIA_KO, GFX_PILLARS_DP };
-const OGWILD dp_heatran = { 0x01E5, 0, 70, STATS_HEATRAN, 0x8ACE, 0x0006, 0x1264, MOVES_HEATRAN_DP, 0x0F0A, 0x0F0F, NAME_HEATRAN, GFX_HEATRAN_DP };
-const OGWILD dp_heatran_jp = { 0x01E5, 0, 70, STATS_HEATRAN, 0x8ACE, 0x0006, 0x1264, MOVES_HEATRAN_DP, 0x0F0A, 0x0F0F, NAME_HEATRAN_JP, GFX_HEATRAN_DP };
-const OGWILD dp_heatran_ko = { 0x01E5, 0, 70, STATS_HEATRAN, 0x8ACE, 0x0006, 0x1264, MOVES_HEATRAN_DP, 0x0F0A, 0x0F0F, NAME_HEATRAN_KO, GFX_HEATRAN_DP };
-const OGWILD dp_regigigas = { 0x01E6, 0, 70, STATS_REGIGIGAS,  0x8ACE, 0x0006, 0x7000, MOVES_REGIGIGAS_DP, 0x140A, 0x0F05, NAME_REGIGIGAS, GFX_REGIGIGAS_DP };
-const OGWILD dp_regigigas_jp = { 0x01E6, 0, 70, STATS_REGIGIGAS,  0x8ACE, 0x0006, 0x7000, MOVES_REGIGIGAS_DP, 0x140A, 0x0F05, NAME_REGIGIGAS_JP, GFX_REGIGIGAS_DP };
-const OGWILD dp_regigigas_ko = { 0x01E6, 0, 70, STATS_REGIGIGAS,  0x8ACE, 0x0006, 0x7000, MOVES_REGIGIGAS_DP, 0x140A, 0x0F05, NAME_REGIGIGAS_KO, GFX_REGIGIGAS_DP };
+const OGWILD dp_giratina = { 0x01E7, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_GIRATINA_DP, 0x0F05, 0x140A, NAME_GIRATINA, GFX_GIRATINA_DP };
+const OGWILD dp_arceus = { 0x01ED, 0, 80, 0xC400, 0x0009, 0x7900, MOVES_ARCEUS_DP, 0x0F14, 0x050A, NAME_ARCEUS, GFX_ARCEUS_DP };
+const OGWILD dp_shaymin = { 0x01EC, 0x009D, 30, 0x5500, 0x0000, 0x1E64, MOVES_SHAYMIN_DP, 0x1428, 0x050A, NAME_SHAYMIN, GFX_SHAYMIN_DP };
+const OGWILD dp_darkrai = { 0x01EB, 0, 40, 0x3880, 0x0001, 0x7B00, MOVES_DARKRAI_DP, 0x141E, 0x0F14, NAME_DARKRAI, GFX_DARKRAI_DP };
+const OGWILD dp_uxie = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE, GFX_CAVERN_DP };
+const OGWILD dp_azelf = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF, GFX_CAVERN_DP };
+const OGWILD dp_rotom = { 0x01DF, 0, 15, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM, GFX_ROTOM_DP };
+const OGWILD dp_uxie_fr = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_FR, GFX_CAVERN_DP };
+const OGWILD dp_azelf_fr = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_FR, GFX_CAVERN_DP };
+const OGWILD dp_motisma = { 0x01DF, 0, 15, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_FR, GFX_ROTOM_DP };
+const OGWILD dp_uxie_ge = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_GE, GFX_CAVERN_DP };
+const OGWILD dp_azelf_ge = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_GE, GFX_CAVERN_DP };
+const OGWILD dp_giratina_jp = { 0x01E7, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_GIRATINA_DP, 0x0F05, 0x140A, NAME_GIRATINA_JP, GFX_GIRATINA_DP };
+const OGWILD dp_arceus_jp = { 0x01ED, 0, 80, 0xC400, 0x0009, 0x7900, MOVES_ARCEUS_DP, 0x0F14, 0x050A, NAME_ARCEUS_JP, GFX_ARCEUS_DP };
+const OGWILD dp_shaymin_jp = { 0x01EC, 0x009D, 30, 0x5500, 0x0000, 0x1E64, MOVES_SHAYMIN_DP, 0x1428, 0x050A, NAME_SHAYMIN_JP, GFX_SHAYMIN_DP };
+const OGWILD dp_darkrai_jp = { 0x01EB, 0, 40, 0x3880, 0x0001, 0x7B00, MOVES_DARKRAI_DP, 0x141E, 0x0F14, NAME_DARKRAI_JP, GFX_DARKRAI_DP };
+const OGWILD dp_uxie_jp = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_JP, GFX_CAVERN_DP };
+const OGWILD dp_azelf_jp = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_JP, GFX_CAVERN_DP };
+const OGWILD dp_rotom_jp = { 0x01DF, 0, 15, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_JP, GFX_ROTOM_DP };
+const OGWILD dp_giratina_ko = { 0x01E7, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_GIRATINA_DP, 0x0F05, 0x140A, NAME_GIRATINA_KO, GFX_GIRATINA_DP };
+const OGWILD dp_arceus_ko = { 0x01ED, 0, 80, 0xC400, 0x0009, 0x7900, MOVES_ARCEUS_DP, 0x0F14, 0x050A, NAME_ARCEUS_KO, GFX_ARCEUS_DP };
+const OGWILD dp_shaymin_ko = { 0x01EC, 0x009D, 30, 0x5500, 0x0000, 0x1E64, MOVES_SHAYMIN_DP, 0x1428, 0x050A, NAME_SHAYMIN_KO, GFX_SHAYMIN_DP };
+const OGWILD dp_darkrai_ko = { 0x01EB, 0, 40, 0x3880, 0x0001, 0x7B00, MOVES_DARKRAI_DP, 0x141E, 0x0F14, NAME_DARKRAI_KO, GFX_DARKRAI_DP };
+const OGWILD dp_uxie_ko = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_DP, 0x0A19, 0x140F, NAME_UXIE_KO, GFX_CAVERN_DP };
+const OGWILD dp_azelf_ko = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_DP, 0x0A19, 0x140F, NAME_AZELF_KO, GFX_CAVERN_DP };
+const OGWILD dp_rotom_ko = { 0x01DF, 0, 15, 0x0D2F, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_KO, GFX_ROTOM_DP };
+const OGWILD dp_dialga = { 0x01E3, 0, 47, 0xFAF2, 0x0001, 0x2E00, MOVES_DIALGA_DP, 0x0523, 0x050F, NAME_DIALGA, GFX_PILLARS_DP };
+const OGWILD dp_palkia = { 0x01E4, 0, 47, 0xFAF2, 0x0001, 0x2E00, MOVES_PALKIA_DP, 0x0514, 0x050F, NAME_PALKIA, GFX_PILLARS_DP };
+const OGWILD dp_dialga_jp = { 0x01E3, 0, 47, 0xFAF2, 0x0001, 0x2E00, MOVES_DIALGA_DP, 0x0523, 0x050F, NAME_DIALGA_JP, GFX_PILLARS_DP };
+const OGWILD dp_palkia_jp = { 0x01E4, 0, 47, 0xFAF2, 0x0001, 0x2E00, MOVES_PALKIA_DP, 0x0514, 0x050F, NAME_PALKIA_JP, GFX_PILLARS_DP };
+const OGWILD dp_dialga_ko = { 0x01E3, 0, 47, 0xFAF2, 0x0001, 0x2E00, MOVES_DIALGA_DP, 0x0523, 0x050F, NAME_DIALGA_KO, GFX_PILLARS_DP };
+const OGWILD dp_palkia_ko = { 0x01E4, 0, 47, 0xFAF2, 0x0001, 0x2E00, MOVES_PALKIA_DP, 0x0514, 0x050F, NAME_PALKIA_KO, GFX_PILLARS_DP };
+const OGWILD dp_heatran = { 0x01E5, 0, 70, 0x8ACE, 0x0006, 0x1264, MOVES_HEATRAN_DP, 0x0F0A, 0x0F0F, NAME_HEATRAN, GFX_HEATRAN_DP };
+const OGWILD dp_heatran_jp = { 0x01E5, 0, 70, 0x8ACE, 0x0006, 0x1264, MOVES_HEATRAN_DP, 0x0F0A, 0x0F0F, NAME_HEATRAN_JP, GFX_HEATRAN_DP };
+const OGWILD dp_heatran_ko = { 0x01E5, 0, 70, 0x8ACE, 0x0006, 0x1264, MOVES_HEATRAN_DP, 0x0F0A, 0x0F0F, NAME_HEATRAN_KO, GFX_HEATRAN_DP };
+const OGWILD dp_regigigas = { 0x01E6, 0, 70, 0x8ACE, 0x0006, 0x7000, MOVES_REGIGIGAS_DP, 0x140A, 0x0F05, NAME_REGIGIGAS, GFX_REGIGIGAS_DP };
+const OGWILD dp_regigigas_jp = { 0x01E6, 0, 70, 0x8ACE, 0x0006, 0x7000, MOVES_REGIGIGAS_DP, 0x140A, 0x0F05, NAME_REGIGIGAS_JP, GFX_REGIGIGAS_DP };
+const OGWILD dp_regigigas_ko = { 0x01E6, 0, 70, 0x8ACE, 0x0006, 0x7000, MOVES_REGIGIGAS_DP, 0x140A, 0x0F05, NAME_REGIGIGAS_KO, GFX_REGIGIGAS_DP };
 
-const OGWILD pt_giratina_o = { 0x01E7, 0, 47, STATS_GIRATINA_O, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA, GFX_DISTORTION_PT }; //origin
-const OGWILD pt_giratina_a = { 0x01E7, 0, 47, STATS_GIRATINA_A, 0xFAF2, 0x0001, 0x2E00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA, GFX_TURNBACK_PT }; //altered
-const OGWILD pt_dialga = { 0x01E3, 0, 70, STATS_DIALGA, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA, GFX_PILLARS_PT };
-const OGWILD pt_palkia = { 0x01E4, 0, 70, STATS_PALKIA, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA, GFX_PILLARS_PT };
-const OGWILD pt_uxie = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE, GFX_CAVERN_PT };
-const OGWILD pt_azelf = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF, GFX_CAVERN_PT };
-const OGWILD pt_rotom = { 0x01DF, 0, 20, STATS_ROTOM, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM, GFX_ROTOM_PT };
-const OGWILD pt_uxie_fr = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_FR, GFX_CAVERN_PT };
-const OGWILD pt_azelf_fr = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_FR, GFX_CAVERN_PT };
-const OGWILD pt_rotom_fr = { 0x01DF, 0, 20, STATS_ROTOM, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_FR, GFX_ROTOM_PT };
-const OGWILD pt_uxie_ge = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_GE, GFX_CAVERN_PT };
-const OGWILD pt_azelf_ge = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_GE, GFX_CAVERN_PT };
-const OGWILD pt_giratina_o_jp = { 0x01E7, 0, 47, STATS_GIRATINA_O, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_JP, GFX_DISTORTION_PT }; //origin
-const OGWILD pt_giratina_a_jp = { 0x01E7, 0, 47, STATS_GIRATINA_A, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_JP, GFX_TURNBACK_PT }; //altered
-const OGWILD pt_dialga_jp = { 0x01E3, 0, 70, STATS_DIALGA, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA_JP, GFX_PILLARS_PT };
-const OGWILD pt_palkia_jp = { 0x01E4, 0, 70, STATS_PALKIA, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA_JP, GFX_PILLARS_PT };
-const OGWILD pt_uxie_jp = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_JP, GFX_CAVERN_PT };
-const OGWILD pt_azelf_jp = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_JP, GFX_CAVERN_PT };
-const OGWILD pt_rotom_jp = { 0x01DF, 0, 20, STATS_ROTOM, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_JP, GFX_ROTOM_PT };
-const OGWILD pt_giratina_o_ko = { 0x01E7, 0, 47, STATS_GIRATINA_O, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_KO, GFX_DISTORTION_PT }; //origin
-const OGWILD pt_giratina_a_ko = { 0x01E7, 0, 47, STATS_GIRATINA_A, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_KO, GFX_TURNBACK_PT }; //altered
-const OGWILD pt_dialga_ko = { 0x01E3, 0, 70, STATS_DIALGA, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA_KO, GFX_PILLARS_PT };
-const OGWILD pt_palkia_ko = { 0x01E4, 0, 70, STATS_PALKIA, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA_KO, GFX_PILLARS_PT };
-const OGWILD pt_uxie_ko = { 0x01E0, 0, 50, STATS_UXIE, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_KO, GFX_CAVERN_PT };
-const OGWILD pt_azelf_ko = { 0x01E2, 0, 50, STATS_AZELF, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_KO, GFX_CAVERN_PT };
-const OGWILD pt_rotom_ko = { 0x01DF, 0, 20, STATS_ROTOM, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_KO, GFX_ROTOM_PT };
-const OGWILD pt_heatran = { 0x01E5, 0, 50, STATS_HEATRAN, 0x625A, 0x0002, 0x1264, MOVES_HEATRAN_PT, 0x0F28, 0x0F0A, NAME_HEATRAN, GFX_HEATRAN_PT };
-const OGWILD pt_heatran_jp = { 0x01E5, 0, 50, STATS_HEATRAN, 0x625A, 0x0002, 0x1264, MOVES_HEATRAN_PT, 0x0F28, 0x0F0A, NAME_HEATRAN_JP, GFX_HEATRAN_PT };
-const OGWILD pt_heatran_ko = { 0x01E5, 0, 50, STATS_HEATRAN, 0x625A, 0x0002, 0x1264, MOVES_HEATRAN_PT, 0x0F28, 0x0F0A, NAME_HEATRAN_KO, GFX_HEATRAN_PT };
-const OGWILD pt_regigigas = { 0x01E6, 0, 1, STATS_REGIGIGAS, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS, GFX_REGIGIGAS_PT };
-const OGWILD pt_regigigas_jp = { 0x01E6, 0, 1, STATS_REGIGIGAS, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS_JP, GFX_REGIGIGAS_PT };
-const OGWILD pt_regigigas_ko = { 0x01E6, 0, 1, STATS_REGIGIGAS, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS_KO, GFX_REGIGIGAS_PT };
+const OGWILD pt_giratina_o = { 0x01E7, 0, 47, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA, GFX_DISTORTION_PT }; //origin
+const OGWILD pt_giratina_a = { 0x01E7, 0, 47, 0xFAF2, 0x0001, 0x2E00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA, GFX_TURNBACK_PT }; //altered
+const OGWILD pt_dialga = { 0x01E3, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA, GFX_PILLARS_PT };
+const OGWILD pt_palkia = { 0x01E4, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA, GFX_PILLARS_PT };
+const OGWILD pt_uxie = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE, GFX_CAVERN_PT };
+const OGWILD pt_azelf = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF, GFX_CAVERN_PT };
+const OGWILD pt_rotom = { 0x01DF, 0, 20, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM, GFX_ROTOM_PT };
+const OGWILD pt_uxie_fr = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_FR, GFX_CAVERN_PT };
+const OGWILD pt_azelf_fr = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_FR, GFX_CAVERN_PT };
+const OGWILD pt_rotom_fr = { 0x01DF, 0, 20, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_FR, GFX_ROTOM_PT };
+const OGWILD pt_uxie_ge = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_GE, GFX_CAVERN_PT };
+const OGWILD pt_azelf_ge = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_GE, GFX_CAVERN_PT };
+const OGWILD pt_giratina_o_jp = { 0x01E7, 0, 47, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_JP, GFX_DISTORTION_PT }; //origin
+const OGWILD pt_giratina_a_jp = { 0x01E7, 0, 47, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_JP, GFX_TURNBACK_PT }; //altered
+const OGWILD pt_dialga_jp = { 0x01E3, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA_JP, GFX_PILLARS_PT };
+const OGWILD pt_palkia_jp = { 0x01E4, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA_JP, GFX_PILLARS_PT };
+const OGWILD pt_uxie_jp = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_JP, GFX_CAVERN_PT };
+const OGWILD pt_azelf_jp = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_JP, GFX_CAVERN_PT };
+const OGWILD pt_rotom_jp = { 0x01DF, 0, 20, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_JP, GFX_ROTOM_PT };
+const OGWILD pt_giratina_o_ko = { 0x01E7, 0, 47, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_KO, GFX_DISTORTION_PT }; //origin
+const OGWILD pt_giratina_a_ko = { 0x01E7, 0, 47, 0xFAF2, 0x0001, 0x1A00, MOVES_GIRATINA_PT, 0x0505, 0x050F, NAME_GIRATINA_KO, GFX_TURNBACK_PT }; //altered
+const OGWILD pt_dialga_ko = { 0x01E3, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_DIALGA_PT, 0x0F05, 0x140A, NAME_DIALGA_KO, GFX_PILLARS_PT };
+const OGWILD pt_palkia_ko = { 0x01E4, 0, 70, 0x8ACE, 0x0006, 0x2E00, MOVES_PALKIA_PT, 0x0F05, 0x140A, NAME_PALKIA_KO, GFX_PILLARS_PT };
+const OGWILD pt_uxie_ko = { 0x01E0, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_UXIE_PT, 0x0A14, 0x140F, NAME_UXIE_KO, GFX_CAVERN_PT };
+const OGWILD pt_azelf_ko = { 0x01E2, 0, 50, 0x625A, 0x0002, 0x1A8C, MOVES_AZELF_PT, 0x0A14, 0x140F, NAME_AZELF_KO, GFX_CAVERN_PT };
+const OGWILD pt_rotom_ko = { 0x01DF, 0, 20, 0x1F40, 0x0000, 0x1A46, MOVES_ROTOM, 0x0A1E, 0x0F0A, NAME_ROTOM_KO, GFX_ROTOM_PT };
+const OGWILD pt_heatran = { 0x01E5, 0, 50, 0x625A, 0x0002, 0x1264, MOVES_HEATRAN_PT, 0x0F28, 0x0F0A, NAME_HEATRAN, GFX_HEATRAN_PT };
+const OGWILD pt_heatran_jp = { 0x01E5, 0, 50, 0x625A, 0x0002, 0x1264, MOVES_HEATRAN_PT, 0x0F28, 0x0F0A, NAME_HEATRAN_JP, GFX_HEATRAN_PT };
+const OGWILD pt_heatran_ko = { 0x01E5, 0, 50, 0x625A, 0x0002, 0x1264, MOVES_HEATRAN_PT, 0x0F28, 0x0F0A, NAME_HEATRAN_KO, GFX_HEATRAN_PT };
+const OGWILD pt_regigigas = { 0x01E6, 0, 1, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS, GFX_REGIGIGAS_PT };
+const OGWILD pt_regigigas_jp = { 0x01E6, 0, 1, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS_JP, GFX_REGIGIGAS_PT };
+const OGWILD pt_regigigas_ko = { 0x01E6, 0, 1, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS_KO, GFX_REGIGIGAS_PT };
 
 
 const OGWILD* OGW_LangVers[LANGUAGES_MAX][VERSIONS_MAX][OG_WILDS_MAX] = {
@@ -387,8 +381,8 @@ static u32 GetNatureId(u32 pid) {
     /* Get the ID of the Nature (from 0 to 24), provided the PID. */
     //return pid % NATURES_MAX; //naive
     // optimized to avoid div instruction
-    u32 x = 0x51EB851F;
-    return pid - NATURES_MAX * (((u64)x * pid) >> 35);
+    u64 x = 0x51EB851FULL;
+    return pid - NATURES_MAX * ((x * pid) >> 35);
 }
 
 static u8 GetFormId(u16 fate) {
@@ -396,43 +390,36 @@ static u8 GetFormId(u16 fate) {
     return (fate & 0xFF) >> 3;
 }
 
-static u8 BlockOrder(u32 pid) {
+static u8 GetBlockOrder(u32 pid) {
     /* Get the index of the block permutation of a given PID (from 0 to 23) */
-    //return ((pid & 0x3E000) >> 13) % BLOCK_PERMS;
     return ((pid >> 13) & 31) % BLOCK_PERMS;
 }
 
 static void SetBlocks(PKMN* pkmn) {
     /* Get the order of each block from the PID and set them in the correct permutation */
     /* r/iamverysmart */
-    pkmn->order = BlockOrder(pkmn->pid);
+    pkmn->order = GetBlockOrder(pkmn->pid);
     pkmn->pos_a = (Perms[pkmn->order] >> 12) & 3;
     pkmn->pos_b = (Perms[pkmn->order] >> 8) & 3;
     pkmn->pos_c = (Perms[pkmn->order] >> 4) & 3;
     pkmn->pos_d = (Perms[pkmn->order] >> 0) & 3;
 }
 
-static u16 StatNatureModifier(u8 nature, u8 stat_index, u16 stat_value) {
-    /* Return the new value of a stat after the Nature modifier is applied.*/
-    return stat_value * (10 + NatureStatModifiers[nature][stat_index]) / 10;
-}
-
-static u16 IvToStat_HP(PKMN* pkmn, const OGWILD* wild) {
-    /* Return the value of the HP stat based on the IV, Base Stat and Level. */
-    return (2 * (wild->bstats[HP]) + pkmn->ivs[HP]) * wild->level / 100 + wild->level + 10;
-}
-
-static u16 IvToStat(PKMN* pkmn, const OGWILD* wild, u8 stat) {
-    /* Return the value of a stat based on the IV, Base Stat, Nature and Level. */
-    /* HP (index 0) is ignored, hence why "stat - 1" is passed as the stat_index */
-    return StatNatureModifier(pkmn->nature, stat - 1, (2 * (wild->bstats[stat]) + pkmn->ivs[stat]) * wild->level / 100 + 5);
-}
-
 static void SetChecksum(PKMN* pkmn) {
-    /* Set the checksum of a PKMN by summing all of its Block data. */
-    for (u8 i = 0; i < BLOCK_SIZE; i++) {
-        pkmn->checksum += pkmn->data[pkmn->pos_a][i] + pkmn->data[pkmn->pos_b][i] + pkmn->data[pkmn->pos_c][i] + pkmn->data[pkmn->pos_d][i];
+    /* Set the checksum of a PKMN by summing all of its Block data, assuming checksum == 0 */
+    for (u8 i = 0; i < BLOCK_SIZE; i++)
+    {
+        pkmn->checksum += pkmn->data[0][i] + pkmn->data[1][i] + pkmn->data[2][i] + pkmn->data[3][i];
     }
+    // attempt at optimizing the above
+    //u16* data = pkmn->data;
+    //u64 c = 0;
+    //for (u8 i = 0; i < BLOCKS * BLOCK_SIZE; i += 4)
+    //{
+    //    u64 a = *(u64*)(data + i);
+    //    c += (a & 0x0000FFFF0000FFFF) + ((a >> 16) & 0x0000FFFF0000FFFF);
+    //}
+    //pkmn->checksum = c + (c >> 32);
 }
 
 static u16 GetGender(u32 pid, u16 species) {
@@ -503,9 +490,9 @@ static void EncryptBlocksChecksumZero(PKMN* pkmn) {
 static void EncryptCondition(PKMN* pkmn) {
     /* LCRNG is seeded with the PID */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of Condition data */
-    /* It is not needed to encrypt the whole 50 16-bit words of Condition data, I stop at 33 to include the Fateful encounter flag */
+    /* It is not needed to encrypt the whole 50 16-bit words of Condition data, I stop at 5 to include HP MAX */
     u32 state = pkmn->pid;
-    for (u8 i = 0; i < COND_SIZE_S; i++) {
+    for (u8 i = 0; i < COND_SIZE_XS; i++) {
         pkmn->cond[i] ^= (RngNext(&state) >> 16);
     }
 }
@@ -605,6 +592,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
     sd.aslr = Aslrs[pf->language][sd.grouped_version][pf->aslr];
     sd.alt_form = (pf->version == VERSION_PLATINUM && pf->wild == OGW_PT_GIRATINA_O) ? 8 : 0; //Giratina Origin
     u8 korean_offset = (pf->language == LANGUAGE_KO) ? KOREAN_OFFSET : 0;
+    u32 levelMult = sd.pOgWild->level / 100;
 
     for (u32 offset = 0; offset <= 256; offset += 4) {
 
@@ -626,37 +614,20 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         wild.data[wild.pos_a][6] = sd.pOgWild->frab; //ability and friendship concatenated
         wild.data[wild.pos_a][7] = sd.w_language; //language
         /* Block B */
-        for (u8 i = 0; i < OWN_MOVES_MAX; i++) { wild.data[wild.pos_b][i] = sd.pOgWild->moves[i]; }//4 moves
+        memcpy(&wild.data[wild.pos_b][0], sd.pOgWild->moves, sizeof(sd.pOgWild->moves)); //moves
         wild.data[wild.pos_b][4] = sd.pOgWild->pp1and2; //pp1and2
         wild.data[wild.pos_b][5] = sd.pOgWild->pp3and4; //pp3and4
         wild.data[wild.pos_b][8] = wild.iv1;
         wild.data[wild.pos_b][9] = wild.iv2;
         wild.data[wild.pos_b][12] = GetGender(wild.pid, sd.pOgWild->species) | sd.alt_form; //gender | alt_form
         /* Block C */
-        for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = sd.pOgWild->name[i]; } //11 characters for the name
+        memcpy(&wild.data[wild.pos_c][0], sd.pOgWild->name, sizeof(sd.pOgWild->name)); //name
         wild.data[wild.pos_c][11] = sd.w_version; //version
         /* Block D */
         wild.data[wild.pos_d][13] = 0x0400; //pokeball
         wild.data[wild.pos_d][14] = sd.pOgWild->level; //level
         /* Condition data */
-        wild.cond[2] = sd.pOgWild->level; //level again
-        wild.cond[3] = IvToStat_HP(&wild, sd.pOgWild);
-        wild.cond[4] = wild.cond[3]; //current hp = max hp
-        wild.cond[5] = IvToStat(&wild, sd.pOgWild, AT);
-        wild.cond[6] = IvToStat(&wild, sd.pOgWild, DF);
-        wild.cond[7] = IvToStat(&wild, sd.pOgWild, SP);
-        wild.cond[8] = IvToStat(&wild, sd.pOgWild, SA);
-        wild.cond[9] = IvToStat(&wild, sd.pOgWild, SD);
-        // wild.cond[10] = 0;
-        // wild.cond[11] = 0;
-        wild.cond[12] = sd.w_language; //language again
-        wild.cond[13] = 0xff00 | (sd.w_version >> 8); //version variation
-        for (u8 i = 14; i < 25; i++) { wild.cond[i] = 0xffff; } //14 to 24 = 0xffff
-        // wild.cond[25] = 0;
-        wild.cond[26] = 0xffff;
-        // wild.cond[27] = 0;
-        wild.cond[28] = 0xffff;
-        wild.cond[29] = 0xffff;
+        wild.cond[2] = sd.pOgWild->level; //level again        
 
         SetChecksum(&wild);
         EncryptBlocks(&wild);
@@ -669,24 +640,24 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
 
         /* Simulate the buffer overflow */
         /* Block A */
-        seven.data[seven.pos_a][0] = (aslr + OppPartyOffBeg[sd.grouped_version] + korean_offset) & 0xffff;
-        seven.data[seven.pos_a][1] = (aslr + OppPartyOffBeg[sd.grouped_version] + korean_offset) >> 16;
-        seven.data[seven.pos_a][2] = (aslr + OppPartyOffEnd[sd.grouped_version] + korean_offset) & 0xffff;
-        seven.data[seven.pos_a][3] = (aslr + OppPartyOffEnd[sd.grouped_version] + korean_offset) >> 16;
-        for (u8 i = 0; i < 8; i++) { seven.data[seven.pos_a][i + 4] = sd.pOgWild->gfx[i]; }
-        seven.data[seven.pos_a][12] = 0x0006;
-        seven.data[seven.pos_a][13] = 0x0000;
-        seven.data[seven.pos_a][14] = 0x0001;
-        seven.data[seven.pos_a][15] = 0x0000;
+        seven.data[SEVEN_BLOCK_A][0] = (aslr + OppPartyOffBeg[sd.grouped_version] + korean_offset) & 0xffff;
+        seven.data[SEVEN_BLOCK_A][1] = (aslr + OppPartyOffBeg[sd.grouped_version] + korean_offset) >> 16;
+        seven.data[SEVEN_BLOCK_A][2] = (aslr + OppPartyOffEnd[sd.grouped_version] + korean_offset) & 0xffff;
+        seven.data[SEVEN_BLOCK_A][3] = (aslr + OppPartyOffEnd[sd.grouped_version] + korean_offset) >> 16;
+        memcpy(&seven.data[SEVEN_BLOCK_A][4], sd.pOgWild->gfx, sizeof(sd.pOgWild->gfx));
+        seven.data[SEVEN_BLOCK_A][12] = 0x0006;
+        seven.data[SEVEN_BLOCK_A][13] = 0x0000;
+        seven.data[SEVEN_BLOCK_A][14] = 0x0001;
+        seven.data[SEVEN_BLOCK_A][15] = 0x0000;
         /* Block C, B, D and Condition data */
-        memcpy(&seven.data[1], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
+        memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
 
         EncryptBlocksChecksumZero(&seven);
 
         fprintf(fp, "%02u    %08X    ", offset / 4, aslr);
 
         /* If the ball doesn't have a valid ID the battle won't load */
-        u8 ballid = seven.data[seven.pos_d][13] >> 8;
+        u8 ballid = seven.data[SEVEN_BLOCK_D][13] >> 8;
         if (ballid > BALL_ID_MAX)
         {
             fprintf(fp, "Black screen\n");
@@ -697,7 +668,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         EncryptBlocks(&seven);
 
         /* If the Bad Egg flag is set or the Fast Mode flags aren't set, the PKMN will become a Bad Egg */
-        if ((seven.data[seven.pos_c][2] & 7) != 3)
+        if ((seven.data[SEVEN_BLOCK_C][2] & 7) != 3)
         {
             fprintf(fp, "Bad Egg    ");
         }
@@ -707,7 +678,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         }
 
         /* Get the new PID of the wild and deduce its new block order */
-        wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16);
+        wild.pid = seven.data[SEVEN_BLOCK_C][0] | (seven.data[SEVEN_BLOCK_C][1] << 16);
         SetBlocks(&wild);
 
         u16 species = seven.data[1 + wild.pos_a][STACK_OFFSET];
@@ -718,7 +689,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         {
             fprintf(fp, "%s <<< your target\n", str_species);
         }
-        else if (0) //todo: add condition
+        else if (0) //todo: add condition for mirrors
         {
             fprintf(fp, "%s <<< valid mirror\n", str_species);
         }
