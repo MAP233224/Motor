@@ -24,7 +24,7 @@ typedef int32_t s32;
 typedef uint64_t u64;
 typedef int APPSTATUS;
 
-#define MOTOR_VERSION               ("Motor v2.2.1")
+#define MOTOR_VERSION               ("Motor v2.2.2")
 #define SEARCH_THREADS_MAX          (8)
 #define PROFILE_SLOTS_MAX           (8)
 #define STRING_LENGTH_MAX           (16)
