@@ -12,6 +12,9 @@
 SEARCHDATA SearchDataCurrent = { 0 };
 /* Details of currently inspected results */
 RESULTDATA ResultDataCurrent = { 0 };
+/* Wild used for fast initialization */
+PKMN WildInit = { 0 };
+PKMN SevenInit = { 0 };
 /**/
 REVERSEDSEED ReversedSeedCurrent = { 0 };
 /* Used to confirm if a search should be launched in the search thread */
@@ -422,6 +425,9 @@ static void ClearResults(void) {
 
 static APPSTATUS LoadResultsFromFile(u8* filepath) {
     /* Read data from a results file and add result strings to the list */
+
+    //todo: fix crash here (only in release mode?)
+
     ClearResults();
 
     FILE* fp = fopen(filepath, "rb");
@@ -471,111 +477,67 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
                 if (frame != 0) { RngNext(&seed); } //advance the RNG everytime, except on the 0th frame
 
-                PKMN wild = { 0 }; //0 init
-                PKMN seven = { 0 }; //0 init
+                /* Init Wild */
+                PKMN wild = { 0 };
 
                 MethodJSeedToPID(seed, &wild);
                 SetBlocks(&wild);
 
-                /* Block A */
-                wild.data[wild.pos_a][0] = SearchDataCurrent.pOgWild->species; //species
-                wild.data[wild.pos_a][1] = SearchDataCurrent.pOgWild->item; //held item
-                wild.data[wild.pos_a][2] = PROFILE_Current.tid; //tid
-                wild.data[wild.pos_a][3] = PROFILE_Current.sid; //sid
-                wild.data[wild.pos_a][4] = SearchDataCurrent.pOgWild->xp1; //xp1
-                wild.data[wild.pos_a][5] = SearchDataCurrent.pOgWild->xp2; //xp2
-                wild.data[wild.pos_a][6] = SearchDataCurrent.pOgWild->frab; //ability and friendship concatenated
-                wild.data[wild.pos_a][7] = SearchDataCurrent.w_language; //language
-                /* Block B */
-                for (u8 i = 0; i < OWN_MOVES_MAX; i++) { wild.data[wild.pos_b][i] = SearchDataCurrent.pOgWild->moves[i]; }//4 moves
-                wild.data[wild.pos_b][4] = SearchDataCurrent.pOgWild->pp1and2; //pp1and2
-                wild.data[wild.pos_b][5] = SearchDataCurrent.pOgWild->pp3and4; //pp3and4
+                memcpy(wild.data[wild.pos_a], &WildInit.data[0], BLOCK_SIZE * sizeof(wild.data[0][0]));
+                memcpy(wild.data[wild.pos_b], &WildInit.data[1], BLOCK_SIZE * sizeof(wild.data[0][0]));
+                memcpy(wild.data[wild.pos_c], &WildInit.data[2], BLOCK_SIZE * sizeof(wild.data[0][0]));
+                memcpy(wild.data[wild.pos_d], &WildInit.data[3], BLOCK_SIZE * sizeof(wild.data[0][0]));
                 wild.data[wild.pos_b][8] = wild.iv1;
                 wild.data[wild.pos_b][9] = wild.iv2;
                 wild.data[wild.pos_b][12] = GetGender(wild.pid, SearchDataCurrent.pOgWild->species) | SearchDataCurrent.alt_form; //gender | alt_form
-                /* Block C */
-                for (u8 i = 0; i < 11; i++) { wild.data[wild.pos_c][i] = SearchDataCurrent.pOgWild->name[i]; } //11 characters for the name
-                wild.data[wild.pos_c][11] = SearchDataCurrent.w_version; //version
-                /* Block D */
-                wild.data[wild.pos_d][13] = 0x0400; //pokeball
-                wild.data[wild.pos_d][14] = SearchDataCurrent.pOgWild->level; //level
-                /* Condition data */
-                wild.cond[2] = SearchDataCurrent.pOgWild->level; //level again
-                wild.cond[3] = IvToStat_HP(&wild, SearchDataCurrent.pOgWild);
-                wild.cond[4] = wild.cond[3]; //current hp = max hp
-                wild.cond[5] = IvToStat(&wild, SearchDataCurrent.pOgWild, AT);
-                wild.cond[6] = IvToStat(&wild, SearchDataCurrent.pOgWild, DF);
-                wild.cond[7] = IvToStat(&wild, SearchDataCurrent.pOgWild, SP);
-                wild.cond[8] = IvToStat(&wild, SearchDataCurrent.pOgWild, SA);
-                wild.cond[9] = IvToStat(&wild, SearchDataCurrent.pOgWild, SD);
-                // wild.cond[10] = 0;
-                // wild.cond[11] = 0;
-                wild.cond[12] = SearchDataCurrent.w_language; //language again
-                wild.cond[13] = 0xff00 | (SearchDataCurrent.w_version >> 8); //version variation
-                for (u8 i = 14; i < 25; i++) { wild.cond[i] = 0xffff; } //14 to 24 = 0xffff
-                // wild.cond[25] = 0;
-                wild.cond[26] = 0xffff;
-                // wild.cond[27] = 0;
-                wild.cond[28] = 0xffff;
-                wild.cond[29] = 0xffff;
+                wild.cond[2] = SearchDataCurrent.pOgWild->level;
 
                 SetChecksum(&wild);
                 EncryptBlocks(&wild);
-                EncryptCondition(&wild);
+                EncryptCondition(&wild); //only encrypts up to cond[COND_SIZE_XS]
 
-                /* Initialize Seven */
-                seven.pid = 0x00005544;
-                seven.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
-                SetBlocks(&seven); //always ACBD (0x0213)
-
+                /* Init Seven */
+                PKMN seven = { 0 }; //always ACBD (0x0213)
+                /* Block order up to Block A */
+                memcpy(&seven, &SevenInit, sizeof(seven) - sizeof(seven.cond) - 3 * sizeof(seven.data[0]));
                 /* Simulate the buffer overflow */
-                /* Block A */
-                seven.data[seven.pos_a][0] = (SearchDataCurrent.aslr + OppPartyOffBeg[SearchDataCurrent.grouped_version]) & 0xffff;
-                seven.data[seven.pos_a][1] = (SearchDataCurrent.aslr + OppPartyOffBeg[SearchDataCurrent.grouped_version]) >> 16;
-                seven.data[seven.pos_a][2] = (SearchDataCurrent.aslr + OppPartyOffEnd[SearchDataCurrent.grouped_version]) & 0xffff;
-                seven.data[seven.pos_a][3] = (SearchDataCurrent.aslr + OppPartyOffEnd[SearchDataCurrent.grouped_version]) >> 16;
-                for (u8 i = 0; i < 8; i++) { seven.data[seven.pos_a][i + 4] = SearchDataCurrent.pOgWild->gfx[i]; }
-                seven.data[seven.pos_a][12] = 0x0006;
-                seven.data[seven.pos_a][13] = 0x0000;
-                seven.data[seven.pos_a][14] = 0x0001;
-                seven.data[seven.pos_a][15] = 0x0000;
                 /* Block C, B, D and Condition data */
-                memcpy(&seven.data[1], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
+                memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
 
                 EncryptBlocksChecksumZero(&seven);
 
                 /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu */
-                if (seven.data[seven.pos_b][0] > MOVES_MAX + 2) { continue; }
+                if (seven.data[SEVEN_BLOCK_B][0] > MOVES_MAX + 2) { continue; }
 
                 /* If the last 3 moves of Seven are invalid, the game will crash right before showing the battle menu (ASLR variation)*/
-                //if (seven.data[seven.pos_b][1] > MOVES_MAX + 2 ||
-                //	seven.data[seven.pos_b][2] > MOVES_MAX + 2 ||
-                //	seven.data[seven.pos_b][3] > MOVES_MAX + 2) {
+                //if (seven.data[SEVEN_BLOCK_B][1] > MOVES_MAX + 2 ||
+                //	seven.data[SEVEN_BLOCK_B][2] > MOVES_MAX + 2 ||
+                //	seven.data[SEVEN_BLOCK_B][3] > MOVES_MAX + 2) {
                 //	continue;
                 //}
 
                 /* If the ball doesn't have a valid ID the battle won't load */
-                u8 ballid = seven.data[seven.pos_d][13] >> 8;
+                u8 ballid = seven.data[SEVEN_BLOCK_D][13] >> 8;
                 if (ballid > BALL_ID_MAX) { continue; }
 
                 SetChecksum(&seven);
                 EncryptBlocks(&seven);
 
                 /* If heap ID of Opponent 1 Party is valid, the game will crash when returning to the overworld */
-                u8 heapid = seven.data[seven.pos_a][10] & 0xff;
+                u8 heapid = seven.data[SEVEN_BLOCK_A][10] & 0xff;
                 if (heapid < HEAPID_MAX) { continue; }
 
                 /* If partycount of Opponent 1 Party is invalid, the game will crash right before showing the battle menu */
-                s32 partycount = seven.data[seven.pos_a][14] | (seven.data[seven.pos_a][15] << 16);
+                s32 partycount = seven.data[SEVEN_BLOCK_A][14] | (seven.data[SEVEN_BLOCK_A][15] << 16);
                 if (IsInvalidPartyCount(partycount)) { continue; }
 
                 /* If the Bad Egg flag is set or the Fast Mode flags aren't set, the PKMN will become a Bad Egg */
-                if ((seven.data[seven.pos_c][2] & 7) != 3) { continue; }
+                if ((seven.data[SEVEN_BLOCK_C][2] & 7) != 3) { continue; }
 
                 SearchDataCurrent.progress[i] = frame; //will update progress bar (placed here to avoid slowing down the search while still updating frequently)
 
                 /* Get the new PID of the wild and deduce its new block order */
-                wild.pid = seven.data[seven.pos_c][0] | (seven.data[seven.pos_c][1] << 16);
+                wild.pid = seven.data[SEVEN_BLOCK_C][0] | (seven.data[SEVEN_BLOCK_C][1] << 16);
 
                 /* Nature filter */
                 if (PROFILE_Current.filter_nature != NATURE_FILTER_NONE) {
@@ -604,7 +566,8 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 if (PROFILE_Current.filter_ability != 0 && rd.ability != PROFILE_Current.filter_ability) { continue; }
 
                 /* Get final moveset, IVs, Egg friendship, Form ID and Fateful Encounter flag - array out of bounds method */
-                for (u8 i = 0; i < OWN_MOVES_MAX; i++) { rd.moves[i] = seven.data[1 + wild.pos_b][STACK_OFFSET + i]; }
+                memcpy(rd.moves, &seven.data[1 + wild.pos_b][STACK_OFFSET], sizeof(rd.moves));
+
                 rd.ivs = (seven.data[1 + wild.pos_b][STACK_OFFSET + 8]) | (seven.data[1 + wild.pos_b][STACK_OFFSET + 9] << 16);
                 rd.fate = seven.data[2 + wild.pos_b][0]; //form id and fateful encouter flag will be derived from it
 
@@ -805,6 +768,46 @@ static APPSTATUS CompileResultsToFile(void) {
     return APP_RESUME;
 }
 
+static void MotorInitPkmn(void) {
+    /* Initialize the global Wild and Seven */
+    /* Wild */
+    memset(&WildInit, 0, sizeof(WildInit)); //zero init
+    /* Block A */
+    WildInit.data[0][0] = SearchDataCurrent.pOgWild->species; //species
+    WildInit.data[0][1] = SearchDataCurrent.pOgWild->item; //held item
+    WildInit.data[0][2] = PROFILE_Current.tid; //tid
+    WildInit.data[0][3] = PROFILE_Current.sid; //sid
+    WildInit.data[0][4] = SearchDataCurrent.pOgWild->xp1; //xp1
+    WildInit.data[0][5] = SearchDataCurrent.pOgWild->xp2; //xp2
+    WildInit.data[0][6] = SearchDataCurrent.pOgWild->frab; //ability and friendship concatenated
+    WildInit.data[0][7] = SearchDataCurrent.w_language; //language
+    /* Block B */
+    memcpy(&WildInit.data[1][0], SearchDataCurrent.pOgWild->moves, sizeof(SearchDataCurrent.pOgWild->moves)); //moves
+    WildInit.data[1][4] = SearchDataCurrent.pOgWild->pp1and2; //pp1and2
+    WildInit.data[1][5] = SearchDataCurrent.pOgWild->pp3and4; //pp3and4
+    /* Block C */
+    memcpy(&WildInit.data[2][0], SearchDataCurrent.pOgWild->name, sizeof(SearchDataCurrent.pOgWild->name)); //species name
+    WildInit.data[2][11] = SearchDataCurrent.w_version; //version
+    /* Block D */
+    WildInit.data[3][13] = 0x0400; //pokeball
+    WildInit.data[3][14] = SearchDataCurrent.pOgWild->level; //level
+    /* Seven */
+    memset(&SevenInit, 0, sizeof(SevenInit)); //zero init
+    SevenInit.pid = 0x00005544;
+    SevenInit.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
+    SetBlocks(&SevenInit); //always ACBD (0x0213)
+    /* Block A */
+    SevenInit.data[SEVEN_BLOCK_A][0] = (SearchDataCurrent.aslr + OppPartyOffBeg[SearchDataCurrent.grouped_version]) & 0xffff;
+    SevenInit.data[SEVEN_BLOCK_A][1] = (SearchDataCurrent.aslr + OppPartyOffBeg[SearchDataCurrent.grouped_version]) >> 16;
+    SevenInit.data[SEVEN_BLOCK_A][2] = (SearchDataCurrent.aslr + OppPartyOffEnd[SearchDataCurrent.grouped_version]) & 0xffff;
+    SevenInit.data[SEVEN_BLOCK_A][3] = (SearchDataCurrent.aslr + OppPartyOffEnd[SearchDataCurrent.grouped_version]) >> 16;
+    memcpy(&SevenInit.data[SEVEN_BLOCK_A][4], SearchDataCurrent.pOgWild->gfx, sizeof(SearchDataCurrent.pOgWild->gfx));
+    SevenInit.data[SEVEN_BLOCK_A][12] = 0x0006;
+    SevenInit.data[SEVEN_BLOCK_A][13] = 0x0000;
+    SevenInit.data[SEVEN_BLOCK_A][14] = 0x0001;
+    SevenInit.data[SEVEN_BLOCK_A][15] = 0x0000;
+}
+
 static APPSTATUS MotorSearch(void) {
     /* Initialize search parameters for the search threads */
     SearchDataCurrent.grouped_version = PROFILE_Current.version >> 1; //Group Diamond and Pearl together
@@ -816,6 +819,8 @@ static APPSTATUS MotorSearch(void) {
     SearchDataCurrent.alt_form = (PROFILE_Current.version == VERSION_PLATINUM && PROFILE_Current.wild == OGW_PT_GIRATINA_O) ? 8 : 0; //Giratina Origin
 
     SearchThreadsSplit();
+
+    MotorInitPkmn();
 
     for (u8 i = 0; i < SearchThreadsMax; i++) { AuthorizeSearchThreads[i] = TRUE; } //launches the search
 
@@ -1130,7 +1135,7 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         case CBN_CLOSEUP:
         {
-            /* Nature filter, select invalid (-1) if "(none)" was p�cked */
+            /* Nature filter, select invalid (-1) if "(none)" was pîcked */
             if (LOWORD(wParam) == ID_NATURE_FILTER)
             {
                 if (SendMessageA((HWND)lParam, CB_GETCURSEL, 0, 0) == 0)
