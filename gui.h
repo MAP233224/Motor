@@ -368,6 +368,10 @@ static BOOL DrawList(LPDRAWITEMSTRUCT lpdis, u8* label, u32 length, int color) {
 
 static BOOL DrawResultsList(LPDRAWITEMSTRUCT lpdis) {
     /* Draw each item in the results list */
+
+    // debugging below (apparently this fixed the crash in release mode when loading file results)
+    if (lpdis->itemID == -1) return FALSE;
+
     if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED) || lpdis->itemState == ODS_SELECTED) { //selected
         SetBkColor(lpdis->hDC, MOTOR_COLOR_PUMP);
         SetTextColor(lpdis->hDC, MOTOR_COLOR_GRAY);
