@@ -502,25 +502,25 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 memcpy(&seven, &SevenInit, sizeof(seven) - sizeof(seven.cond) - 3 * sizeof(seven.data[0]));
                 /* Simulate the buffer overflow */
                 /* Block C, B, D and Condition data */
-                memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
-
-                EncryptBlocksChecksumZero(&seven);
-
-                /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu */
-                if (seven.data[SEVEN_BLOCK_B][0] > MOVES_MAX + 2) { continue; }
-
-                /* If the last 3 moves of Seven are invalid, the game will crash right before showing the battle menu (ASLR variation)*/
+                memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE + STACK_OFFSET + COND_SIZE_XS));
+                
+                /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu (check with known encryption mask) */
+                if ((seven.data[SEVEN_BLOCK_B][0] ^ 0xEA8D) > (MOVES_MAX + 2)) { continue; }
+                
+                /* If the last 3 moves of Seven are invalid, the game will crash right before showing the battle menu (ASLR variation) */
                 //if (seven.data[SEVEN_BLOCK_B][1] > MOVES_MAX + 2 ||
                 //	seven.data[SEVEN_BLOCK_B][2] > MOVES_MAX + 2 ||
                 //	seven.data[SEVEN_BLOCK_B][3] > MOVES_MAX + 2) {
                 //	continue;
                 //}
 
-                /* If the ball doesn't have a valid ID the battle won't load */
-                u8 ballid = seven.data[SEVEN_BLOCK_D][13] >> 8;
+                /* If the ball doesn't have a valid ID the battle won't load (check with known encryption mask) */
+                u8 ballid = *(((u8*)(&seven.data[SEVEN_BLOCK_D][13])) + 1); //get top byte
+                ballid ^= 0x70;
                 if (ballid > BALL_ID_MAX) { continue; }
-
-                SetChecksum(&seven);
+                
+                EncryptBlocksChecksumZero(&seven);
+                SetChecksumFastSeven(&seven);
                 EncryptBlocks(&seven);
 
                 /* If heap ID of Opponent 1 Party is valid, the game will crash when returning to the overworld */
@@ -529,12 +529,10 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
                 /* If partycount of Opponent 1 Party is invalid, the game will crash right before showing the battle menu */
                 s32 partycount = seven.data[SEVEN_BLOCK_A][14] | (seven.data[SEVEN_BLOCK_A][15] << 16);
-                if (IsInvalidPartyCount(partycount)) { continue; }
+                if (partycount > 54) { continue; }
 
                 /* If the Bad Egg flag is set or the Fast Mode flags aren't set, the PKMN will become a Bad Egg */
                 if ((seven.data[SEVEN_BLOCK_C][2] & 7) != 3) { continue; }
-
-                SearchDataCurrent.progress[i] = frame; //will update progress bar (placed here to avoid slowing down the search while still updating frequently)
 
                 /* Get the new PID of the wild and deduce its new block order */
                 wild.pid = seven.data[SEVEN_BLOCK_C][0] | (seven.data[SEVEN_BLOCK_C][1] << 16);
@@ -549,29 +547,19 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 /* Prepare result data */
                 RESULTDATA rd = { 0 };
 
-                rd.pid = wild.pid;
-                rd.seed = seed;
-
-                /* Get final species, item, ability and friendship to hatch - array out of bounds method */
+                /* Species filter */
                 rd.species = seven.data[1 + wild.pos_a][STACK_OFFSET];
-                rd.item = seven.data[1 + wild.pos_a][STACK_OFFSET + 1];
-                rd.friendship = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] & 0xff;
-                rd.ability = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] >> 8;
-
-                /* Valid species */
                 if (rd.species >= SPECIES_MAX) { continue; }
-                /* Species, item and ability filters */
                 if (PROFILE_Current.filter_species != 0 && rd.species != PROFILE_Current.filter_species) { continue; }
+                /* Item filter */
+                rd.item = seven.data[1 + wild.pos_a][STACK_OFFSET + 1];
                 if (PROFILE_Current.filter_item != 0 && rd.item != PROFILE_Current.filter_item) { continue; }
+                /* Ability filter */
+                rd.ability = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] >> 8;
+                rd.ability = *(((u8*)(&seven.data[1 + wild.pos_a][STACK_OFFSET + 6])) + 1); //get top byte
                 if (PROFILE_Current.filter_ability != 0 && rd.ability != PROFILE_Current.filter_ability) { continue; }
-
-                /* Get final moveset, IVs, Egg friendship, Form ID and Fateful Encounter flag - array out of bounds method */
-                memcpy(rd.moves, &seven.data[1 + wild.pos_b][STACK_OFFSET], sizeof(rd.moves));
-
-                rd.ivs = (seven.data[1 + wild.pos_b][STACK_OFFSET + 8]) | (seven.data[1 + wild.pos_b][STACK_OFFSET + 9] << 16);
-                rd.fate = seven.data[2 + wild.pos_b][0]; //form id and fateful encouter flag will be derived from it
-
                 /* Move filter */
+                memcpy(rd.moves, &seven.data[1 + wild.pos_b][STACK_OFFSET], sizeof(rd.moves));
                 if (PROFILE_Current.filter_move != 0) {
                     /* If none of the 4 current ones match the user's move, continue search */
                     if ((rd.moves[0] != PROFILE_Current.filter_move) &&
@@ -582,17 +570,21 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                         continue;
                     }
                 }
-
                 /* IV filter */
+                rd.ivs = (seven.data[1 + wild.pos_b][STACK_OFFSET + 8]) | (seven.data[1 + wild.pos_b][STACK_OFFSET + 9] << 16);
                 u8 ivs[STATS_MAX] = { 0 };
                 DecomposeIVs(rd.ivs, ivs);
                 for (u32 i = 0; i < STATS_MAX; i++) {
                     if (ivs[i] < PROFILE_Current.filter_ivs[i]) goto NEXT;
                 }
 
+                /* Remaining unfiltered data */
+                rd.pid = wild.pid;
+                rd.seed = seed;
+                rd.fate = seven.data[2 + wild.pos_b][0]; //form id and fateful encouter flag will be derived from it
+                rd.friendship = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] & 0xff; //friendship/egg cycles
                 rd.level = seven.cond[BLOCK_SIZE + STACK_OFFSET + 2] & 0xff;
                 rd.pokerus = seven.data[2 + wild.pos_d][1] & 0xff; //[13] of block D -> [1] of 2nd next block with offset
-
                 /* HP and HP max determine catch rate */
                 u32 f_hp = seven.cond[BLOCK_SIZE + STACK_OFFSET + 3];
                 u32 f_hp_max = seven.cond[BLOCK_SIZE + STACK_OFFSET + 4];
@@ -602,6 +594,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 AddResultToList(&rd, SearchDataCurrent.results); //add to results list window
 
                 SearchDataCurrent.results++; //increment global results count
+                SearchDataCurrent.progress[i] = frame; //update progress bar
 
             NEXT:; //goto here if you need to break out of multiple loops and keep searching
             }
@@ -806,6 +799,10 @@ static void MotorInitPkmn(void) {
     SevenInit.data[SEVEN_BLOCK_A][13] = 0x0000;
     SevenInit.data[SEVEN_BLOCK_A][14] = 0x0001;
     SevenInit.data[SEVEN_BLOCK_A][15] = 0x0000;
+    static const u64 xora[4] = { 0x31b05271e97e0000, 0x67dbafc5e2cc8e42, 0xcac5fc5eef2cfc33, 0xcba77abc993debd6 };
+    u64* dataa = (u64*)SevenInit.data;
+    for (u64 i = 0; i < 4; i++) { dataa[i] ^= xora[i]; }
+    for (u64 i = 0; i < BLOCK_SIZE; i++) { SevenInit.checksum += SevenInit.data[SEVEN_BLOCK_A][i]; }
 }
 
 static APPSTATUS MotorSearch(void) {
@@ -1135,7 +1132,7 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         case CBN_CLOSEUP:
         {
-            /* Nature filter, select invalid (-1) if "(none)" was pîcked */
+            /* Nature filter, select invalid (-1) if "(none)" was picked */
             if (LOWORD(wParam) == ID_NATURE_FILTER)
             {
                 if (SendMessageA((HWND)lParam, CB_GETCURSEL, 0, 0) == 0)
