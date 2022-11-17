@@ -159,8 +159,8 @@ const u8 Versions_short[VERSIONS_MAX][3] = { "D", "P", "Pt" };
 const u32 OppPartyOffBeg[VERSIONS_MAX - 1] = { 0x4C7B0, 0x4B884 }; //DP, Pt
 const u32 OppPartyOffEnd[VERSIONS_MAX - 1] = { 0x4D310, 0x4C3E4 }; //DP, Pt
 
-/* The 24 ABCD Block permutations (inverse) */
-const u16 Perms[BLOCK_PERMS] = { 0x0123, 0x0132, 0x0213, 0x0312, 0x0231, 0x0321, 0x1023, 0x1032, 0x2013, 0x3012, 0x2031, 0x3021, 0x1203, 0x1302, 0x2103, 0x3102, 0x2301, 0x3201, 0x1230, 0x1320, 0x2130, 0x3120, 0x2310, 0x3210 };
+/* The 24 ABCD Block permutations with the first 8 repeated at the end for optimization purposes */
+const u32 Perms[32] = { 0x03020100, 0x02030100, 0x03010200, 0x02010300, 0x01030200, 0x01020300, 0x03020001, 0x02030001, 0x03010002, 0x02010003, 0x01030002, 0x01020003, 0x03000201, 0x02000301, 0x03000102, 0x02000103, 0x01000302, 0x01000203, 0x00030201, 0x00020301, 0x00030102, 0x00020103, 0x00010302, 0x00010203, 0x03020100, 0x02030100, 0x03010200, 0x02010300, 0x01030200, 0x01020300, 0x03020001, 0x02030001 };
 
 /* Table for bonus/malus in each stat depending on Nature, HP omitted */
 const s8 NatureStatModifiers[NATURES_MAX][STATS_MAX - 1] = { {0, 0, 0, 0, 0}, {1, -1, 0, 0, 0}, {1, 0, -1, 0, 0}, {1, 0, 0, -1, 0}, {1, 0, 0, 0, -1}, {-1, 1, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 1, -1, 0, 0}, {0, 1, 0, -1, 0}, {0, 1, 0, 0, -1}, {-1, 0, 1, 0, 0}, {0, -1, 1, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 1, -1, 0}, {0, 0, 1, 0, -1}, {-1, 0, 0, 1, 0}, {0, -1, 0, 1, 0}, {0, 0, -1, 1, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 1, -1}, {-1, 0, 0, 0, 1}, {0, -1, 0, 0, 1}, {0, 0, -1, 0, 1}, {0, 0, 0, -1, 1}, {0, 0, 0, 0, 0} };
@@ -187,7 +187,6 @@ const u8 OgWilds[VERSIONS_MAX][OG_WILDS_MAX][STRING_LENGTH_MAX] = {
 };
 
 typedef struct {
-    u8 order;
     u8 pos_a;
     u8 pos_b;
     u8 pos_c;
@@ -390,24 +389,14 @@ static u8 GetFormId(u16 fate) {
     return (fate & 0xFF) >> 3;
 }
 
-static u8 GetBlockOrder(u32 pid) {
-    /* Get the index of the block permutation of a given PID (from 0 to 23) */
-    return ((pid >> 13) & 31) % BLOCK_PERMS;
-}
-
 static void SetBlocks(PKMN* pkmn) {
     /* Get the order of each block from the PID and set them in the correct permutation */
-    /* r/iamverysmart */
-    pkmn->order = GetBlockOrder(pkmn->pid);
-    pkmn->pos_a = (Perms[pkmn->order] >> 12) & 3;
-    pkmn->pos_b = (Perms[pkmn->order] >> 8) & 3;
-    pkmn->pos_c = (Perms[pkmn->order] >> 4) & 3;
-    pkmn->pos_d = (Perms[pkmn->order] >> 0) & 3;
+    *(u32*)(&pkmn->pos_a) = Perms[(pkmn->pid >> 13) & 31];
 }
 
 static void SetChecksum(PKMN* pkmn) {
     /* Set the checksum of a PKMN by summing all of its Block data, assuming checksum == 0 */
-    for (u8 i = 0; i < BLOCK_SIZE; i++)
+    for (u64 i = 0; i < BLOCK_SIZE; i++)
     {
         pkmn->checksum += pkmn->data[0][i] + pkmn->data[1][i] + pkmn->data[2][i] + pkmn->data[3][i];
     }
@@ -420,6 +409,14 @@ static void SetChecksum(PKMN* pkmn) {
     //    c += (a & 0x0000FFFF0000FFFF) + ((a >> 16) & 0x0000FFFF0000FFFF);
     //}
     //pkmn->checksum = c + (c >> 32);
+}
+
+static void SetChecksumFastSeven(PKMN* s) {
+    /* Checksum already initialized with block A (0), sum only the other blocks */
+    for (u64 i = 0; i < BLOCK_SIZE; i++)
+    {
+        s->checksum += s->data[1][i] + s->data[2][i] + s->data[3][i];
+    }
 }
 
 static u16 GetGender(u32 pid, u16 species) {
@@ -451,15 +448,23 @@ static BOOL HasPokerus(u8 pkrs) {
     return pkrs & 0x0f;
 }
 
-static BOOL IsInvalidPartyCount(s32 count) {
-    /* Check if the number of members in the opponent's party is invalid. Determines crash at battle menu. */
-    return count > 54;
-}
-
 static u32 RngNext(u32* state) {
     /* General purpose LCRNG, advance and return state */
     *state = *state * 0x41C64E6D + 0x6073;
     return *state;
+}
+
+static u32 RngNext17(u32* state) {
+    /* General purpose LCRNG, advance by 17 and return state */
+    //todo: implement with MethodJSeedToPID for fast skipping when bit read in the "advances" file for a pid is 1
+    // maybe i should be doing 18
+    *state = *state * 0x639143ad + 0x5dd60843;
+    return *state;
+
+    /* General method to calculate a jump by n steps */
+    // Truncate both to 32 bits
+    // a = a**n
+    // b = b * (a**n - 1) / (a - 1)
 }
 
 static void EncryptBlocks(PKMN* pkmn) {
@@ -467,22 +472,31 @@ static void EncryptBlocks(PKMN* pkmn) {
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
     u32 state = pkmn->checksum;
     u16* data = (u16*)pkmn->data; //speed hack
-    for (u8 i = 0; i < BLOCKS * BLOCK_SIZE; i++) {
+    for (u64 i = 0; i < BLOCKS * BLOCK_SIZE; i++) {
         data[i] ^= (RngNext(&state) >> 16);
     }
+    //todo: see if possible to calc rng xor data and encrypt in larger chunks (less loops)
+    //u64* data = (u64*)pkmn->data; //speed hack
+    //for (u8 i = 0; i < 16; i++) {
+    //    u64 x = ((u64)(RngNext(&state) >> 16) << 00) |
+    //            ((u64)(RngNext(&state) >> 16) << 16) |
+    //            ((u64)(RngNext(&state) >> 16) << 32) |
+    //            ((u64)(RngNext(&state) >> 16) << 48) ;
+    //    data[i] ^= x;
+    //}
 }
 
 static void EncryptBlocksChecksumZero(PKMN* pkmn) {
     /* Fast encryption with precomputed RNG XOR mask (checksum == 0) */
-    static const u64 xordata[16] =
+    /* Block A (0) is encrypted in MotorInitPkmn */
+    static const u64 xordata[12] =
     {
-        0x31b05271e97e0000, 0x67dbafc5e2cc8e42, 0xcac5fc5eef2cfc33, 0xcba77abc993debd6,
         0x618d27a691785dd6, 0x3080375dcfb81692, 0xfee7321348fb407c, 0x1d29639e3d69dfa3,
         0xa39792686296ea8d, 0xaa8931aa6e031c49, 0xe0c682d9c3ead3c5, 0x24285a5f4e3b945c,
         0x007f7b8ebfe1fbb3, 0x38b6bfd1c84840c4, 0xbe347d23fb23903b, 0xba84dfc5706ada00,
     };
-    u64* pkdata = (u64*)pkmn->data;
-    for (u32 i = 0; i < 16; i++) {
+    u64* pkdata = (u64*)pkmn->data[1];
+    for (u64 i = 0; i < 12; i++) {
         pkdata[i] ^= xordata[i];
     }
 }
@@ -492,7 +506,7 @@ static void EncryptCondition(PKMN* pkmn) {
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of Condition data */
     /* It is not needed to encrypt the whole 50 16-bit words of Condition data, I stop at 5 to include HP MAX */
     u32 state = pkmn->pid;
-    for (u8 i = 0; i < COND_SIZE_XS; i++) {
+    for (u64 i = 0; i < COND_SIZE_XS; i++) {
         pkmn->cond[i] ^= (RngNext(&state) >> 16);
     }
 }
@@ -546,7 +560,12 @@ static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
 static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
     /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
     pkmn->nature = (RngNext(&state) >> 16) / 0x0A3E;
-    do { pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000); } while (GetNatureId(pkmn->pid) != pkmn->nature); //roll PID until the 2 natures are the same
+
+    //todo: try to eliminate this loop
+    do {
+        pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
+    } while (GetNatureId(pkmn->pid) != pkmn->nature); //roll PID until the 2 natures are the same
+
     pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
     pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
     pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
@@ -575,7 +594,8 @@ static REVERSEDSEED ReverseSeed(u32 seed) {
 static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
     /* Stripped down version of general search, only vary the ASLR */
 
-    //TODO: add valid mirrors
+    // todo: add valid mirrors
+    // todo: use WildInit and SevenInit? 
 
     u8 filename[PATH_REL_LENGTH_MAX] = { 0 };
     sprintf(filename, ".results/%08X_ASLR.txt", rs->reversed);
@@ -627,7 +647,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         wild.data[wild.pos_d][13] = 0x0400; //pokeball
         wild.data[wild.pos_d][14] = sd.pOgWild->level; //level
         /* Condition data */
-        wild.cond[2] = sd.pOgWild->level; //level again        
+        wild.cond[2] = sd.pOgWild->level; //level again
 
         SetChecksum(&wild);
         EncryptBlocks(&wild);
