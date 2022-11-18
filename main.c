@@ -594,7 +594,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 AddResultToList(&rd, SearchDataCurrent.results); //add to results list window
 
                 SearchDataCurrent.results++; //increment global results count
-                SearchDataCurrent.progress[i] = frame; //update progress bar
+                SearchDataCurrent.progress[i] = frame; //update progress bar (2^22 less frequent than at the top of the loop)
 
             NEXT:; //goto here if you need to break out of multiple loops and keep searching
             }
