@@ -9,7 +9,7 @@
 #define BLOCK_PERMS         (24)    // Factorial of the number of blocks
 #define BLOCK_SIZE          (16)    // Number of 16-bit words in 128 bytes, the size of PKMN Block data
 #define COND_SIZE           (50)    // Number of 16-bit words in 100 bytes, the size of PKMN Condition data
-#define COND_SIZE_S         (33)    // Utility: stop earlier to avoid needless encryption
+#define COND_SIZE_S         (25)    // Utility: stop earlier to avoid needless encryption
 #define COND_SIZE_XS        (5)     // Utility: stop even earlier to avoid needless encryption
 #define ABILITIES_MAX       (124)   // Number of abilities
 #define SPECIES_MAX         (494)   // Number of species
@@ -200,8 +200,8 @@ typedef struct {
     u16 bef;
     u16 checksum;
     u16 data[BLOCKS][BLOCK_SIZE];
-    u16 cond[COND_SIZE];
-    //Size: 252 bytes
+    u16 cond[COND_SIZE_S];
+    //Size: 200 bytes
 } PKMN;
 
 /* The original wild PKMN's unique characteristics */
@@ -396,10 +396,11 @@ static void SetBlocks(PKMN* pkmn) {
 
 static void SetChecksum(PKMN* pkmn) {
     /* Set the checksum of a PKMN by summing all of its Block data, assuming checksum == 0 */
-    for (u64 i = 0; i < BLOCK_SIZE; i++)
-    {
-        pkmn->checksum += pkmn->data[0][i] + pkmn->data[1][i] + pkmn->data[2][i] + pkmn->data[3][i];
-    }
+    // for some reason "i" can't be a u32/u64 otherwise the function doesn't get inlined
+    //for (u8 i = 0; i < BLOCK_SIZE; i++)
+    //{
+    //    pkmn->checksum += pkmn->data[0][i] + pkmn->data[1][i] + pkmn->data[2][i] + pkmn->data[3][i];
+    //}
     // attempt at optimizing the above
     //u16* data = pkmn->data;
     //u64 c = 0;
@@ -409,6 +410,14 @@ static void SetChecksum(PKMN* pkmn) {
     //    c += (a & 0x0000FFFF0000FFFF) + ((a >> 16) & 0x0000FFFF0000FFFF);
     //}
     //pkmn->checksum = c + (c >> 32);
+
+    u16 sump = 0;
+    for (u8 i = 0; i < 16; i += 2)
+    {
+        pkmn->checksum += pkmn->data[0][i] + pkmn->data[1][i] + pkmn->data[2][i] + pkmn->data[3][i];
+        sump += pkmn->data[0][i + 1] + pkmn->data[1][i + 1] + pkmn->data[2][i + 1] + pkmn->data[3][i + 1];
+    }
+    pkmn->checksum += sump;
 }
 
 static void SetChecksumFastSeven(PKMN* s) {
@@ -454,36 +463,19 @@ static u32 RngNext(u32* state) {
     return *state;
 }
 
-static u32 RngNext17(u32* state) {
-    /* General purpose LCRNG, advance by 17 and return state */
-    //todo: implement with MethodJSeedToPID for fast skipping when bit read in the "advances" file for a pid is 1
-    // maybe i should be doing 18
-    *state = *state * 0x639143ad + 0x5dd60843;
-    return *state;
-
-    /* General method to calculate a jump by n steps */
-    // Truncate both to 32 bits
-    // a = a**n
-    // b = b * (a**n - 1) / (a - 1)
-}
-
 static void EncryptBlocks(PKMN* pkmn) {
     /* LCRNG is seeded with the Checksum */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
     u32 state = pkmn->checksum;
-    u16* data = (u16*)pkmn->data; //speed hack
-    for (u64 i = 0; i < BLOCKS * BLOCK_SIZE; i++) {
-        data[i] ^= (RngNext(&state) >> 16);
-    }
     //todo: see if possible to calc rng xor data and encrypt in larger chunks (less loops)
-    //u64* data = (u64*)pkmn->data; //speed hack
-    //for (u8 i = 0; i < 16; i++) {
-    //    u64 x = ((u64)(RngNext(&state) >> 16) << 00) |
-    //            ((u64)(RngNext(&state) >> 16) << 16) |
-    //            ((u64)(RngNext(&state) >> 16) << 32) |
-    //            ((u64)(RngNext(&state) >> 16) << 48) ;
-    //    data[i] ^= x;
-    //}
+    u64* data = (u64*)pkmn->data; //speed hack
+    for (u64 i = 0; i < 16; i++) {
+        u64 x = ((u64)(RngNext(&state) >> 16) << 00) |
+                ((u64)(RngNext(&state) >> 16) << 16) |
+                ((u64)(RngNext(&state) >> 16) << 32) |
+                ((u64)(RngNext(&state) >> 16) << 48) ;
+        data[i] ^= x;
+    }
 }
 
 static void EncryptBlocksChecksumZero(PKMN* pkmn) {
@@ -670,7 +662,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         seven.data[SEVEN_BLOCK_A][14] = 0x0001;
         seven.data[SEVEN_BLOCK_A][15] = 0x0000;
         /* Block C, B, D and Condition data */
-        memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * ((BLOCKS - 1) * BLOCK_SIZE + COND_SIZE_S + STACK_OFFSET));
+        memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE + STACK_OFFSET + COND_SIZE_XS));
 
         EncryptBlocksChecksumZero(&seven);
 
