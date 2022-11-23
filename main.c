@@ -494,18 +494,9 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
                 SetChecksum(&wild);
                 EncryptBlocks(&wild);
-                EncryptCondition(&wild); //only encrypts up to cond[COND_SIZE_XS]
 
-                /* Init Seven */
-                PKMN seven = { 0 }; //always ACBD (0x0213)
-                /* Block order up to Block A */
-                memcpy(&seven, &SevenInit, sizeof(seven) - sizeof(seven.cond) - 3 * sizeof(seven.data[0]));
-                /* Simulate the buffer overflow */
-                /* Block C, B, D and Condition data */
-                memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE + STACK_OFFSET + COND_SIZE_XS));
-                
                 /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu (check with known encryption mask) */
-                if ((seven.data[SEVEN_BLOCK_B][0] ^ 0xEA8D) > (MOVES_MAX + 2)) { continue; }
+                if ((wild.data[0][12] ^ 0xEA8D) > (MOVES_MAX + 2)) { continue; }
                 
                 /* If the last 3 moves of Seven are invalid, the game will crash right before showing the battle menu (ASLR variation) */
                 //if (seven.data[SEVEN_BLOCK_B][1] > MOVES_MAX + 2 ||
@@ -515,10 +506,18 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 //}
 
                 /* If the ball doesn't have a valid ID the battle won't load (check with known encryption mask) */
-                u8 ballid = *(((u8*)(&seven.data[SEVEN_BLOCK_D][13])) + 1); //get top byte
-                ballid ^= 0x70;
-                if (ballid > BALL_ID_MAX) { continue; }
-                
+                if (((wild.data[2][9] >> 8) ^ 0x70) > BALL_ID_MAX) { continue; }
+
+                EncryptCondition(&wild); //only encrypts up to cond[COND_SIZE_XS]
+
+                /* Init Seven */
+                PKMN seven = { 0 }; //always ACBD (0x0213)
+                /* Block order up to Block A */
+                memcpy(&seven, &SevenInit, sizeof(seven) - sizeof(seven.cond) - 3 * sizeof(seven.data[0]));
+                /* Simulate the buffer overflow */
+                /* Block C, B, D and Condition data */
+                memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE + STACK_OFFSET + COND_SIZE_XS));
+
                 EncryptBlocksChecksumZero(&seven);
                 SetChecksumFastSeven(&seven);
                 EncryptBlocks(&seven);
