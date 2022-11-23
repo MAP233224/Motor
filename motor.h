@@ -395,37 +395,25 @@ static void SetBlocks(PKMN* pkmn) {
 }
 
 static void SetChecksum(PKMN* pkmn) {
-    /* Set the checksum of a PKMN by summing all of its Block data, assuming checksum == 0 */
-    // for some reason "i" can't be a u32/u64 otherwise the function doesn't get inlined
-    //for (u8 i = 0; i < BLOCK_SIZE; i++)
-    //{
-    //    pkmn->checksum += pkmn->data[0][i] + pkmn->data[1][i] + pkmn->data[2][i] + pkmn->data[3][i];
-    //}
-    // attempt at optimizing the above
-    //u16* data = pkmn->data;
-    //u64 c = 0;
-    //for (u8 i = 0; i < BLOCKS * BLOCK_SIZE; i += 4)
-    //{
-    //    u64 a = *(u64*)(data + i);
-    //    c += (a & 0x0000FFFF0000FFFF) + ((a >> 16) & 0x0000FFFF0000FFFF);
-    //}
-    //pkmn->checksum = c + (c >> 32);
-
-    u16 sump = 0;
-    for (u8 i = 0; i < 16; i += 2)
+    /* Set the checksum of a PKMN by summing all of its Block data */
+    u16* data = (u16*)pkmn->data;
+    u16 c = 0;
+    for (u64 i = 0; i < BLOCKS * BLOCK_SIZE; i++)
     {
-        pkmn->checksum += pkmn->data[0][i] + pkmn->data[1][i] + pkmn->data[2][i] + pkmn->data[3][i];
-        sump += pkmn->data[0][i + 1] + pkmn->data[1][i + 1] + pkmn->data[2][i + 1] + pkmn->data[3][i + 1];
+        c += data[i];
     }
-    pkmn->checksum += sump;
+    pkmn->checksum = c;
 }
 
 static void SetChecksumFastSeven(PKMN* s) {
-    /* Checksum already initialized with block A (0), sum only the other blocks */
-    for (u64 i = 0; i < BLOCK_SIZE; i++)
+    /* Checksum already initialized with Block A, sum the remaining blocks */
+    u16* data = (u16*)&s->data[1];
+    u16 c = 0;
+    for (u64 i = 0; i < (BLOCKS - 1) * BLOCK_SIZE; i++)
     {
-        s->checksum += s->data[1][i] + s->data[2][i] + s->data[3][i];
+        c += data[i];
     }
+    s->checksum += c;
 }
 
 static u16 GetGender(u32 pid, u16 species) {
@@ -467,6 +455,11 @@ static void EncryptBlocks(PKMN* pkmn) {
     /* LCRNG is seeded with the Checksum */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
     u32 state = pkmn->checksum;
+    //u16* data = (u16*)pkmn->data;
+    //for (u64 i = 0; i < 64; i++)
+    //{
+    //    data[i] ^= (RngNext(&state) >> 16);
+    //}
     //todo: see if possible to calc rng xor data and encrypt in larger chunks (less loops)
     u64* data = (u64*)pkmn->data; //speed hack
     for (u64 i = 0; i < 16; i++) {
@@ -481,15 +474,15 @@ static void EncryptBlocks(PKMN* pkmn) {
 static void EncryptBlocksChecksumZero(PKMN* pkmn) {
     /* Fast encryption with precomputed RNG XOR mask (checksum == 0) */
     /* Block A (0) is encrypted in MotorInitPkmn */
-    static const u64 xordata[12] =
+    static const u64 mask[12] =
     {
         0x618d27a691785dd6, 0x3080375dcfb81692, 0xfee7321348fb407c, 0x1d29639e3d69dfa3,
         0xa39792686296ea8d, 0xaa8931aa6e031c49, 0xe0c682d9c3ead3c5, 0x24285a5f4e3b945c,
         0x007f7b8ebfe1fbb3, 0x38b6bfd1c84840c4, 0xbe347d23fb23903b, 0xba84dfc5706ada00,
     };
-    u64* pkdata = (u64*)pkmn->data[1];
+    u64* data = (u64*)pkmn->data[1];
     for (u64 i = 0; i < 12; i++) {
-        pkdata[i] ^= xordata[i];
+        data[i] ^= mask[i];
     }
 }
 
@@ -552,6 +545,7 @@ static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
 static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
     /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
     pkmn->nature = (RngNext(&state) >> 16) / 0x0A3E;
+    //pkmn->nature = ((RngNext(&state) >> 16) * 51189) >> 27; //cheeky attempt at optimizing the div above, off by 1 on multiples of 0x0A3E
 
     //todo: try to eliminate this loop
     do {
