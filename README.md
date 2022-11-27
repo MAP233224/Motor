@@ -20,7 +20,7 @@ Each user will need to provide several things to the application:
 You can save/load these parameters to/from 1 of 8 possible profile slots.  
 Upon launching the search, the application will go through each seed in the specified frame range and output every successful hit.  
 It will provide the Seed on which it found the Pokémon on, alongside several other characteristics (Level, Item, Ability, Moves, ...).  
-Performance wise, a full search of the 4,294,967,295 possible RNG states takes about 3 minutes to complete on my i5-11600K CPU.  
+Performance wise, a full search of the 4,294,967,295 possible RNG states takes just under 90 seconds to complete on my i5-11600K CPU.  
   
 You can then view each result in detail by clicking on them in the results list.  
 The details give you the console-hittable seed and the number of frames advances needed for that result (previously done separately by the ReverseSeed application),  
