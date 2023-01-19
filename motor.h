@@ -193,8 +193,7 @@ typedef struct {
     u8 pos_d;
     u8 nature;
     u8 ivs[STATS_MAX];
-    u16 iv1;
-    u16 iv2;
+    u32 iv32;
     //Main pkmn data; ordered the same as in game to simulate the buffer overflow
     u32 pid;
     u16 bef;
@@ -454,20 +453,18 @@ static u32 RngNext(u32* state) {
 static void EncryptBlocks(PKMN* pkmn) {
     /* LCRNG is seeded with the Checksum */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
+    /* Process in 64-bit blocks for less loops, advance LCRNG in parallel to avoid data dependencies (30+% faster) */
     u32 state = pkmn->checksum;
-    //u16* data = (u16*)pkmn->data;
-    //for (u64 i = 0; i < 64; i++)
-    //{
-    //    data[i] ^= (RngNext(&state) >> 16);
-    //}
-    //todo: see if possible to calc rng xor data and encrypt in larger chunks (less loops)
-    u64* data = (u64*)pkmn->data; //speed hack
-    for (u64 i = 0; i < 16; i++) {
-        u64 x = ((u64)(RngNext(&state) >> 16) << 00) |
-                ((u64)(RngNext(&state) >> 16) << 16) |
-                ((u64)(RngNext(&state) >> 16) << 32) |
-                ((u64)(RngNext(&state) >> 16) << 48) ;
+    u64* data = (u64*)pkmn->data;
+    for (u64 i = 0; i < 16; i++)
+    {
+        u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
+        u32 state3 = state * 0x807DBCB5 + 0x52713895; //advance LCRNG by 3
+        u32 state4 = state * 0xEE067F11 + 0x31B0DDE4; //advance LCRNG by 4
+        state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
+        u64 x = ((u64)(state >> 16)) | ((u64)(state2 & 0xffff0000)) | ((u64)(state3 >> 16) << 32) | ((u64)(state4 >> 16) << 48);
         data[i] ^= x;
+        state = state4;
     }
 }
 
@@ -544,18 +541,21 @@ static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
 
 static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
     /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
-    pkmn->nature = (RngNext(&state) >> 16) / 0x0A3E;
-    //pkmn->nature = ((RngNext(&state) >> 16) * 51189) >> 27; //cheeky attempt at optimizing the div above, off by 1 on multiples of 0x0A3E
+    pkmn->nature = (((u64)RngNext(&state) >> 17) * 3276101) >> 32; // fast nature computation (avoids div instruction with 0x0A3E0000)
 
-    //todo: try to eliminate this loop
+    //do {
+    //    pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
+    //} while (GetNatureId(pkmn->pid) != pkmn->nature); //roll PID until the 2 natures are the same
+
+    // around 10% faster than above because the dependency chain is broken (good instruction level parallelism)
     do {
-        pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
-    } while (GetNatureId(pkmn->pid) != pkmn->nature); //roll PID until the 2 natures are the same
+        u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
+        state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
+        pkmn->pid = (state >> 16) | (state2 & 0xffff0000);
+        state = state2;
+    } while (GetNatureId(pkmn->pid) != pkmn->nature);
 
-    pkmn->iv1 = (RngNext(&state) >> 16) & 0x7FFF;
-    pkmn->iv2 = (RngNext(&state) >> 16) & 0x7FFF;
-    pkmn->iv1 |= (pkmn->iv2 & 1) << 15;
-    pkmn->iv2 >>= 1;
+    pkmn->iv32 = ((RngNext(&state) >> 16) & 0x00007fff) | ((RngNext(&state) >> 1) & 0x3fff8000);
 }
 
 static REVERSEDSEED ReverseSeed(u32 seed) {
@@ -623,8 +623,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         memcpy(&wild.data[wild.pos_b][0], sd.pOgWild->moves, sizeof(sd.pOgWild->moves)); //moves
         wild.data[wild.pos_b][4] = sd.pOgWild->pp1and2; //pp1and2
         wild.data[wild.pos_b][5] = sd.pOgWild->pp3and4; //pp3and4
-        wild.data[wild.pos_b][8] = wild.iv1;
-        wild.data[wild.pos_b][9] = wild.iv2;
+        memcpy(&wild.data[wild.pos_b][8], &wild.iv32, 4);
         wild.data[wild.pos_b][12] = GetGender(wild.pid, sd.pOgWild->species) | sd.alt_form; //gender | alt_form
         /* Block C */
         memcpy(&wild.data[wild.pos_c][0], sd.pOgWild->name, sizeof(sd.pOgWild->name)); //name
@@ -642,7 +641,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         /* Initialize Seven */
         seven.pid = 0x00005544;
         seven.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
-        SetBlocks(&seven); //always ACBD (0x0213)
+        SetBlocks(&seven); //always ACBD (0x00020103)
 
         /* Simulate the buffer overflow */
         /* Block A */
