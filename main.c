@@ -426,8 +426,6 @@ static void ClearResults(void) {
 static APPSTATUS LoadResultsFromFile(u8* filepath) {
     /* Read data from a results file and add result strings to the list */
 
-    //todo: fix crash here (only in release mode?)
-
     ClearResults();
 
     FILE* fp = fopen(filepath, "rb");
@@ -487,8 +485,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 memcpy(wild.data[wild.pos_b], &WildInit.data[1], BLOCK_SIZE * sizeof(wild.data[0][0]));
                 memcpy(wild.data[wild.pos_c], &WildInit.data[2], BLOCK_SIZE * sizeof(wild.data[0][0]));
                 memcpy(wild.data[wild.pos_d], &WildInit.data[3], BLOCK_SIZE * sizeof(wild.data[0][0]));
-                wild.data[wild.pos_b][8] = wild.iv1;
-                wild.data[wild.pos_b][9] = wild.iv2;
+                memcpy(&wild.data[wild.pos_b][8], &wild.iv32, sizeof(wild.iv32));
                 wild.data[wild.pos_b][12] = GetGender(wild.pid, SearchDataCurrent.pOgWild->species) | SearchDataCurrent.alt_form; //gender | alt_form
                 wild.cond[2] = SearchDataCurrent.pOgWild->level;
 
@@ -497,13 +494,6 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
 
                 /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu (check with known encryption mask) */
                 if ((wild.data[0][12] ^ 0xEA8D) > (MOVES_MAX + 2)) { continue; }
-                
-                /* If the last 3 moves of Seven are invalid, the game will crash right before showing the battle menu (ASLR variation) */
-                //if (seven.data[SEVEN_BLOCK_B][1] > MOVES_MAX + 2 ||
-                //	seven.data[SEVEN_BLOCK_B][2] > MOVES_MAX + 2 ||
-                //	seven.data[SEVEN_BLOCK_B][3] > MOVES_MAX + 2) {
-                //	continue;
-                //}
 
                 /* If the ball doesn't have a valid ID the battle won't load (check with known encryption mask) */
                 if (((wild.data[2][9] >> 8) ^ 0x70) > BALL_ID_MAX) { continue; }
@@ -511,7 +501,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 EncryptCondition(&wild); //only encrypts up to cond[COND_SIZE_XS]
 
                 /* Init Seven */
-                PKMN seven = { 0 }; //always ACBD (0x0213)
+                PKMN seven = { 0 }; //always ACBD (0x00020103)
                 /* Block order up to Block A */
                 memcpy(&seven, &SevenInit, sizeof(seven) - sizeof(seven.cond) - 3 * sizeof(seven.data[0]));
                 /* Simulate the buffer overflow */
@@ -787,7 +777,7 @@ static void MotorInitPkmn(void) {
     memset(&SevenInit, 0, sizeof(SevenInit)); //zero init
     SevenInit.pid = 0x00005544;
     SevenInit.bef = 0x05a4; //after checksum check, changed to a Bad Egg (bit 4: 0->1)
-    SetBlocks(&SevenInit); //always ACBD (0x0213)
+    SetBlocks(&SevenInit); //always ACBD (0x00020103)
     /* Block A */
     SevenInit.data[SEVEN_BLOCK_A][0] = (SearchDataCurrent.aslr + OppPartyOffBeg[SearchDataCurrent.grouped_version]) & 0xffff;
     SevenInit.data[SEVEN_BLOCK_A][1] = (SearchDataCurrent.aslr + OppPartyOffBeg[SearchDataCurrent.grouped_version]) >> 16;
