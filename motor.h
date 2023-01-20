@@ -471,16 +471,19 @@ static void EncryptBlocks(PKMN* pkmn) {
 static void EncryptBlocksChecksumZero(PKMN* pkmn) {
     /* Fast encryption with precomputed RNG XOR mask (checksum == 0) */
     /* Block A (0) is encrypted in MotorInitPkmn */
-    static const u64 mask[12] =
-    {
-        0x618d27a691785dd6, 0x3080375dcfb81692, 0xfee7321348fb407c, 0x1d29639e3d69dfa3,
-        0xa39792686296ea8d, 0xaa8931aa6e031c49, 0xe0c682d9c3ead3c5, 0x24285a5f4e3b945c,
-        0x007f7b8ebfe1fbb3, 0x38b6bfd1c84840c4, 0xbe347d23fb23903b, 0xba84dfc5706ada00,
-    };
-    u64* data = (u64*)pkmn->data[1];
-    for (u64 i = 0; i < 12; i++) {
-        data[i] ^= mask[i];
-    }
+    u64* d = (u64*)pkmn->data[1];
+    d[0] ^= 0x618d27a691785dd6;
+    d[1] ^= 0x3080375dcfb81692;
+    d[2] ^= 0xfee7321348fb407c;
+    d[3] ^= 0x1d29639e3d69dfa3;
+    d[4] ^= 0xa39792686296ea8d;
+    d[5] ^= 0xaa8931aa6e031c49;
+    d[6] ^= 0xe0c682d9c3ead3c5;
+    d[7] ^= 0x24285a5f4e3b945c;
+    d[8] ^= 0x007f7b8ebfe1fbb3;
+    d[9] ^= 0x38b6bfd1c84840c4;
+    d[10] ^= 0xbe347d23fb23903b;
+    d[11] ^= 0xba84dfc5706ada00;
 }
 
 static void EncryptCondition(PKMN* pkmn) {
@@ -491,6 +494,11 @@ static void EncryptCondition(PKMN* pkmn) {
     for (u64 i = 0; i < COND_SIZE_XS; i++) {
         pkmn->cond[i] ^= (RngNext(&state) >> 16);
     }
+    //pkmn->cond[0] ^= (state * 0x41C64E6D + 0x00006073) >> 16;
+    //pkmn->cond[1] ^= (state * 0xC2A29A69 + 0xE97E7B6A) >> 16;
+    //pkmn->cond[2] ^= (state * 0x807DBCB5 + 0x52713895) >> 16;
+    //pkmn->cond[3] ^= (state * 0xEE067F11 + 0x31B0DDE4) >> 16;
+    //pkmn->cond[4] ^= (state * 0xEBA1483D + 0x8E425287) >> 16;
 }
 
 static void DecomposeIVs(u32 p, u8 ivs[STATS_MAX]) {
