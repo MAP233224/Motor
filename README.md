@@ -32,14 +32,7 @@ You can also perform Battle Corruption easily on Desmume 0.9.11 by editing Motor
 You'll be required to have a save file with a full party of 6 Pokémon, all knocked out, for the glitch to work.  
 The most common way to get to this state is with the Pomeg Glitch.  
 
-The executable was compiled for the Win32 platform in Visual Studio 2019 with the Optimization options set to:  
-- Optimization ``Maximum Optimization (Favor Speed) (/O2)``
-- Inline Function Expansion ``Default``
-- Enable Intrinsic Functions ``Yes (/Oi)``
-- Favor Size Or Speed ``Favor fast code (/Ot)``
-- Omit Frame Pointers ``No (/Oy)``
-- Enable Fiber-Safe Optimizations ``No``
-- Whole Program Optimization `` Yes (/GL)``  
+The executable was compiled for the x86-64 architecture with MSVC v19.29, assuming the user's CPU supports the SSE2 instruction set.  
 
 If you have any questions or issues regarding the application, direct them to me via Twitter @shinyhunter_map  
 If you want to thank me with a little extra, you can donate at https://ko-fi.com/map233224 <3
