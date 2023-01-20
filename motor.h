@@ -450,21 +450,50 @@ static u32 RngNext(u32* state) {
     return *state;
 }
 
+#include <intrin.h>
+
 static void EncryptBlocks(PKMN* pkmn) {
     /* LCRNG is seeded with the Checksum */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
     /* Process in 64-bit blocks for less loops, advance LCRNG in parallel to avoid data dependencies (30+% faster) */
-    u32 state = pkmn->checksum;
+    //u32 state = pkmn->checksum;
+    //u64* data = (u64*)pkmn->data;
+    //for (u64 i = 0; i < 16; i++)
+    //{
+    //    u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
+    //    u32 state3 = state * 0x807DBCB5 + 0x52713895; //advance LCRNG by 3
+    //    u32 state4 = state * 0xEE067F11 + 0x31B0DDE4; //advance LCRNG by 4
+    //    state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
+    //    u64 x = ((u64)(state >> 16)) | ((u64)(state2 & 0xffff0000)) | ((u64)(state3 >> 16) << 32) | ((u64)(state4 >> 16) << 48);
+    //    data[i] ^= x;
+    //    state = state4;
+    //}
+
+    u32 state0 = pkmn->checksum;
+    __m128i vmul = _mm_set_epi32(0xEE067F11, 0x807DBCB5, 0xC2A29A69, 0x41C64E6D); // multiplier
+    __m128i vadd = _mm_set_epi32(0x31B0DDE4, 0x52713895, 0xE97E7B6A, 0x00006073); // adder
+    __m128i vshf = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02); // shuffler, upper 64-bits are 0
+
     u64* data = (u64*)pkmn->data;
-    for (u64 i = 0; i < 16; i++)
+
+    // todo: see if you can pack the 16-bit states of vstate1 to the top of vstate0, then XOR only once
+
+    for (u64 i = 0; i < 16; i += 2) // doing 2 in the loop to not waste clock cycles
     {
-        u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
-        u32 state3 = state * 0x807DBCB5 + 0x52713895; //advance LCRNG by 3
-        u32 state4 = state * 0xEE067F11 + 0x31B0DDE4; //advance LCRNG by 4
-        state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
-        u64 x = ((u64)(state >> 16)) | ((u64)(state2 & 0xffff0000)) | ((u64)(state3 >> 16) << 32) | ((u64)(state4 >> 16) << 48);
-        data[i] ^= x;
-        state = state4;
+        u32 state1 = state0 * 0xEE067F11 + 0x31B0DDE4; // advance by 4
+        __m128i vstate0 = _mm_set1_epi32(state0); // fill all 32-bit slots with state
+        __m128i vstate1 = _mm_set1_epi32(state1); // ditto
+        state0 = state1 * 0xEE067F11 + 0x31B0DDE4; // advance by 4
+        vstate0 = _mm_mullo_epi32(vstate0, vmul); // multiply packed 32-bits values
+        vstate1 = _mm_mullo_epi32(vstate1, vmul); // ditto
+        vstate0 = _mm_add_epi32(vstate0, vadd); // add packed 32-bits values
+        vstate1 = _mm_add_epi32(vstate1, vadd); // ditto
+        vstate0 = _mm_shuffle_epi8(vstate0, vshf); // shuffle so that top 64 bits are all 0, and low 64 bits are packed 16-bit states
+        vstate1 = _mm_shuffle_epi8(vstate1, vshf); // ditto
+        vstate0 = _mm_xor_si128(vstate0, *(__m128i*) & data[i + 0]); // xor
+        vstate1 = _mm_xor_si128(vstate1, *(__m128i*) & data[i + 1]); // xor
+        _mm_storeu_si64(&data[i + 0], vstate0); // store
+        _mm_storeu_si64(&data[i + 1], vstate1); // store
     }
 }
 
