@@ -469,31 +469,40 @@ static void EncryptBlocks(PKMN* pkmn) {
     //    state = state4;
     //}
 
-    u32 state0 = pkmn->checksum;
+    /* Instrinsic version */
+    u32 state = pkmn->checksum;
+    u64* data = (u64*)pkmn->data;
+    // todo: see if vmul and vadd can be duplicated to advance even more and avoid data dependencies in the loop below
     __m128i vmul = _mm_set_epi32(0xEE067F11, 0x807DBCB5, 0xC2A29A69, 0x41C64E6D); // multiplier
     __m128i vadd = _mm_set_epi32(0x31B0DDE4, 0x52713895, 0xE97E7B6A, 0x00006073); // adder
-    __m128i vshf = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02); // shuffler, upper 64-bits are 0
+    __m128i vsh0 = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02); // shuffler, upper 64-bits are 0
+    __m128i vsh1 = _mm_set_epi8(0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80); // shuffler, lower 64-bits are 0
 
-    u64* data = (u64*)pkmn->data;
-
-    // todo: see if you can pack the 16-bit states of vstate1 to the top of vstate0, then XOR only once
-
-    for (u64 i = 0; i < 16; i += 2) // doing 2 in the loop to not waste clock cycles
+    for (u64 i = 0; i < 16; i += 4) // doing 4 per loop to not waste clock cycles
     {
-        u32 state1 = state0 * 0xEE067F11 + 0x31B0DDE4; // advance by 4
-        __m128i vstate0 = _mm_set1_epi32(state0); // fill all 32-bit slots with state
-        __m128i vstate1 = _mm_set1_epi32(state1); // ditto
-        state0 = state1 * 0xEE067F11 + 0x31B0DDE4; // advance by 4
-        vstate0 = _mm_mullo_epi32(vstate0, vmul); // multiply packed 32-bits values
-        vstate1 = _mm_mullo_epi32(vstate1, vmul); // ditto
-        vstate0 = _mm_add_epi32(vstate0, vadd); // add packed 32-bits values
-        vstate1 = _mm_add_epi32(vstate1, vadd); // ditto
-        vstate0 = _mm_shuffle_epi8(vstate0, vshf); // shuffle so that top 64 bits are all 0, and low 64 bits are packed 16-bit states
-        vstate1 = _mm_shuffle_epi8(vstate1, vshf); // ditto
-        vstate0 = _mm_xor_si128(vstate0, *(__m128i*) & data[i + 0]); // xor
-        vstate1 = _mm_xor_si128(vstate1, *(__m128i*) & data[i + 1]); // xor
-        _mm_storeu_si64(&data[i + 0], vstate0); // store
-        _mm_storeu_si64(&data[i + 1], vstate1); // store
+        __m128i vstate0 = _mm_set1_epi32(state); // fill all 32-bit slots with state
+        vstate0 = _mm_mullo_epi32(vstate0, vmul); // mul
+        vstate0 = _mm_add_epi32(vstate0, vadd); // add
+        __m128i vstate1 = _mm_shuffle_epi32(vstate0, 0xFF); // set state
+        vstate1 = _mm_mullo_epi32(vstate1, vmul); // mul
+        vstate1 = _mm_add_epi32(vstate1, vadd); // add
+        __m128i vstate2 = _mm_shuffle_epi32(vstate1, 0xFF); // set state
+        vstate2 = _mm_mullo_epi32(vstate2, vmul); // mul
+        vstate2 = _mm_add_epi32(vstate2, vadd); // add
+        __m128i vstate3 = _mm_shuffle_epi32(vstate2, 0xFF); // set state
+        vstate3 = _mm_mullo_epi32(vstate3, vmul); // mul
+        vstate3 = _mm_add_epi32(vstate3, vadd); // add
+        vstate0 = _mm_shuffle_epi8(vstate0, vsh0); // shuffle low
+        vstate1 = _mm_shuffle_epi8(vstate1, vsh1); // shuffle high
+        vstate2 = _mm_shuffle_epi8(vstate2, vsh0); // shuffle low
+        vstate3 = _mm_shuffle_epi8(vstate3, vsh1); // shuffle high
+        vstate0 = _mm_or_si128(vstate0, vstate1); // or
+        vstate2 = _mm_or_si128(vstate2, vstate3); // or
+        vstate0 = _mm_xor_si128(vstate0, _mm_loadu_si128((__m128i*) & data[i])); // xor with pkmn data
+        vstate2 = _mm_xor_si128(vstate2, _mm_loadu_si128((__m128i*) & data[i + 2])); // ditto
+        _mm_storeu_si128((__m128i*) & data[i], vstate0); // store
+        _mm_storeu_si128((__m128i*) & data[i + 2], vstate2); // store
+        state = state * 0x5F748241 + 0xCBA72510; // advance by 16
     }
 }
 
