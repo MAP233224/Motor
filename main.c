@@ -599,21 +599,31 @@ static void SearchThreadsSplit(void) {
     /* Frames */
     u32 frames_sum = 0;
     u32 frames_split = PROFILE_Current.frames / SearchThreadsMax;
-    for (u8 i = 0; i < SearchThreadsMax; i++) {
+    for (u8 i = 0; i < SearchThreadsMax; i++)
+    {
         SearchDataCurrent.frames[i] = frames_split;
         frames_sum += SearchDataCurrent.frames[i];
     }
-    while (frames_sum != PROFILE_Current.frames) {
+    while (frames_sum != PROFILE_Current.frames)
+    {
         SearchDataCurrent.frames[0]++; //making sure all frames are accounted for
         frames_sum++;
     }
     /* Seeds */
     u32 seed = PROFILE_Current.seed;
-    for (u8 i = 0; i < SearchThreadsMax; i++) {
+    for (u8 i = 0; i < SearchThreadsMax; i++)
+    {
         SearchDataCurrent.seed[i] = seed;
-        if (i + 1 == SearchThreadsMax) { break; } //don't run the next loop on last thread
-        for (u32 frames = 0; frames < SearchDataCurrent.frames[i]; frames++) {
-            RngNext(&seed);
+        if (i + 1 == SearchThreadsMax) break; //don't run the next loop on last thread
+        u32 frames = 0;
+        for (; frames < SearchDataCurrent.frames[i] / 256; frames++)
+        {
+            seed = seed * 0xBE67A401 + 0x08793100; // advance by 256 for faster seed distribution
+        }
+        frames *= 256;
+        for (; frames < SearchDataCurrent.frames[i]; frames++)
+        {
+            RngNext(&seed); // advance by 1 for the remaining frames
         }
     }
 }
