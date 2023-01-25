@@ -377,8 +377,7 @@ const OGWILD* OGW_LangVers[LANGUAGES_MAX][VERSIONS_MAX][OG_WILDS_MAX] = {
 
 static u32 GetNatureId(u32 pid) {
     /* Get the ID of the Nature (from 0 to 24), provided the PID. */
-    //return pid % NATURES_MAX; //naive
-    // optimized to avoid div instruction
+    // optimized to avoid div instruction (pid % 25)
     u64 x = 0x51EB851FULL;
     return pid - NATURES_MAX * ((x * pid) >> 35);
 }
@@ -450,12 +449,11 @@ static u32 RngNext(u32* state) {
     return *state;
 }
 
-#include <intrin.h>
-
 static void EncryptBlocks(PKMN* pkmn) {
     /* LCRNG is seeded with the Checksum */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
-    /* Process in 64-bit blocks for less loops, advance LCRNG in parallel to avoid data dependencies (30+% faster) */
+
+    /* Non-intrinsic version (slower) */
     //u32 state = pkmn->checksum;
     //u64* data = (u64*)pkmn->data;
     //for (u64 i = 0; i < 16; i++)
@@ -472,11 +470,10 @@ static void EncryptBlocks(PKMN* pkmn) {
     /* Instrinsic version */
     u32 state = pkmn->checksum;
     u64* data = (u64*)pkmn->data;
-    // todo: see if vmul and vadd can be duplicated to advance even more and avoid data dependencies in the loop below
-    __m128i vmul = _mm_set_epi32(0xEE067F11, 0x807DBCB5, 0xC2A29A69, 0x41C64E6D); // multiplier
-    __m128i vadd = _mm_set_epi32(0x31B0DDE4, 0x52713895, 0xE97E7B6A, 0x00006073); // adder
-    __m128i vsh0 = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02); // shuffler, upper 64-bits are 0
-    __m128i vsh1 = _mm_set_epi8(0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80); // shuffler, lower 64-bits are 0
+    const __m128i vmul = _mm_set_epi32(0xEE067F11, 0x807DBCB5, 0xC2A29A69, 0x41C64E6D); // multiplier
+    const __m128i vadd = _mm_set_epi32(0x31B0DDE4, 0x52713895, 0xE97E7B6A, 0x00006073); // adder
+    const __m128i vsh0 = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02); // shuffler, upper 64-bits are 0
+    const __m128i vsh1 = _mm_set_epi8(0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80); // shuffler, lower 64-bits are 0
 
     for (u64 i = 0; i < 16; i += 4) // doing 4 per loop to not waste clock cycles
     {
@@ -532,11 +529,6 @@ static void EncryptCondition(PKMN* pkmn) {
     for (u64 i = 0; i < COND_SIZE_XS; i++) {
         pkmn->cond[i] ^= (RngNext(&state) >> 16);
     }
-    //pkmn->cond[0] ^= (state * 0x41C64E6D + 0x00006073) >> 16;
-    //pkmn->cond[1] ^= (state * 0xC2A29A69 + 0xE97E7B6A) >> 16;
-    //pkmn->cond[2] ^= (state * 0x807DBCB5 + 0x52713895) >> 16;
-    //pkmn->cond[3] ^= (state * 0xEE067F11 + 0x31B0DDE4) >> 16;
-    //pkmn->cond[4] ^= (state * 0xEBA1483D + 0x8E425287) >> 16;
 }
 
 static void DecomposeIVs(u32 p, u8 ivs[STATS_MAX]) {
@@ -589,11 +581,6 @@ static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
     /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
     pkmn->nature = (((u64)RngNext(&state) >> 17) * 3276101) >> 32; // fast nature computation (avoids div instruction with 0x0A3E0000)
 
-    //do {
-    //    pkmn->pid = (RngNext(&state) >> 16) | (RngNext(&state) & 0xffff0000);
-    //} while (GetNatureId(pkmn->pid) != pkmn->nature); //roll PID until the 2 natures are the same
-
-    // around 10% faster than above because the dependency chain is broken (good instruction level parallelism)
     do {
         u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
         state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
