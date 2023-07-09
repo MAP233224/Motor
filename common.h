@@ -26,7 +26,7 @@ typedef int32_t s32;
 typedef uint64_t u64;
 typedef int APPSTATUS;
 
-#define MOTOR_VERSION               ("Motor v2.2.4")
+#define MOTOR_VERSION               ("Motor v2.2.5")
 #define SEARCH_THREADS_MAX          (8)
 #define PROFILE_SLOTS_MAX           (8)
 #define STRING_LENGTH_MAX           (16)
@@ -139,7 +139,7 @@ typedef struct {
     u8 pokerus;
     u8 friendship; //and egg cycle
     u8 catch;
-    //TODO: add something useful in the last 2 bytes?
+    //TODO: add something useful in the last byte?
     //Size: 31 -> 32 bytes (aligned)
 } RESULTDATA;
 
