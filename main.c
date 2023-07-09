@@ -57,6 +57,29 @@ static BOOL WINAPI CopySeedToClipboard(void) {
     return TRUE;
 }
 
+static void ResizeWildList(void) {
+    /* Manages the size of the Wild list depending on the selected version */
+    static u8 PROFILE_old_version = VERSION_DIAMOND; // init
+
+    if (PROFILE_Current.version == VERSION_PLATINUM)
+    {
+        if ((PROFILE_old_version == VERSION_DIAMOND) || (PROFILE_old_version == VERSION_PEARL))
+        {
+            // removes the last element "OGW_PT_9"
+            SendMessageA(HWND_wild_param, CB_DELETESTRING, VERSIONS_MAX - 1, 0);
+        }
+    }
+    else if ((PROFILE_Current.version == VERSION_DIAMOND) || (PROFILE_Current.version == VERSION_PEARL))
+    {
+        if (PROFILE_old_version == VERSION_PLATINUM)
+        {
+            // adds back "Regigigas"
+            SendMessageA(HWND_wild_param, CB_ADDSTRING, 0, (LPARAM)OgWilds[VERSION_DIAMOND][VERSIONS_MAX - 1]);
+        }
+    }
+    PROFILE_old_version = PROFILE_Current.version; // update
+}
+
 static APPSTATUS SetProfileSlotState(u8 slot) {
     /* Set active state and redraw each button */
     FILE* fp = fopen(ProfilesPath, "rb");
@@ -242,6 +265,7 @@ static APPSTATUS ConfirmLoadProfile(void) {
     }
 
     SetWindowsFromProfile(&PROFILE_Current); //success
+    ResizeWildList();
     return APP_RESUME;
 }
 
@@ -1131,15 +1155,23 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         case CBN_CLOSEUP:
         {
-            /* Nature filter, select invalid (-1) if "(none)" was picked */
-            if (LOWORD(wParam) == ID_NATURE_FILTER)
+            switch (LOWORD(wParam))
             {
+            case ID_NATURE_FILTER:
+            {
+                // Select invalid (-1) if "(none)" was picked
                 if (SendMessageA((HWND)lParam, CB_GETCURSEL, 0, 0) == 0)
                 {
                     SendMessageA(HWND_nature_filter, CB_SETCURSEL, -1, 0);
                 }
+                break;
             }
-            break;
+            case ID_VERSIONS_LIST:
+            {
+                ResizeWildList();
+                break;
+            }
+            }
         }
         }
         return 0;
@@ -1231,16 +1263,19 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         {
             u8 label[STRING_LENGTH_MAX] = "VERSION        ";
             u8 old_vers = PROFILE_Current.version;
-            if (lpdis->itemID >= VERSIONS_MAX) {
-                PROFILE_Current.version = 0; //will update the wild's list and prevents garbage data
+            if (lpdis->itemID >= VERSIONS_MAX)
+            {
+                PROFILE_Current.version = 0; // will update the wild's list and prevents garbage data
             }
-            else {
-                PROFILE_Current.version = lpdis->itemID; //will update the wild's list normally
+            else
+            {
+                PROFILE_Current.version = lpdis->itemID; // will update the wild's list normally
                 memcpy(label, Versions[PROFILE_Current.version], STRING_LENGTH_MAX);
             }
-            if (old_vers != PROFILE_Current.version) {
+            if (old_vers != PROFILE_Current.version)
+            {
                 SendMessageA(HWND_wild_param, CB_SETCURSEL, -1, 0); //solves edge case when selecting a wild before the version (wrong display in the edit control)
-                //Note: this is being sent every time you click VERSION, so your selection of WILD is reset when you just peek at the VERSION options 
+                //Note: this is being sent every time you click VERSION, so your selection of WILD is reset when you just peek at the VERSION options
             }
             return DrawList(lpdis, label, sizeof(Versions[0]), MOTOR_COLOR_TEAL_H);
         }
