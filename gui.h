@@ -477,7 +477,7 @@ static void SetTextInput_dec32(HWND hInput) {
     GetWindowTextA(hInput, b, U32_DIGITS_DEC_MAX + 1);
     ZeroLeftPadTextInputInt(b, U32_DIGITS_DEC_MAX);
     u64 value = AsciiToInt_dec32(b);
-    if (value > U32_VALUE_MAX || !IsValidIntString_dec(b, U32_DIGITS_DEC_MAX)) {
+    if (!value || value > U32_VALUE_MAX || !IsValidIntString_dec(b, U32_DIGITS_DEC_MAX)) {
         SetWindowTextA(hInput, "4294967295");
     }
     else {
