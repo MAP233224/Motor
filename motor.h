@@ -378,8 +378,11 @@ const OGWILD* OGW_LangVers[LANGUAGES_MAX][VERSIONS_MAX][OG_WILDS_MAX] = {
 static u32 GetNatureId(u32 pid) {
     /* Get the ID of the Nature (from 0 to 24), provided the PID. */
     // optimized to avoid div instruction (pid % 25)
-    u64 x = 0x51EB851FULL;
-    return pid - NATURES_MAX * ((x * pid) >> 35);
+    //return pid - NATURES_MAX * ((0x51EB851FULL * pid) >> 35);
+
+    // todo: benchmark, theoretically at most 50% faster when used in the MethodJToPID loop
+    // D. Lemire, O. Kaser, and N. Kurz, Faster Remainder by Direct Computation, 2018.
+    return __umulh(0xA3D70A3D70A3D71 * pid, 25); // get top 64 bits of the product
 }
 
 static u8 GetFormId(u16 fate) {
@@ -506,6 +509,7 @@ static void EncryptBlocks(PKMN* pkmn) {
 static void EncryptBlocksChecksumZero(PKMN* pkmn) {
     /* Fast encryption with precomputed RNG XOR mask (checksum == 0) */
     /* Block A (0) is encrypted in MotorInitPkmn */
+    // todo: SIMD
     u64* d = (u64*)pkmn->data[1];
     d[0] ^= 0x618d27a691785dd6;
     d[1] ^= 0x3080375dcfb81692;
@@ -579,7 +583,8 @@ static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
 
 static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
     /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
-    pkmn->nature = (((u64)RngNext(&state) >> 17) * 3276101) >> 32; // fast nature computation (avoids div instruction with 0x0A3E0000)
+    //pkmn->nature = (((u64)RngNext(&state) >> 17) * 3276101) >> 32; // fast nature computation (avoids div instruction with 0x0A3E0000)
+    pkmn->nature = ((RngNext(&state) >> 17) * 25595) >> 25; // fast division by 0x0A3E0000 of the 32-bit state
 
     do {
         u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
@@ -615,6 +620,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
 
     // todo: add valid mirrors
     // todo: use WildInit and SevenInit? 
+    // todo: fix, incorrect results
 
     u8 filename[PATH_REL_LENGTH_MAX] = { 0 };
     sprintf(filename, ".results/%08X_ASLR.txt", rs->reversed);
