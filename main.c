@@ -173,10 +173,10 @@ int main(int argc, char** argv)
         printf("ASLR 0x%08x search started.\n", aslr);
         Motor_InitPkmn(tidsid, aslr);
         Motor_Search_Loop(f);
-        printf("ASLR 0x%08x search done in %u seconds.\n", aslr, (clock() - start) / 1000);
+        printf("ASLR 0x%08x search done in %u seconds.\n", aslr, (clock() - start) / CLOCKS_PER_SEC);
     }
 
     fclose(f);
-    printf("Complete search done in %u seconds.\n", (clock() - start) / 1000);
+    printf("Complete search done in %u seconds.\n", (clock() - start) / CLOCKS_PER_SEC);
     return 0;
 }
