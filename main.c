@@ -152,31 +152,41 @@ static void Motor_InitPkmn(u32 tidsid, u32 aslr)
 
 int main(int argc, char** argv)
 {
-    if (argc != 2) return 0;
-    //u32 tidsid = 0x82B00B40; // debug
-    u32 tidsid = strtoul(argv[1], NULL, 16);
+    if ((argc < 2) || (argc > 3)) return 0; // motorathome <tid_min> [<tid_max>]
     
-    printf("TID 0x%08x\n", tidsid);
+    u32 tid_min = strtoul(argv[1], NULL, 16);
+    u32 tid_max = (argc == 3) ? strtoul(argv[2], NULL, 16) : tid_min;
 
-    u8 filename[32] = { 0 };
-    sprintf(filename, "%08x.csv", tidsid);
-    FILE* f = fopen(filename, "w+");
-    if (f == NULL) return 0;
-
-    clock_t start = clock();
-
-    for (u64 i = 0; i < 4; i++)
+    if (tid_min > tid_max) // swap
     {
-        u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
-        //u32 aslr = aslr_en_pt[i]; // debug
-        fprintf(f, "0x%08x\n", aslr);
-        printf("ASLR 0x%08x search started.\n", aslr);
-        Motor_InitPkmn(tidsid, aslr);
-        Motor_Search_Loop(f);
-        printf("ASLR 0x%08x search done in %u seconds.\n", aslr, (clock() - start) / CLOCKS_PER_SEC);
+        u32 tmp = tid_max;
+        tid_max = tid_min;
+        tid_min = tmp;
     }
 
-    fclose(f);
+    clock_t start = clock();
+    printf("TID 0x%08x to 0x%08x search started.\n", tid_min, tid_max);
+
+    for (u32 tid = tid_min; tid <= tid_max; tid++)
+    {
+        u8 filename[32] = { 0 };
+        sprintf(filename, "%08x.csv", tid);
+        FILE* f = fopen(filename, "w+");
+        if (f == NULL) return 0;
+        printf("TID 0x%08x search started.\n", tid);
+        for (u64 i = 0; i < 4; i++)
+        {
+            u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
+            //u32 aslr = aslr_en_pt[i]; // debug
+            fprintf(f, "0x%08x\n", aslr);
+            printf("ASLR 0x%08x search started.\n", aslr);
+            Motor_InitPkmn(tid, aslr);
+            Motor_Search_Loop(f);
+            printf("ASLR 0x%08x search done in %u seconds.\n", aslr, (clock() - start) / CLOCKS_PER_SEC);
+        }
+        fclose(f);
+    }
+
     printf("Complete search done in %u seconds.\n", (clock() - start) / CLOCKS_PER_SEC);
     return 0;
 }
