@@ -7,7 +7,6 @@ PKMN gSeven = { 0 };
 
 static void Motor_Search_Loop(FILE* file)
 {
-    // todo: for each ASLR
     for (u64 seed = 0; seed <= 0xffffffff; seed++)
     {
         /* Init Wild */
