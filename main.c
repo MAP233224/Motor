@@ -156,6 +156,8 @@ int main(int argc, char** argv)
     if (argc != 2) return 0;
     //u32 tidsid = 0x82B00B40; // debug
     u32 tidsid = strtoul(argv[1], NULL, 16);
+    
+    printf("TID 0x%08x\n", tidsid);
 
     u8 filename[32] = { 0 };
     sprintf(filename, "%08x.csv", tidsid);
