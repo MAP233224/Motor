@@ -65,8 +65,8 @@ static void Motor_Search_Loop(FILE* file)
         /* Species */
         if (seven.data[1 + wild.pos_a][STACK_OFFSET] >= SPECIES_MAX) { continue; }
         /* Moves */
-        //u32 valid_moves = 0;
-        u32 valid_moves = 1; // debug
+        u32 valid_moves = 0;
+        //u32 valid_moves = 1; // debug
         u16 move0 = seven.data[1 + wild.pos_b][STACK_OFFSET + 0];
         u16 move1 = seven.data[1 + wild.pos_b][STACK_OFFSET + 1];
         u16 move2 = seven.data[1 + wild.pos_b][STACK_OFFSET + 2];
@@ -166,8 +166,8 @@ int main(int argc, char** argv)
 
     for (u64 i = 0; i < 4; i++)
     {
-        //u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
-        u32 aslr = aslr_en_pt[i]; // debug
+        u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
+        //u32 aslr = aslr_en_pt[i]; // debug
         fprintf(f, "0x%08x\n", aslr);
         printf("ASLR 0x%08x search started.\n", aslr);
         Motor_InitPkmn(tidsid, aslr);
