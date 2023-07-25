@@ -56,16 +56,14 @@ typedef struct {
     u8 pos_b;
     u8 pos_c;
     u8 pos_d;
-    u8 nature;
-    u8 ivs[STATS_MAX];
     u32 iv32;
     //Main pkmn data; ordered the same as in game to simulate the buffer overflow
     u32 pid;
     u16 bef;
     u16 checksum;
     u16 data[BLOCKS][BLOCK_SIZE];
-    u16 cond[COND_SIZE_S];
-    //Size: 200 bytes
+    u16 cond[COND_SIZE_S]; // todo: see if can be replaced by COND_SIZE_XS (would save 40 bytes)
+    // Size: 196 bytes
 } PKMN;
 
 /* Functions */
@@ -167,12 +165,12 @@ static void EncryptCondition(PKMN* pkmn)
 static void MethodJSeedToPID(u32 state, PKMN* pkmn)
 {
     /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
-    pkmn->nature = ((RngNext(&state) >> 17) * 25595) >> 25; // fast division by 0x0A3E0000 of the 32-bit state
+    u32 nature = ((RngNext(&state) >> 17) * 25595) >> 25; // fast division by 0x0A3E0000 of the 32-bit state
     do {
         u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
         state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
         pkmn->pid = (state >> 16) | (state2 & 0xffff0000);
         state = state2;
-    } while (GetNatureId(pkmn->pid) != pkmn->nature);
+    } while (GetNatureId(pkmn->pid) != nature);
     pkmn->iv32 = ((RngNext(&state) >> 16) & 0x00007fff) | ((RngNext(&state) >> 1) & 0x3fff8000);
 }
