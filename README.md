@@ -6,6 +6,7 @@ This would open the door for new record breaking possibilities in the any% speed
 
 ## How to participate
 - Download `MotorAtHome.exe` from the release page (compiled for Windows), or build the source yourself for your machine
+- Download [this file](https://www.dropbox.com/scl/fi/8vwhzn7abvs4rr952xvjh/seedpidiv32.bin?rlkey=awzyao1rlo5esinjajvgb2pcv&dl=0) and put it in the same directory as `MotorAtHome.exe`
 - Request an available 32-bit TID (or range of TIDs) [here](https://github.com/RETIREglitch)
 - Once you have one, run the program with your TID value, for example `motorathome 1234abcd`
 - If you requested a range, run the program with the min and max TID you were given, for example `motorathome 1234abcd 12350000`
