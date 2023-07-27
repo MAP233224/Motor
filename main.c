@@ -8,7 +8,7 @@ PKMN gSeven = { 0 };
 #define PIDIV32_MAX (2551446)
 u32 gPIDIV32[3 * PIDIV32_MAX] = { 0 };
 
-static void Motor_Search_Loop(FILE* file, u32 debug_aslr)
+static void Motor_Search_Loop(FILE* file)
 {
     for (u32 pid = 0; pid < 3 * (PIDIV32_MAX - 1); pid += 3)
     {
@@ -30,11 +30,6 @@ static void Motor_Search_Loop(FILE* file, u32 debug_aslr)
 
         SetChecksumFastWild(&wild);
         EncryptBlocks(&wild);
-
-        /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu (check with known encryption mask) */
-        if ((wild.data[0][12] ^ 0xEA8D) > VALID_MOVES_MAX) { continue; }
-        /* If the ball of Seven is invalid, the battle won't load (check with known encryption mask) */
-        if (((wild.data[2][9] >> 8) ^ 0x70) > BALL_ID_MAX) { continue; }
 
         /* Init Seven */
         PKMN seven = { 0 }; //always ACBD (0x00020103)
@@ -69,7 +64,6 @@ static void Motor_Search_Loop(FILE* file, u32 debug_aslr)
 
         /* Moves */
         u32 valid_moves = 0;
-        //u32 valid_moves = 1; // debug
         u16 move0 = seven.data[1 + wild.pos_b][STACK_OFFSET + 0];
         u16 move1 = seven.data[1 + wild.pos_b][STACK_OFFSET + 1];
         u16 move2 = seven.data[1 + wild.pos_b][STACK_OFFSET + 2];
@@ -80,7 +74,7 @@ static void Motor_Search_Loop(FILE* file, u32 debug_aslr)
         if (move3 <= VALID_MOVES_MAX) { valid_moves++; }
 
         /* Print successful result */
-        if (valid_moves)
+        if (valid_moves > 1)
         {
             printf("0x%08x,%u,0x%04x,0x%04x,0x%04x,0x%04x\n", (u32)seed, valid_moves, move0, move1, move2, move3);
             fprintf(file, "0x%08x,%u,0x%04x,0x%04x,0x%04x,0x%04x\n", (u32)seed, valid_moves, move0, move1, move2, move3);
@@ -174,27 +168,30 @@ int main(int argc, char** argv)
     fread(&gPIDIV32, sizeof(gPIDIV32), 1, fpidiv32);
     fclose(fpidiv32);
 
+    u8 filename[32] = { 0 };
+    sprintf(filename, ".results/%08x_%08x.csv", tid_min, tid_max);
+    FILE* fresults = fopen(filename, "w+");
+    if (fresults == NULL) return 0;
+    fclose(fresults);
+
     clock_t start = clock();
     printf("TID 0x%08x to 0x%08x search started.\n", tid_min, tid_max);
 
     for (u32 tid = tid_min; tid <= tid_max; tid++)
     {
-        u8 filename[32] = { 0 };
-        sprintf(filename, "%08x.csv", tid);
-        FILE* f = fopen(filename, "w+");
-        if (f == NULL) return 0;
+        fresults = fopen(filename, "a");
+        if (fresults == NULL) return 0;
         printf("TID 0x%08x search started.\n", tid);
+        fprintf(fresults, "[0x%08x]\n", tid);
         for (u64 i = 0; i < 4; i++)
         {
             u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
             //u32 aslr = aslr_en_pt[i]; // debug
-            fprintf(f, "0x%08x\n", aslr);
-            printf("ASLR 0x%08x search started.\n", aslr);
+            fprintf(fresults, "(0x%08x)\n", aslr);
             Motor_InitPkmn(tid, aslr);
-            Motor_Search_Loop(f, aslr);
-            printf("ASLR 0x%08x search done in %u seconds.\n", aslr, (clock() - start) / CLOCKS_PER_SEC);
+            Motor_Search_Loop(fresults);
         }
-        fclose(f);
+        fclose(fresults);
     }
 
     printf("Complete search done in %u seconds.\n", (clock() - start) / CLOCKS_PER_SEC);
