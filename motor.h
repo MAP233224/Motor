@@ -93,6 +93,12 @@ static void SetChecksum(PKMN* pkmn)
     pkmn->checksum = c;
 }
 
+static void SetChecksumFastWild(PKMN* pkmn)
+{
+    /* All other data is already known, only missing the IVs */
+    pkmn->checksum = 0x6eee + (pkmn->iv32 & 0xffff) + (pkmn->iv32 >> 16);
+}
+
 static void SetChecksumFastSeven(PKMN* pkmn)
 {
     /* Checksum already initialized with Block A, sum the remaining blocks */
@@ -137,40 +143,15 @@ static void EncryptBlocksChecksumZero(PKMN* pkmn)
     /* Block A (0) is encrypted in MotorInitPkmn */
     u64* d = (u64*)&pkmn->data[1];
     d[0] ^= 0x618d27a691785dd6;
-    d[1] ^= 0x3080375dcfb81692;
+    d[1] ^= 0x3080375dcfb81692; // could be wild moves
     d[2] ^= 0xfee7321348fb407c;
     d[3] ^= 0x1d29639e3d69dfa3;
     d[4] ^= 0xa39792686296ea8d;
-    d[5] ^= 0xaa8931aa6e031c49;
+    d[5] ^= 0xaa8931aa6e031c49; // could be wild moves
     d[6] ^= 0xe0c682d9c3ead3c5;
     d[7] ^= 0x24285a5f4e3b945c;
     d[8] ^= 0x007f7b8ebfe1fbb3;
-    d[9] ^= 0x38b6bfd1c84840c4;
+    d[9] ^= 0x38b6bfd1c84840c4; // could be wild moves
     d[10] ^= 0xbe347d23fb23903b;
     d[11] ^= 0xba84dfc5706ada00;
-}
-
-static void EncryptCondition(PKMN* pkmn)
-{
-    /* LCRNG is seeded with the PID */
-    /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of Condition data */
-    /* It is not needed to encrypt the whole 50 16-bit words of Condition data, I stop at 5 to include HP MAX */
-    u32 state = pkmn->pid;
-    for (u64 i = 0; i < COND_SIZE_XS; i++)
-    {
-        pkmn->cond[i] ^= (RngNext(&state) >> 16);
-    }
-}
-
-static void MethodJSeedToPID(u32 state, PKMN* pkmn)
-{
-    /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
-    u32 nature = ((RngNext(&state) >> 17) * 25595) >> 25; // fast division by 0x0A3E0000 of the 32-bit state
-    do {
-        u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
-        state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
-        pkmn->pid = (state >> 16) | (state2 & 0xffff0000);
-        state = state2;
-    } while (GetNatureId(pkmn->pid) != nature);
-    pkmn->iv32 = ((RngNext(&state) >> 16) & 0x00007fff) | ((RngNext(&state) >> 1) & 0x3fff8000);
 }
