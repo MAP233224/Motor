@@ -5,14 +5,19 @@
 PKMN gWild = { 0 };
 PKMN gSeven = { 0 };
 
-static void Motor_Search_Loop(FILE* file)
+#define PIDIV32_MAX (2551446)
+u32 gPIDIV32[3 * PIDIV32_MAX] = { 0 };
+
+static void Motor_Search_Loop(FILE* file, u32 debug_aslr)
 {
-    for (u64 seed = 0; seed <= 0xffffffff; seed++)
+    for (u32 pid = 0; pid < 3 * (PIDIV32_MAX - 1); pid++)
     {
         /* Init Wild */
         PKMN wild = { 0 };
 
-        MethodJSeedToPID(seed, &wild); // todo: precompute? table of states just before PID generation
+        u32 seed = gPIDIV32[pid];
+        wild.pid = gPIDIV32[pid + 1];
+        wild.iv32 = gPIDIV32[pid + 2];
         SetBlocks(&wild);
 
         memcpy(wild.data[wild.pos_a], &gWild.data[0], BLOCK_SIZE * sizeof(wild.data[0][0]));
@@ -23,7 +28,7 @@ static void Motor_Search_Loop(FILE* file)
         wild.data[wild.pos_b][12] = 0x0004; // genderless
         wild.cond[2] = 0x0014; // level 20
 
-        SetChecksum(&wild); // note: only variables at this point are PID and IVs
+        SetChecksumFastWild(&wild);
         EncryptBlocks(&wild);
 
         /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu (check with known encryption mask) */
@@ -31,15 +36,13 @@ static void Motor_Search_Loop(FILE* file)
         /* If the ball of Seven is invalid, the battle won't load (check with known encryption mask) */
         if (((wild.data[2][9] >> 8) ^ 0x70) > BALL_ID_MAX) { continue; }
 
-        EncryptCondition(&wild); //only encrypts up to cond[COND_SIZE_XS]
-
         /* Init Seven */
         PKMN seven = { 0 }; //always ACBD (0x00020103)
         /* Block order up to Block A */
         memcpy(&seven, &gSeven, sizeof(seven) - sizeof(seven.cond) - 3 * sizeof(seven.data[0]));
         /* Simulate the buffer overflow */
         /* Block C, B, D and Condition data */
-        memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE + STACK_OFFSET + COND_SIZE_XS));
+        memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE - 8)); // up to the wild's moves
 
         EncryptBlocksChecksumZero(&seven);
         SetChecksumFastSeven(&seven);
@@ -63,6 +66,7 @@ static void Motor_Search_Loop(FILE* file)
         if (seven.data[1 + wild.pos_b][STACK_OFFSET + 9] & 0x4000) { continue; }
         /* Species */
         if (seven.data[1 + wild.pos_a][STACK_OFFSET] >= SPECIES_MAX) { continue; }
+
         /* Moves */
         u32 valid_moves = 0;
         //u32 valid_moves = 1; // debug
@@ -133,12 +137,12 @@ static void Motor_InitPkmn(u32 tidsid, u32 aslr)
     gSeven.data[SEVEN_BLOCK_A][7] = 0xFA00;
     gSeven.data[SEVEN_BLOCK_A][8] = 0xFC00;
     gSeven.data[SEVEN_BLOCK_A][9] = 0x4000;
-    gSeven.data[SEVEN_BLOCK_A][10] = 0x3A05;
+    gSeven.data[SEVEN_BLOCK_A][10] = 0x3A05; // low byte is heap id
     gSeven.data[SEVEN_BLOCK_A][11] = 0x0800;
     gSeven.data[SEVEN_BLOCK_A][12] = 0x0006;
     gSeven.data[SEVEN_BLOCK_A][13] = 0x0000;
-    gSeven.data[SEVEN_BLOCK_A][14] = 0x0001;
-    gSeven.data[SEVEN_BLOCK_A][15] = 0x0000;
+    gSeven.data[SEVEN_BLOCK_A][14] = 0x0001; // party count low
+    gSeven.data[SEVEN_BLOCK_A][15] = 0x0000; // party count high
     u64* dataa = (u64*)gSeven.data;
     dataa[0] ^= 0x31b05271e97e0000;
     dataa[1] ^= 0x67dbafc5e2cc8e42;
@@ -153,7 +157,7 @@ static void Motor_InitPkmn(u32 tidsid, u32 aslr)
 int main(int argc, char** argv)
 {
     if ((argc < 2) || (argc > 3)) return 0; // motorathome <tid_min> [<tid_max>]
-    
+
     u32 tid_min = strtoul(argv[1], NULL, 16);
     u32 tid_max = (argc == 3) ? strtoul(argv[2], NULL, 16) : tid_min;
 
@@ -163,6 +167,12 @@ int main(int argc, char** argv)
         tid_max = tid_min;
         tid_min = tmp;
     }
+
+    /* Load the PID/IVs pairs from file */
+    FILE* fpidiv32 = fopen("seedpidiv32.bin", "rb");
+    if (fpidiv32 == NULL) return 0;
+    fread(&gPIDIV32, sizeof(gPIDIV32), 1, fpidiv32);
+    fclose(fpidiv32);
 
     clock_t start = clock();
     printf("TID 0x%08x to 0x%08x search started.\n", tid_min, tid_max);
@@ -174,14 +184,14 @@ int main(int argc, char** argv)
         FILE* f = fopen(filename, "w+");
         if (f == NULL) return 0;
         printf("TID 0x%08x search started.\n", tid);
-        for (u64 i = 0; i < 4; i++)
+        for (u64 i = 0; i < 1; i++)
         {
             u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
             //u32 aslr = aslr_en_pt[i]; // debug
             fprintf(f, "0x%08x\n", aslr);
             printf("ASLR 0x%08x search started.\n", aslr);
             Motor_InitPkmn(tid, aslr);
-            Motor_Search_Loop(f);
+            Motor_Search_Loop(f, aslr);
             printf("ASLR 0x%08x search done in %u seconds.\n", aslr, (clock() - start) / CLOCKS_PER_SEC);
         }
         fclose(f);
