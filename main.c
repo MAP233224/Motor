@@ -10,7 +10,7 @@ u32 gPIDIV32[3 * PIDIV32_MAX] = { 0 };
 
 static void Motor_Search_Loop(FILE* file, u32 debug_aslr)
 {
-    for (u32 pid = 0; pid < 3 * (PIDIV32_MAX - 1); pid++)
+    for (u32 pid = 0; pid < 3 * (PIDIV32_MAX - 1); pid += 3)
     {
         /* Init Wild */
         PKMN wild = { 0 };
@@ -184,7 +184,7 @@ int main(int argc, char** argv)
         FILE* f = fopen(filename, "w+");
         if (f == NULL) return 0;
         printf("TID 0x%08x search started.\n", tid);
-        for (u64 i = 0; i < 1; i++)
+        for (u64 i = 0; i < 4; i++)
         {
             u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
             //u32 aslr = aslr_en_pt[i]; // debug
