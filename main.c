@@ -8,7 +8,7 @@ PKMN gSeven = { 0 };
 #define PIDIV32_MAX (2551446)
 u32 gPIDIV32[3 * PIDIV32_MAX] = { 0 };
 
-static void Motor_Search_Loop(FILE* file)
+static void Motor_Search_Loop(FILE* file, u32 tid, u32 aslr)
 {
     for (u32 pid = 0; pid < 3 * (PIDIV32_MAX - 1); pid += 3)
     {
@@ -76,8 +76,8 @@ static void Motor_Search_Loop(FILE* file)
         /* Print successful result */
         if (valid_moves > 1)
         {
-            printf("0x%08x,%u,0x%04x,0x%04x,0x%04x,0x%04x\n", (u32)seed, valid_moves, move0, move1, move2, move3);
-            fprintf(file, "0x%08x,%u,0x%04x,0x%04x,0x%04x,0x%04x\n", (u32)seed, valid_moves, move0, move1, move2, move3);
+            printf("0x%08x,0x%08x,0x%08x,%u,0x%04x,0x%04x,0x%04x,0x%04x\n", tid, aslr, (u32)seed, valid_moves, move0, move1, move2, move3);
+            fprintf(file, "0x%08x,0x%08x,0x%08x,%u,0x%04x,0x%04x,0x%04x,0x%04x\n", tid, aslr, (u32)seed, valid_moves, move0, move1, move2, move3);
         }
     }
 }
@@ -181,15 +181,12 @@ int main(int argc, char** argv)
     {
         fresults = fopen(filename, "a");
         if (fresults == NULL) return 0;
-        printf("TID 0x%08x search started.\n", tid);
-        fprintf(fresults, "[0x%08x]\n", tid);
         for (u64 i = 0; i < 4; i++)
         {
             u32 aslr = aslr_en_pt[3 - i]; // do it in reverse because aslr 0 is prone to status changes
             //u32 aslr = aslr_en_pt[i]; // debug
-            fprintf(fresults, "(0x%08x)\n", aslr);
             Motor_InitPkmn(tid, aslr);
-            Motor_Search_Loop(fresults);
+            Motor_Search_Loop(fresults, tid, aslr);
         }
         fclose(fresults);
     }
