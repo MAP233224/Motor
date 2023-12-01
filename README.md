@@ -1,4 +1,4 @@
-# Motor (GUI)
+# Motor (Windows GUI)
 This application has been designed to help players of Pokémon Diamond, Pearl and Platinum perform the Battle Corruption Glitch.  
 This glitch allows players to catch any desired species in the place of some static encounters like Rotom in the Old Chateau or Giratina in Turnback Cave. 
 
