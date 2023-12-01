@@ -36,17 +36,20 @@ u8 SearchThreadsMax; //maximum number of threads that will be allocated
 
 /* Functions */
 
-static BOOL WINAPI CopySeedToClipboard(void) {
+static BOOL WINAPI CopySeedToClipboard(void)
+{
     /* Clipboard function */
     u8 str[STRING_LENGTH_MAX] = { 0 };
     sprintf(str, "%08X", ReversedSeedCurrent.reversed);
-
-    if (OpenClipboard(NULL)) {
+    if (OpenClipboard(NULL))
+    {
         EmptyClipboard();
         HGLOBAL Clipboard = GlobalAlloc(GPTR, sizeof(str));
-        if (Clipboard) {
+        if (Clipboard)
+        {
             u8* pdata = (u8*)GlobalLock(Clipboard);
-            if (pdata) {
+            if (pdata)
+            {
                 memcpy(pdata, str, sizeof(str));
                 GlobalUnlock(Clipboard);
                 SetClipboardData(CF_TEXT, Clipboard);
@@ -57,10 +60,10 @@ static BOOL WINAPI CopySeedToClipboard(void) {
     return TRUE;
 }
 
-static void ResizeWildList(void) {
+static void ResizeWildList(void)
+{
     /* Manages the size of the Wild list depending on the selected version */
     static u8 PROFILE_old_version = VERSION_DIAMOND; // init
-
     if (PROFILE_Current.version == VERSION_PLATINUM)
     {
         if ((PROFILE_old_version == VERSION_DIAMOND) || (PROFILE_old_version == VERSION_PEARL))
@@ -80,25 +83,24 @@ static void ResizeWildList(void) {
     PROFILE_old_version = PROFILE_Current.version; // update
 }
 
-static APPSTATUS SetProfileSlotState(u8 slot) {
-    /* Set active state and redraw each button */
-    FILE* fp = fopen(ProfilesPath, "rb");
-
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
-
-    for (u8 i = 0; i < PROFILE_SLOTS_MAX; i++) {
+static APPSTATUS SetProfileSlotState(u8 slot)
+{
+    /* Sets active state and redraw each button */
+    FILE_TRY_OPEN(fp, ProfilesPath, "rb");
+    for (u32 i = 0; i < PROFILE_SLOTS_MAX; i++)
+    {
         PROFILE p;
         GetProfileFromResultsFile(&p, fp);
         ProfileSlotState[i] = IsEmptyProfile(&p) ? PSS_EMPTY : PSS_TAKEN;
         if (i == slot) { ProfileSlotState[i] ^= PSS_ACTIVE; } //only 1 can be active
         InvalidateRect(HWND_profile_slot[i], NULL, 0); //redraw button
     }
-
     fclose(fp);
     return APP_RESUME;
 }
 
-static APPSTATUS IsValidProfile(PROFILE* p) {
+static APPSTATUS IsValidProfile(PROFILE* p)
+{
     /* Check each member of the PROFILE struct */
     /* TID, SID, Seed and Frames aren't checked because they can't technically be invalid */
     /* Critical */
@@ -119,11 +121,11 @@ static APPSTATUS IsValidProfile(PROFILE* p) {
     {
         if (p->filter_ivs[i] > IV_VALUE_MAX) { return PROFILE_BAD_FILTER_IVS; }
     }
-
     return PROFILE_OK;
 }
 
-static APPSTATUS GetProfileFromWindows(void) {
+static APPSTATUS GetProfileFromWindows(void)
+{
     /* Get the search parameters from the input fields and set them in PROFILE_Current */
     /* Return an error code to identify which filed is wrong */
     /* Note: the filters are automatically updated with their windows, except Nature */
@@ -173,7 +175,8 @@ static APPSTATUS GetProfileFromWindows(void) {
     return PROFILE_OK;
 }
 
-static void GetProfileRecapString(PROFILE* p, u8 str[512]) {
+static void GetProfileRecapString(PROFILE* p, u8 str[512])
+{
     /* Format a string with all the profile info */
     sprintf(str, "Version: %s\nLanguage: %s\nTID: %05d\nSID: %05d\nWild: %s\nSeed: 0x%08X\nFrames: %u\nASLR: %u (0x%08X)\nMAC Address: %02X-%02X-%02X-%02X-%02X-%02X\n\nFilters:\nSpecies: %s\nItem: %s\nMove: %s\nAbility: %s\nNature: %s\nIVs: %02u / %02u / %02u / %02u / %02u / %02u",
         Versions[p->version],
@@ -195,7 +198,8 @@ static void GetProfileRecapString(PROFILE* p, u8 str[512]) {
     );
 }
 
-static void SetWindowsFromProfile(PROFILE* p) {
+static void SetWindowsFromProfile(PROFILE* p)
+{
     /* Set the text in the input windows from a given PROFILE */
     /* Sanitized with IsValidProfile */
     SetWindowTextFromInt(HWND_tid_param, "%05u", p->tid);
@@ -227,72 +231,78 @@ static void SetWindowsFromProfile(PROFILE* p) {
     SetWindowTextFromInt(HWND_iv_filter[5], "%02u", p->filter_ivs[SP]);
 }
 
-static APPSTATUS LoadProfileFromSlot(PROFILE* p, u8 slot) {
+static APPSTATUS LoadProfileFromSlot(PROFILE* p, u8 slot)
+{
     /* Alternative to LoadProfileFromFile */
-    FILE* fp = fopen(ProfilesPath, "rb");
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; } //couldn't find the file
+    FILE_TRY_OPEN(fp, ProfilesPath, "rb");
     if (slot >= PROFILE_SLOTS_MAX) { return APP_ERR_PROFILE_SLOT; } //oob
     /* All good, retrieve the profile from slot offset */
     fseek(fp, slot * sizeof(PROFILE), SEEK_SET);
     fread(p, sizeof(PROFILE), 1, fp);
     fclose(fp);
-
-    if (IsEmptyProfile(p)) { return APP_ERR_PROFILE_EMPTY; } //not really an error, just a warning
+    if (IsEmptyProfile(p)) { return APP_ERR_PROFILE_EMPTY; } // not really an error, just a warning
     APPSTATUS err = IsValidProfile(p);
     if (err != PROFILE_OK) { return err; }
-
     return APP_RESUME;
 }
 
-static APPSTATUS ConfirmLoadProfile(void) {
+static APPSTATUS ConfirmLoadProfile(void)
+{
     /* Profile slot selection and loading procedure */
     u8 slot = GetProfileSlot();
     if (slot == 255) { return APP_ERR_PROFILE_SLOT; }
-
     APPSTATUS err = LoadProfileFromSlot(&PROFILE_Current, slot);
-
-    if (err != APP_RESUME) {
-        if (err == APP_ERR_PROFILE_EMPTY) {
+    if (err != APP_RESUME)
+    {
+        if (err == APP_ERR_PROFILE_EMPTY)
+        {
             MessageBoxA(HWND_AppMain, "Profile loaded was empty.", MBL_NOTICE, MB_OK | MB_ICONINFORMATION);
         }
-        else if (err > PROFILE_OK) {
+        else if (err > PROFILE_OK)
+        {
             ErrorMessageBox_BadProfile(err);
         }
-        else {
+        else
+        {
             MessageBoxA(HWND_AppMain, "No profile loaded.\nYou may want to create and save a new profile.", MBL_NOTICE, MB_OK | MB_ICONINFORMATION);
         }
         return APP_RESUME;
     }
-
-    SetWindowsFromProfile(&PROFILE_Current); //success
+    SetWindowsFromProfile(&PROFILE_Current);
     ResizeWildList();
     return APP_RESUME;
 }
 
-static APPSTATUS ConfirmSaveProfile(void) {
+static APPSTATUS ConfirmSaveProfile(void)
+{
     /* Basic yes/no/cancel message box */
     APPSTATUS err = GetProfileFromWindows();
-    if (err != PROFILE_OK) {
+    if (err != PROFILE_OK)
+    {
         ErrorMessageBox_BadProfile(err);
         return APP_RESUME;
     }
 
     u8 slot = GetProfileSlot();
-    if (slot == 255) { return APP_ERR_PROFILE_SLOT; }
+    if (slot == PROFILE_SLOTS_MAX) { return APP_ERR_PROFILE_SLOT; }
 
     u8 str_recap[512];
     GetProfileRecapString(&PROFILE_Current, str_recap);
     strcat(str_recap, "\n\nSave a new profile with these search parameters?");
     int answer = MessageBoxA(HWND_AppMain, str_recap, MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONQUESTION);
-    if (answer == IDYES) {
+    if (answer == IDYES)
+    {
         APPSTATUS empty = LoadProfileFromSlot(&PROFILE_Load, slot);
-        if (empty == APP_ERR_PROFILE_EMPTY) {
+        if (empty == APP_ERR_PROFILE_EMPTY)
+        {
             SaveProfileToSlot(slot);
             SetProfileSlotState(slot);
         }
-        else {
+        else
+        {
             int ans = MessageBoxA(HWND_AppMain, "This profile slot is already taken, do you want to overwrite it?", MBL_CONFIRM, MB_YESNO | MB_ICONQUESTION);
-            if (ans == IDYES) {
+            if (ans == IDYES)
+            {
                 SaveProfileToSlot(slot);
                 SetProfileSlotState(slot);
             }
@@ -301,8 +311,9 @@ static APPSTATUS ConfirmSaveProfile(void) {
     return APP_RESUME;
 }
 
-static void ResetSearchParameters(void) {
-    /* Reset text in input windows and zero out current search parameters */
+static void ResetSearchParameters(void)
+{
+    /* Resets the text in the input windows and zero out the current search parameters */
     SetWindowTextA(HWND_tid_param, "TID");
     SetWindowTextA(HWND_sid_param, "SID");
     SetWindowTextA(HWND_aslr_param, "ASLR");
@@ -317,26 +328,25 @@ static void ResetSearchParameters(void) {
     SetWindowTextA(HWND_move_filter, "MOVE");
     SetWindowTextA(HWND_item_filter, "ITEM");
     SetWindowTextA(HWND_ability_filter, "ABILITY");
-
     for (u32 i = 0; i < STATS_MAX; i++) { SetWindowTextA(HWND_iv_filter[i], Stats[i]); }
-
     memset(&PROFILE_Current, 0, sizeof(PROFILE_Current));
 }
 
-static APPSTATUS ConfirmResetSearchParameters(void) {
+static APPSTATUS ConfirmResetSearchParameters(void)
+{
     /* Create YESNOCANCEL Message box and process user answer */
-    int answer = MessageBoxA(HWND_AppMain, "Reset every search parameters?", MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONWARNING);
+    int answer = MessageBoxA(HWND_AppMain, "Reset every search parameter?", MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONWARNING);
     if (answer == IDYES) { ResetSearchParameters(); }
     return APP_RESUME;
 }
 
-static APPSTATUS LoadResultsFileDetails(u8 path[PATH_REL_LENGTH_MAX]) {
+static APPSTATUS LoadResultsFileDetails(u8 path[PATH_REL_LENGTH_MAX])
+{
     /* Displays number of results in a file + profile info */
-    FILE* fp = fopen(path, "rb");
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
-
+    FILE_TRY_OPEN(fp, path, "rb");
     int results = GetResultsCount(fp, TRUE);
-    if (results == -1) { //file empty
+    if (results == -1) // empty file
+    {
         SetWindowTextA(HWND_DetailsList, "This results file is empty.");
         return APP_RESUME;
     }
@@ -368,12 +378,10 @@ static APPSTATUS LoadResultsFileDetails(u8 path[PATH_REL_LENGTH_MAX]) {
     return APP_RESUME;
 }
 
-static APPSTATUS LoadResultDetails(int idx) {
+static APPSTATUS LoadResultDetails(int idx)
+{
     /* Read a result from the currently loaded results file and display its details in the details window */
-
-    FILE* fp = fopen(SearchDataCurrent.path, "rb");
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; } //couldn't open file
-
+    FILE_TRY_OPEN(fp, SearchDataCurrent.path, "rb");
     fseek(fp, idx * sizeof(RESULTDATA) + sizeof(PROFILE), SEEK_SET); //go to index of selected result in the file
     fread(&ResultDataCurrent, sizeof(RESULTDATA), 1, fp); //read data and write to ResultDataCurrent
 
@@ -398,7 +406,8 @@ static APPSTATUS LoadResultDetails(int idx) {
     SetString(str_species, ResultDataCurrent.species, Pokelist, SPECIES_MAX, "DPBox", "0x%04X");
     SetString(str_item, ResultDataCurrent.item, Items, ITEMS_MAX, "None", "0x%04X");
     SetString(str_ability, ResultDataCurrent.ability, Abilities, ABILITIES_MAX, "None", "0x%02X");
-    for (u8 i = 0; i < OWN_MOVES_MAX; i++) {
+    for (u8 i = 0; i < OWN_MOVES_MAX; i++)
+    {
         SetString(str_moves[i], ResultDataCurrent.moves[i], Moves, MOVES_MAX, "None", "0x%04X");
     }
 
@@ -429,7 +438,8 @@ static APPSTATUS LoadResultDetails(int idx) {
     return APP_RESUME;
 }
 
-static void AddResultToList(RESULTDATA* result, int index) {
+static void AddResultToList(RESULTDATA* result, int index)
+{
     /* Format a result string and add it to the results list */
     u8 str_summary[2 * STRING_LENGTH_MAX] = { 0 };
     u8* str_egg = IsEgg(result->ivs) ? "E" : "-"; //E=Egg
@@ -440,60 +450,54 @@ static void AddResultToList(RESULTDATA* result, int index) {
     SendMessageA(HWND_ResultsList, LB_ADDSTRING, 0, (LPARAM)""); //notifies window that a string was added
 }
 
-static void ClearResults(void) {
+static void ClearResults(void)
+{
     /* Empty results list and details window */
     memset(&ResultsListStrings, 0, sizeof(ResultsListStrings));
     SendMessageA(HWND_ResultsList, LB_RESETCONTENT, 0, 0);
     SetWindowTextA(HWND_DetailsList, "");
 }
 
-static APPSTATUS LoadResultsFromFile(u8* filepath) {
+static APPSTATUS LoadResultsFromFile(u8* filepath)
+{
     /* Read data from a results file and add result strings to the list */
-
     ClearResults();
-
-    FILE* fp = fopen(filepath, "rb");
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; } //abort, couldn't open file
-
+    FILE_TRY_OPEN(fp, filepath, "rb");
     SearchDataCurrent.results = GetResultsCount(fp, TRUE);
     if (SearchDataCurrent.results == -1) { return APP_ERR_NORESULTS; } //no results
-
     memcpy(SearchDataCurrent.path, filepath, sizeof(SearchDataCurrent.path));
-
     GetProfileFromResultsFile(&PROFILE_Load, fp);
-
     /* Load result data into HWND_ResultsList */
-    for (u32 i = 0; i < SearchDataCurrent.results; i++) {
+    for (u32 i = 0; i < SearchDataCurrent.results; i++)
+    {
         RESULTDATA rd = { 0 };
         fread(&rd, sizeof(RESULTDATA), 1, fp);
         AddResultToList(&rd, i);
     }
-
     fclose(fp);
-    return APP_RESUME; //success
+    return APP_RESUME;
 }
 
-static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
+static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param)
+{
     /* Multi-threaded Battle Corruption bruteforcing search algorithm */
 
-    while (1) {
-
+    while (1)
+    {
         Sleep(20); //reduces CPU load
 
         u8 i = *(u8*)param; //retrieves search thread index
 
-        if (AuthorizeSearchThreads[i]) {
-
+        if (AuthorizeSearchThreads[i])
+        {
             u8 tmp_filename[PATH_REL_LENGTH_MAX] = { 0 };
             sprintf(tmp_filename, ".results/RESULTS_tmp_%u", i);
-            FILE* f_tmp = fopen(tmp_filename, "wb+");
-
-            if (f_tmp == NULL) { return APP_ERR_OPEN_FILE; }
+            FILE_TRY_OPEN(f_tmp, tmp_filename, "wb+");
 
             u32 seed = SearchDataCurrent.seed[i];
 
-            for (u32 frame = 0; frame < SearchDataCurrent.frames[i]; frame++) {
-
+            for (u32 frame = 0; frame < SearchDataCurrent.frames[i]; frame++)
+            {
                 while (PauseSearch) { Sleep(20); } //wait for ConfirmAbortSearch
                 if (AbortSearch) { break; }
 
@@ -505,10 +509,10 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 MethodJSeedToPID(seed, &wild);
                 SetBlocks(&wild);
 
-                memcpy(wild.data[wild.pos_a], &WildInit.data[0], BLOCK_SIZE * sizeof(wild.data[0][0]));
-                memcpy(wild.data[wild.pos_b], &WildInit.data[1], BLOCK_SIZE * sizeof(wild.data[0][0]));
-                memcpy(wild.data[wild.pos_c], &WildInit.data[2], BLOCK_SIZE * sizeof(wild.data[0][0]));
-                memcpy(wild.data[wild.pos_d], &WildInit.data[3], BLOCK_SIZE * sizeof(wild.data[0][0]));
+                memcpy(wild.data[wild.pos_a], &WildInit.data[0], BLOCK_SIZE);
+                memcpy(wild.data[wild.pos_b], &WildInit.data[1], BLOCK_SIZE);
+                memcpy(wild.data[wild.pos_c], &WildInit.data[2], BLOCK_SIZE);
+                memcpy(wild.data[wild.pos_d], &WildInit.data[3], BLOCK_SIZE);
                 memcpy(&wild.data[wild.pos_b][8], &wild.iv32, sizeof(wild.iv32));
                 wild.data[wild.pos_b][12] = GetGender(wild.pid, SearchDataCurrent.pOgWild->species) | SearchDataCurrent.alt_form; //gender | alt_form
                 wild.cond[2] = SearchDataCurrent.pOgWild->level;
@@ -519,7 +523,7 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 /* If the 1st move of Seven is invalid, the game will crash right before showing the battle menu (check with known encryption mask) */
                 if ((wild.data[0][12] ^ 0xEA8D) > (MOVES_MAX + 2)) { continue; }
 
-                /* If the ball doesn't have a valid ID the battle won't load (check with known encryption mask) */
+                /* If the ball of Seven is invalid, the battle won't load (check with known encryption mask) */
                 if (((wild.data[2][9] >> 8) ^ 0x70) > BALL_ID_MAX) { continue; }
 
                 EncryptCondition(&wild); //only encrypts up to cond[COND_SIZE_XS]
@@ -527,10 +531,10 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 /* Init Seven */
                 PKMN seven = { 0 }; //always ACBD (0x00020103)
                 /* Block order up to Block A */
-                memcpy(&seven, &SevenInit, sizeof(seven) - sizeof(seven.cond) - 3 * sizeof(seven.data[0]));
+                memcpy(&seven, &SevenInit, sizeof(seven) - sizeof(seven.cond) - (BLOCKS - 1) * BLOCK_SIZE);
                 /* Simulate the buffer overflow */
                 /* Block C, B, D and Condition data */
-                memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE + STACK_OFFSET + COND_SIZE_XS));
+                memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, sizeof(u16) * (BLOCKS * BLOCK_WORDS + STACK_OFFSET + COND_SIZE_XS));
 
                 EncryptBlocksChecksumZero(&seven);
                 SetChecksumFastSeven(&seven);
@@ -551,7 +555,8 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 wild.pid = seven.data[SEVEN_BLOCK_C][0] | (seven.data[SEVEN_BLOCK_C][1] << 16);
 
                 /* Nature filter */
-                if (PROFILE_Current.filter_nature != NATURE_FILTER_NONE) {
+                if (PROFILE_Current.filter_nature != NATURE_FILTER_NONE)
+                {
                     if (GetNatureId(wild.pid) != PROFILE_Current.filter_nature) { continue; }
                 }
 
@@ -573,7 +578,8 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 if (PROFILE_Current.filter_ability != 0 && rd.ability != PROFILE_Current.filter_ability) { continue; }
                 /* Move filter */
                 memcpy(rd.moves, &seven.data[1 + wild.pos_b][STACK_OFFSET], sizeof(rd.moves));
-                if (PROFILE_Current.filter_move != 0) {
+                if (PROFILE_Current.filter_move != 0)
+                {
                     /* If none of the 4 current ones match the user's move, continue search */
                     if ((rd.moves[0] != PROFILE_Current.filter_move) &&
                         (rd.moves[1] != PROFILE_Current.filter_move) &&
@@ -587,8 +593,12 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 rd.ivs = (seven.data[1 + wild.pos_b][STACK_OFFSET + 8]) | (seven.data[1 + wild.pos_b][STACK_OFFSET + 9] << 16);
                 u8 ivs[STATS_MAX] = { 0 };
                 DecomposeIVs(rd.ivs, ivs);
-                for (u32 i = 0; i < STATS_MAX; i++) {
-                    if (ivs[i] < PROFILE_Current.filter_ivs[i]) goto NEXT;
+                for (u32 i = 0; i < STATS_MAX; i++)
+                {
+                    if (ivs[i] < PROFILE_Current.filter_ivs[i])
+                    {
+                        goto NEXT;
+                    }
                 }
 
                 /* Remaining unfiltered data */
@@ -596,11 +606,11 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
                 rd.seed = seed;
                 rd.fate = seven.data[2 + wild.pos_b][0]; //form id and fateful encouter flag will be derived from it
                 rd.friendship = seven.data[1 + wild.pos_a][STACK_OFFSET + 6] & 0xff; //friendship/egg cycles
-                rd.level = seven.cond[BLOCK_SIZE + STACK_OFFSET + 2] & 0xff;
+                rd.level = seven.cond[BLOCK_WORDS + STACK_OFFSET + 2] & 0xff;
                 rd.pokerus = seven.data[2 + wild.pos_d][1] & 0xff; //[13] of block D -> [1] of 2nd next block with offset
                 /* HP and HP max determine catch rate */
-                u32 f_hp = seven.cond[BLOCK_SIZE + STACK_OFFSET + 3];
-                u32 f_hp_max = seven.cond[BLOCK_SIZE + STACK_OFFSET + 4];
+                u32 f_hp = seven.cond[BLOCK_WORDS + STACK_OFFSET + 3];
+                u32 f_hp_max = seven.cond[BLOCK_WORDS + STACK_OFFSET + 4];
                 rd.catch = (3 * f_hp_max / 2 < f_hp) ? 1 : 0;
 
                 fwrite(&rd, sizeof(rd), 1, f_tmp); //Write to temp results file
@@ -618,7 +628,8 @@ static DWORD WINAPI MotorSearchLoopThreadProc(LPVOID param) {
     }
 }
 
-static void SearchThreadsSplit(void) {
+static void SearchThreadsSplit(void)
+{
     /* Split frames and seeds evenly between the search threads */
     /* Frames */
     u32 frames_sum = 0;
@@ -652,30 +663,26 @@ static void SearchThreadsSplit(void) {
     }
 }
 
-static APPSTATUS GenerateResultsTextFile(void) {
+static APPSTATUS GenerateResultsTextFile(void)
+{
     /* Create a .txt version of a results file */
-    FILE* results_file = fopen(SearchDataCurrent.path, "rb");
-    if (results_file == NULL) { return APP_ERR_OPEN_FILE; }
-
+    FILE_TRY_OPEN(results_file, SearchDataCurrent.path, "rb");
     /* Replace .mtr by .txt */
     u8 filename_txt[PATH_REL_LENGTH_MAX] = { 0 };
     memcpy(filename_txt, SearchDataCurrent.path, sizeof(SearchDataCurrent.path));
-    for (u8 i = sizeof(filename_txt) - 1; i > 0; i--) {
-        if (filename_txt[i] == '.') {
+    for (s32 i = sizeof(filename_txt) - 1; i >= 0; i--)
+    {
+        if (filename_txt[i] == '.')
+        {
             memcpy(&filename_txt[i], ".txt", sizeof(".txt"));
             break;
         }
     }
-
-    FILE* fp = fopen(filename_txt, "w+");
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
-
+    FILE_TRY_OPEN(fp, filename_txt, "w+");
     PROFILE p = { 0 };
     GetProfileFromResultsFile(&p, results_file);
-
     APPSTATUS err_profile = IsValidProfile(&p);
     if (err_profile != PROFILE_OK) { return err_profile; }
-
     //todo: too many calls to fprintf?
     /* Header */
     fprintf(fp, "%s\nThis results file was generated automatically.\n\n[PROFILE]\n\n", MOTOR_VERSION);
@@ -706,8 +713,8 @@ static APPSTATUS GenerateResultsTextFile(void) {
     fprintf(fp, "\n");
 
     /* Results */
-    for (u32 i = 0; i < SearchDataCurrent.results; i++) {
-
+    for (u32 i = 0; i < SearchDataCurrent.results; i++)
+    {
         RESULTDATA rd = { 0 };
         fread(&rd, sizeof(RESULTDATA), 1, results_file);
 
@@ -729,7 +736,8 @@ static APPSTATUS GenerateResultsTextFile(void) {
         SetString(str_species, rd.species, Pokelist, SPECIES_MAX, "DPBox", "0x%04X");
         SetString(str_item, rd.item, Items, ITEMS_MAX, "None", "0x%04X");
         SetString(str_ability, rd.ability, Abilities, ABILITIES_MAX, "None", "0x%02X");
-        for (u8 i = 0; i < OWN_MOVES_MAX; i++) {
+        for (u8 i = 0; i < OWN_MOVES_MAX; i++)
+        {
             SetString(str_moves[i], rd.moves[i], Moves, MOVES_MAX, "None", "0x%04X");
         }
 
@@ -746,46 +754,48 @@ static APPSTATUS GenerateResultsTextFile(void) {
     return APP_RESUME;
 }
 
-static APPSTATUS CompileResultsToFile(void) {
+static APPSTATUS CompileResultsToFile(void)
+{
     /* Copy the contents of the temporary results file into a single one, delete the tmp files  */
-    FILE* results_file = fopen(SearchDataCurrent.path, "wb+"); //byte mode
-    if (results_file == NULL) { return APP_ERR_OPEN_FILE; }
-
+    FILE_TRY_OPEN(results_file, SearchDataCurrent.path, "wb+");
     fwrite(&PROFILE_Current, sizeof(PROFILE), 1, results_file); //header=profile
-
-    for (u8 i = 0; i < SearchThreadsMax; i++) {
-
+    for (u8 i = 0; i < SearchThreadsMax; i++)
+    {
         u8 tmp_filename[PATH_REL_LENGTH_MAX] = { 0 };
         sprintf(tmp_filename, ".results/RESULTS_tmp_%u", i);
-        FILE* tmp = fopen(tmp_filename, "rb");
-        if (tmp == NULL) { return APP_ERR_OPEN_FILE; }
-
+        FILE_TRY_OPEN(tmp, tmp_filename, "rb");
         int results = GetResultsCount(tmp, FALSE);
-        if (results != -1) { //file isn't empty
-            for (int i = 0; i < results; i++) {
+        if (results != -1) // if file isn't empty
+        {
+            for (int i = 0; i < results; i++)
+            {
                 RESULTDATA rd = { 0 };
                 fread(&rd, sizeof(RESULTDATA), 1, tmp);
                 fwrite(&rd, sizeof(RESULTDATA), 1, results_file);
             }
         }
-
         fclose(tmp);
         remove(tmp_filename); //delete tmp file
     }
     fclose(results_file);
-
     APPSTATUS err_txt = GenerateResultsTextFile();
-    if (err_txt != APP_RESUME) {
-        if (err_txt == APP_ERR_OPEN_FILE) {
+    if (err_txt != APP_RESUME)
+    {
+        if (err_txt == APP_ERR_OPEN_FILE)
+        {
             //TODO: something?
         }
-        else { ErrorMessageBox_BadProfile(err_txt); }
+        else
+        {
+            ErrorMessageBox_BadProfile(err_txt);
+        }
     }
     return APP_RESUME;
 }
 
-static void MotorInitPkmn(void) {
-    /* Initialize the global Wild and Seven */
+static void MotorInitPkmn(void)
+{
+    /* Initializes the global Wild and Seven */
     /* Wild */
     memset(&WildInit, 0, sizeof(WildInit)); //zero init
     /* Block A */
@@ -825,10 +835,11 @@ static void MotorInitPkmn(void) {
     static const u64 xora[4] = { 0x31b05271e97e0000, 0x67dbafc5e2cc8e42, 0xcac5fc5eef2cfc33, 0xcba77abc993debd6 };
     u64* dataa = (u64*)SevenInit.data;
     for (u64 i = 0; i < 4; i++) { dataa[i] ^= xora[i]; }
-    for (u64 i = 0; i < BLOCK_SIZE; i++) { SevenInit.checksum += SevenInit.data[SEVEN_BLOCK_A][i]; }
+    for (u64 i = 0; i < BLOCK_WORDS; i++) { SevenInit.checksum += SevenInit.data[SEVEN_BLOCK_A][i]; }
 }
 
-static APPSTATUS MotorSearch(void) {
+static APPSTATUS MotorSearch(void)
+{
     /* Initialize search parameters for the search threads */
     SearchDataCurrent.grouped_version = PROFILE_Current.version >> 1; //Group Diamond and Pearl together
     SearchDataCurrent.w_version = (PROFILE_Current.version + 10) << 8; //convert for use in pkmn data
@@ -838,28 +849,28 @@ static APPSTATUS MotorSearch(void) {
     if (PROFILE_Current.language == LANGUAGE_KO) { SearchDataCurrent.aslr += KOREAN_OFFSET; } //RAM thing
     SearchDataCurrent.alt_form = (PROFILE_Current.version == VERSION_PLATINUM && PROFILE_Current.wild == OGW_PT_GIRATINA_O) ? 8 : 0; //Giratina Origin
 
+    /* Launch the search */
     SearchThreadsSplit();
-
     MotorInitPkmn();
-
-    for (u8 i = 0; i < SearchThreadsMax; i++) { AuthorizeSearchThreads[i] = TRUE; } //launches the search
+    for (u8 i = 0; i < SearchThreadsMax; i++) { AuthorizeSearchThreads[i] = TRUE; }
 
     clock_t begin = clock(); //timer starts
 
-    while (1) {
-
+    while (1)
+    {
         Sleep(20); //reduces CPU load
-
-        if (PauseSearch) {
-            if (ConfirmAbortSearch() == APP_ABORT_SEARCH) {
+        if (PauseSearch)
+        {
+            if (ConfirmAbortSearch() == APP_ABORT_SEARCH)
+            {
                 AbortSearch = TRUE; //tells search threads to break
             }
             PauseSearch = FALSE;
         }
-
         u8 finished = 0;
         u64 progress = 0;
-        for (u8 i = 0; i < SearchThreadsMax; i++) {
+        for (u8 i = 0; i < SearchThreadsMax; i++)
+        {
             if (AuthorizeSearchThreads[i] == FALSE) { finished++; }
             progress += SearchDataCurrent.progress[i];
         }
@@ -878,15 +889,14 @@ static APPSTATUS MotorSearch(void) {
     return APP_RESUME;
 }
 
-static DWORD WINAPI MotorThreadProc(LPVOID param) {
+static DWORD WINAPI MotorThreadProc(LPVOID param)
+{
     /* Parent thread function for the search  */
-
-    while (1) {
-
+    while (1)
+    {
         Sleep(20); //reduces CPU load
-
-        if (AuthorizeSearch) {
-
+        if (AuthorizeSearch)
+        {
             ClearResults();
             ResultsMode = MODE_RESULTS;
 
@@ -917,7 +927,8 @@ static DWORD WINAPI MotorThreadProc(LPVOID param) {
             SendMessageA(HWND_ProgressBar, PBM_SETPOS, 0, 0); //progress bar empty
             SendMessageA(HWND_ProgressBar, PBM_SETBARCOLOR, 0, MOTOR_COLOR_TEAL); //back to teal
 
-            if (LoadResultsFromFile(SearchDataCurrent.path) != APP_RESUME) {
+            if (LoadResultsFromFile(SearchDataCurrent.path) != APP_RESUME)
+            {
                 MessageBoxA(HWND_AppMain, "Couln't load results file.", MBL_ERROR, MB_OK | MB_ICONERROR);
             }
 
@@ -927,68 +938,65 @@ static DWORD WINAPI MotorThreadProc(LPVOID param) {
             InvalidateRect(HWND_search_button, NULL, 0); //tells search button to draw itself
         }
     }
-
     return 0;
 }
 
-static APPSTATUS ConfirmSearchLaunch(void) {
+static APPSTATUS ConfirmSearchLaunch(void)
+{
     /* Creates a dialog box which recaps the search parameters and asks for confirmation to launch the search */
     int err = GetProfileFromWindows();
-    if (err != PROFILE_OK) {
+    if (err != PROFILE_OK)
+    {
         ErrorMessageBox_BadProfile(err);
         return APP_RESUME;
     }
-
     u8 str_recap[512];
     GetProfileRecapString(&PROFILE_Current, str_recap);
     strcat(str_recap, "\n\nLaunch a search with these parameters?");
-
     int answer = MessageBoxA(HWND_AppMain, str_recap, MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONQUESTION);
-    if (answer == IDYES) {
+    if (answer == IDYES)
+    {
         AuthorizeSearch = TRUE;
     }
     return APP_RESUME;
 }
 
-static APPSTATUS GetResultsPath(u8 index, u8 path[PATH_REL_LENGTH_MAX]) {
-    /* Get the relative path of the results file pointed to by the index of the selected item */
+static APPSTATUS GetResultsPath(u8 index, u8 path[PATH_REL_LENGTH_MAX])
+{
+    /* Gets the relative path of the results file pointed to by the index of the selected item */
     WIN32_FIND_DATAA wfd = { 0 };
     int i = 0;
     HANDLE file = FindFirstFileA(ResultsFileFilter, &wfd);
-
-    if (file == INVALID_HANDLE_VALUE) { return APP_ERR_OPEN_FILE; } //not really an error, just no file in the directory
-
+    if (file == INVALID_HANDLE_VALUE) { return APP_ERR_OPEN_FILE; } // no file in the directory
     memcpy(path, wfd.cFileName, PATH_REL_LENGTH_MAX);
-
-    while (FindNextFileA(file, &wfd) && i != index) {
+    while (FindNextFileA(file, &wfd) && (i != index))
+    {
         i++;
         memcpy(path, wfd.cFileName, PATH_REL_LENGTH_MAX);
     }
-
     u8 tmp[PATH_REL_LENGTH_MAX] = { 0 };
     sprintf(tmp, ".results/%s", path); //add ResultsDirectory 
     memcpy(path, tmp, sizeof(tmp));
-
     FindClose(file);
     return APP_RESUME;
 }
 
-static APPSTATUS ListResultsFiles(void) {
+static APPSTATUS ListResultsFiles(void)
+{
     /* Lists the files in a directory and adds them to HWND_ResultsList */
     ClearResults();
-
     WIN32_FIND_DATAA wfd = { 0 };
     int i = 0;
     HANDLE file = FindFirstFileA(ResultsFileFilter, &wfd);
-
     if (file == INVALID_HANDLE_VALUE) { return APP_ERR_OPEN_FILE; } //not really an error, just no file in the directory
-
     do {
         /* Gets rid of RESULTS_ prefix and .mtr file extension */
         u8 tmp[PATH_REL_LENGTH_MAX] = { 0 };
         memcpy(tmp, wfd.cFileName + sizeof("RESULTS_") - 1, sizeof(tmp));
-        for (u8 i = sizeof(tmp) - 1; i > 0; i--) {
-            if (tmp[i] == '.') {
+        for (u8 i = sizeof(tmp) - 1; i > 0; i--)
+        {
+            if (tmp[i] == '.')
+            {
                 memcpy(&tmp[i], "\0\0\0", sizeof("\0\0\0")); //truncate string to get rid of .mtr
                 break;
             }
@@ -998,19 +1006,18 @@ static APPSTATUS ListResultsFiles(void) {
         memset(wfd.cFileName, 0, sizeof(wfd.cFileName)); //clear file name to avoid leftover data of previous one
         i++;
     } while (FindNextFileA(file, &wfd));
-
     FindClose(file);
     return APP_RESUME;
 }
 
 /* Window procedures */
 
-static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
     /* Handles messages sent to HWND_search_parameters */
     //DLOG("uMsg = 0x%04X, wParam = 0x%08X, lParam = 0x%08X\n", uMsg, wParam, lParam);
     switch (uMsg)
     {
-
     case WM_MEASUREITEM:
     {
         /* Set the height of each item */
@@ -1018,13 +1025,11 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         lpmis->itemHeight = LIST_ITEM_HEIGHT;
         return TRUE;
     }
-
     case WM_SETCURSOR:
     {
-        if (LOWORD(lParam) == HTCLIENT) { //cursor is in the client area of a window
-
+        if (LOWORD(lParam) == HTCLIENT) // cursor is in the client area of a window
+        {
             HWND hwnd = (HWND)wParam;
-
             //todo: clean up, select by class: edit control, list, button, other
             //or straight up BEAM, HAND, ARROW integrated into the ID of the control
             switch (GetDlgCtrlID(hwnd))
@@ -1065,7 +1070,6 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         return TRUE;
     }
-
     case WM_COMMAND:
     {
         switch (HIWORD(wParam)) //notification code
@@ -1078,10 +1082,8 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         case EN_KILLFOCUS:
         {
             if (AuthorizeSearch) { break; } //search is running, don't process commands below
-
             u16 id = LOWORD(wParam); //control id
             HWND hwnd = (HWND)lParam;
-
             switch (id)
             {
             case ID_TID_INPUT:
@@ -1125,13 +1127,11 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         case BN_CLICKED:
         {
-
             if (wParam & ID_PROFILE_SLOT_BUTTON) {
                 if (AuthorizeSearch) { return 0; } //search is running, don't process commands below
                 SetProfileSlotState(wParam - ID_PROFILE_SLOT_BUTTON);
                 return 0;
             }
-
             switch (wParam) //control id
             {
             case ID_SEARCH_BUTTON:
@@ -1176,14 +1176,12 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         }
         return 0;
     }
-
     case WM_CTLCOLOREDIT:
     {
         /* Input windows esketit */
         HWND hwnd = (HWND)lParam;
         HDC hdc = (HDC)wParam;
         RECT rct = { 0 };
-
         switch (ID_GET_TYPE(GetDlgCtrlID(hwnd)))
         {
         case ID_TYPE_FILTER:
@@ -1199,10 +1197,8 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
             break;
         }
         }
-
         SelectObject(hdc, HBRUSH_Dark);
         Edit_GetRect(hwnd, &rct);
-
         if (rct.right == IV_INPUT_WIDTH) //IV inputs
         {
             RoundRect(hdc, -1, -1, IV_INPUT_WIDTH + 1, TEXT_INPUT_HEIGHT + 1, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S);
@@ -1218,10 +1214,8 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         SelectObject(hdc, myFont);
         SetBkColor(hdc, MOTOR_COLOR_DARK);
         //SetBkColor(hdc, MOTOR_COLOR_DEBUG);
-
         return (LRESULT)HBRUSH_Dark; //need to return handle to brush for use
     }
-
     case WM_PAINT:
     {
         /* HWND_search_parameters esketit */
@@ -1233,24 +1227,23 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         EndPaint(HWND_search_parameters, &ps);
         return 0;
     }
-
     case WM_DRAWITEM:
     {
-
         LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
-
-        if (wParam & ID_PROFILE_SLOT_BUTTON) {
+        if (wParam & ID_PROFILE_SLOT_BUTTON)
+        {
             u8 label[3] = { 0 };
-            sprintf(label, "P%u", wParam - ID_PROFILE_SLOT_BUTTON + 1);
+            sprintf(label, "P%u", (u32)(wParam - ID_PROFILE_SLOT_BUTTON + 1));
             int color = (ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & PSS_ACTIVE) ? MOTOR_COLOR_PUMP : MOTOR_COLOR_TEAL;
             /* "invert" button aspect */
-            if (!(ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & PSS_TAKEN)) {
+            if (!(ProfileSlotState[wParam - ID_PROFILE_SLOT_BUTTON] & PSS_TAKEN))
+            {
                 lpdis->itemState = ODS_INVERT;
             }
             return DrawButton(lpdis, color, label, sizeof(label) - 1);
         }
-
-        switch (wParam) {
+        switch (wParam)
+        {
         case ID_LOAD_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_TEAL, "LOAD", sizeof("LOAD") - 1);
         case ID_SAVE_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_TEAL, "SAVE", sizeof("SAVE") - 1);
         case ID_RESET_BUTTON: return DrawButton(lpdis, MOTOR_COLOR_PUMP, "RESET", sizeof("RESET") - 1);
@@ -1301,14 +1294,15 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
     return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 }
 
-static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
     /* Handles messages sent to HWND_Results */
     switch (uMsg)
     {
-
     case WM_SETCURSOR:
     {
-        if (LOWORD(lParam) == HTCLIENT) { //cursor is in the client area of a window
+        if (LOWORD(lParam) == HTCLIENT)  // cursor is in the client area of a window
+        {
             HWND hwnd = (HWND)wParam;
             int menu = (int)GetMenu(hwnd);
             switch (menu)
@@ -1326,25 +1320,24 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         }
         return TRUE;
     }
-
     case WM_COMMAND:
     {
         if (AuthorizeSearch) { return 0; } //don't process commands when a search is running
-
         u16 notification = HIWORD(wParam);
-
         switch (notification)
         {
         case LBN_SELCHANGE:
         {
             int idx = SendMessageA(HWND_ResultsList, LB_GETCURSEL, 0, 0);
             if (idx == LB_ERR) { return 0; } //no item selected
-            if (ResultsMode == MODE_FILES) {
+            if (ResultsMode == MODE_FILES)
+            {
                 u8 path[PATH_REL_LENGTH_MAX] = { 0 };
                 GetResultsPath(idx, path);
                 LoadResultsFileDetails(path);
             }
-            else if (ResultsMode == MODE_RESULTS) {
+            else if (ResultsMode == MODE_RESULTS)
+            {
                 LoadResultDetails(idx);
             }
             break;
@@ -1357,7 +1350,8 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
             u8 path[PATH_REL_LENGTH_MAX] = { 0 };
             GetResultsPath(idx, path);
             ResultsMode = MODE_RESULTS;
-            if (LoadResultsFromFile(path) != APP_RESUME) {
+            if (LoadResultsFromFile(path) != APP_RESUME)
+            {
                 MessageBoxA(HWND_AppMain, "Couln't load results file.", MBL_ERROR, MB_OK | MB_ICONERROR);
             }
             break;
@@ -1400,7 +1394,6 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         }
         return 0;
     }
-
     case WM_MEASUREITEM:
     {
         /* Set the height of each item */
@@ -1408,43 +1401,34 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         lpmis->itemHeight = LIST_ITEM_HEIGHT;
         return TRUE;
     }
-
     case WM_CTLCOLORLISTBOX:
     {
-        return (LRESULT)HBRUSH_Dark; //need to return handle to a brush
+        return (LRESULT)HBRUSH_Dark;
     }
-
     case WM_CTLCOLORSTATIC:
     {
         HDC hdc = (HDC)wParam;
         SetBkColor(hdc, MOTOR_COLOR_DARK);
         SetTextColor(hdc, MOTOR_COLOR_TEAL_H);
         SelectObject(hdc, myFont);
-        return (LRESULT)HBRUSH_Dark; //need to return handle to a brush
+        return (LRESULT)HBRUSH_Dark;
     }
-
     case WM_CTLCOLOREDIT:
     {
         /* Input windows esketit */
         HWND hwnd = (HWND)lParam;
         HDC hdc = (HDC)wParam;
         RECT rct = { 0 };
-
-        //HWND_YearFilter only
-
+        // HWND_YearFilter only
         SelectObject(hdc, HPEN_Pump_h);
         SetTextColor(hdc, MOTOR_COLOR_PUMP_H);
-
         SelectObject(hdc, HBRUSH_Dark);
         Edit_GetRect(hwnd, &rct);
-
-        RoundRect(hdc, -1, -1, TEXT_INPUT_WIDTH + 1, TEXT_INPUT_HEIGHT + 1, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S); //edit
-
+        RoundRect(hdc, -1, -1, TEXT_INPUT_WIDTH + 1, TEXT_INPUT_HEIGHT + 1, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S);
         SelectObject(hdc, myFont);
         SetBkColor(hdc, MOTOR_COLOR_DARK);
-        return (LRESULT)HBRUSH_Dark; //need to return handle to brush for use
+        return (LRESULT)HBRUSH_Dark;
     }
-
     case WM_DRAWITEM:
     {
         LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
@@ -1458,7 +1442,6 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         }
         return TRUE;
     }
-
     case WM_PAINT:
     {
         { //HWND_Results esketit
@@ -1486,24 +1469,11 @@ static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
     return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 }
 
-static LRESULT WINAPI AppMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static LRESULT WINAPI AppMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
     /* Handles messages sent to HWND_AppMain */
     switch (uMsg)
     {
-
-        //TODO: uncomment in final build?
-        //only when a search is running
-        //case WM_CLOSE:
-        //{
-        //    if (AuthorizeSearch) {
-        //        PauseSearch = TRUE;
-        //        //doesn't work, need to wait for ConfirmAbortSearch
-        //        if (!AbortSearch) { return 0; }
-        //    }
-        //    DestroyWindow(HWND_AppMain);
-        //    return 0;
-        //}
-
     case WM_ACTIVATE:
     {
         switch (LOWORD(wParam))
@@ -1523,15 +1493,12 @@ static LRESULT WINAPI AppMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         }
         return 0;
     }
-
     case WM_DESTROY:
     {
         PostQuitMessage(0);
         break;
     }
-
     }
-
     return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 }
 
@@ -1594,10 +1561,23 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     if (MainSearchThread == NULL) { return GetLastError(); }
 
     /* Search threads */
-    for (u8 i = 0; i < SearchThreadsMax; i++) {
+    for (u8 i = 0; i < SearchThreadsMax; i++)
+    {
         SearchThreadIndex[i] = i;
         SearchThread[i] = CreateThread(NULL, 0, &MotorSearchLoopThreadProc, &SearchThreadIndex[i], 0, &SearchThreadID[i]);
         if (SearchThread[i] == NULL) { return GetLastError(); }
+    }
+
+    /* Precomputed XOR masks for block data encryption */
+    XorMasks = (u16*)malloc(65536 * BLOCKS * BLOCK_WORDS * sizeof(u16));
+    if (XorMasks == NULL) { return -1; }
+    for (u32 i = 0; i < 65536; i++)
+    {
+        u32 s = i;
+        for (u32 k = 0; k < BLOCKS * BLOCK_WORDS; k++)
+        {
+            XorMasks[i * BLOCKS * BLOCK_WORDS + k] = RngNext(&s) >> 16;
+        }
     }
 
     MSG msg;
