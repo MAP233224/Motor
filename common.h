@@ -1,5 +1,5 @@
-//common.h
-//Used by every file
+// common.h
+// Used by every file
 
 #pragma once
 
@@ -16,8 +16,6 @@
 #include <windowsx.h>
 #include <commctrl.h>
 
-#include <intrin.h>
-
 typedef int8_t s8;
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -26,49 +24,56 @@ typedef int32_t s32;
 typedef uint64_t u64;
 typedef int APPSTATUS;
 
-#define MOTOR_VERSION               ("Motor v2.2.5")
-#define SEARCH_THREADS_MAX          (8)
-#define PROFILE_SLOTS_MAX           (8)
-#define STRING_LENGTH_MAX           (16)
-#define PROFILE_CODE_OFFSET         (100)
-#define U16_VALUE_MAX               (0xFFFF)
-#define U16_DIGITS_DEC_MAX          (5)
-#define U32_VALUE_MAX               (0xFFFFFFFF)
-#define U32_DIGITS_HEX_MAX          (8)
-#define U32_DIGITS_DEC_MAX          (10)
-#define U64_VALUE_MAX               (0xFFFFFFFFFFFFFFFF)
-#define U64_DIGITS_HEX_MAX          (16)
-#define ASLR_VALUE_MAX              (11)
-#define ASLR_DIGITS_DEC_MAX         (2)
-#define MAC_VALUE_MAX               (0xFFFFFFFFFFFF)
-#define MAC_DIGITS_HEX_MAX          (12)
-#define YEAR_DIGITS_DEC_MAX         (4)
-#define YEAR_VALUE_MIN              (2000)
-#define YEAR_VALUE_MAX              (2099) //2059 for N3DS
-#define FILTER_DIGITS_MAX           (3)
-#define PATH_ABS_LENGTH_MAX         (256)
-#define PATH_REL_LENGTH_MAX         (4 * STRING_LENGTH_MAX)
-#define LANGUAGES_MAX               (9)  // Number of languages: _0, Japanese, English, French, Italian, German, _6, Spanish and Korean
-#define LANGUAGES_ACT_MAX           (7)  // Actual number of languages: Japanese, English, French, Italian, German, Spanish and Korean
-#define VERSIONS_MAX                (3)  // Number of versions: Diamond, Pearl and Platinum
-#define ASLR_GROUPS_MAX             (12) // Number of ASLR groups (mirrors)
-#define OG_WILDS_MAX                (10) // OG_WILDS_MAX
-#define STATS_MAX                   (6)  // Number of stats: Hit Points, Attack, Defense, Speed, Special Attack and Special Defense
-#define IV_VALUE_MAX                (31)
-#define IV_DIGITS_MAX               (2)
-#define NATURES_MAX                 (25) // Number of natures
-#define NATURES_FILTER_MAX          (NATURES_MAX + 1) // Number of natures + 1 (the "none" filter)
-#define NATURE_FILTER_NONE          (0xFF) //when you don't want to filter for a Nature, this should be the value in the PROFILE struct
+#define MOTOR_VERSION       ("Motor v2.2.6")
+#define SEARCH_THREADS_MAX  (8)
+#define PROFILE_SLOTS_MAX   (8)
+#define STRING_LENGTH_MAX   (16)
+#define PROFILE_CODE_OFFSET (100)
+#define U16_VALUE_MAX       (0xFFFF)
+#define U16_DIGITS_DEC_MAX  (5)
+#define U32_VALUE_MAX       (0xFFFFFFFF)
+#define U32_DIGITS_HEX_MAX  (8)
+#define U32_DIGITS_DEC_MAX  (10)
+#define U64_VALUE_MAX       (0xFFFFFFFFFFFFFFFF)
+#define U64_DIGITS_HEX_MAX  (16)
+#define ASLR_VALUE_MAX      (11)
+#define ASLR_DIGITS_DEC_MAX (2)
+#define MAC_VALUE_MAX       (0xFFFFFFFFFFFF)
+#define MAC_DIGITS_HEX_MAX  (12)
+#define YEAR_DIGITS_DEC_MAX (4)
+#define YEAR_VALUE_MIN      (2000)
+#define YEAR_VALUE_MAX      (2099) // 2059 for the Nintendo 3DS family of consoles
+#define FILTER_DIGITS_MAX   (3)
+#define PATH_ABS_LENGTH_MAX (256)
+#define PATH_REL_LENGTH_MAX (4 * STRING_LENGTH_MAX)
+#define LANGUAGES_MAX       (9)  // Number of languages: _0, Japanese, English, French, Italian, German, _6, Spanish and Korean
+#define LANGUAGES_ACT_MAX   (7)  // Actual number of languages: Japanese, English, French, Italian, German, Spanish and Korean
+#define VERSIONS_MAX        (3)  // Number of versions: Diamond, Pearl and Platinum
+#define ASLR_GROUPS_MAX     (12) // Number of ASLR groups (mirrors)
+#define OG_WILDS_MAX        (10) // Maximum number of static encounters per version
+#define STATS_MAX           (6)  // Number of stats: Hit Points, Attack, Defense, Speed, Special Attack and Special Defense
+#define IV_VALUE_MAX        (31)
+#define IV_DIGITS_MAX       (2)
+#define NATURES_MAX         (25) // Number of natures
+#define NATURES_FILTER_MAX  (NATURES_MAX + 1) // Number of natures + 1 (the "none" filter)
+#define NATURE_FILTER_NONE  (0xFF) //when you don't want to filter for a Nature, this should be the value in the PROFILE struct
 
 /* Profile slots states */
-#define PSS_EMPTY                    (0x00)
-#define PSS_TAKEN                    (0x01)
-#define PSS_ACTIVE                   (0x10)
+#define PSS_EMPTY  (0x00)
+#define PSS_TAKEN  (0x01)
+#define PSS_ACTIVE (0x10)
 
 #define DLOG(...) { char s[256]; sprintf(s, __VA_ARGS__); OutputDebugStringA(s); }
 
-enum {
-    /* Application status */
+#define ENABLE_SSE (1) // 1 if you want to enable SSE intrinsics, 0 otherwise
+#if ENABLE_SSE
+#include <intrin.h>
+typedef __m128i u128;
+#endif
+
+enum
+{
+    /* Application status codes */
     APP_EXIT,
     APP_RESUME,
     APP_ERR_REGISTER_CLASS,
@@ -100,13 +105,25 @@ enum {
     PROFILE_BAD_FILTER_IVS,
 };
 
-/* Indices of each language */
-enum { LANGUAGE__0, LANGUAGE_JP, LANGUAGE_EN, LANGUAGE_FR, LANGUAGE_IT, LANGUAGE_GE, LANGUAGE__6, LANGUAGE_SP, LANGUAGE_KO };
+enum
+{
+    /* Indices of each language */
+    LANGUAGE__0, // unused 0
+    LANGUAGE_JP,
+    LANGUAGE_EN,
+    LANGUAGE_FR,
+    LANGUAGE_IT,
+    LANGUAGE_GE,
+    LANGUAGE__6, // unused 6
+    LANGUAGE_SP,
+    LANGUAGE_KO
+};
 
 /* Indices of each stat */
 enum { HP, AT, DF, SP, SA, SD };
 
-const u8 PROFILE_ErrorCodes[][STRING_LENGTH_MAX] = {
+const u8 PROFILE_ErrorCodes[][STRING_LENGTH_MAX] =
+{
     "OK",
     "FRAMES",
     "SEED",
@@ -125,8 +142,8 @@ const u8 PROFILE_ErrorCodes[][STRING_LENGTH_MAX] = {
     "IVS_FILTER",
 };
 
-//RESULTDATA should be in motor.h but it needs to be used by io.h
-typedef struct {
+typedef struct RESULTDATA
+{
     u32 seed;
     u32 pid;
     u32 ivs;
@@ -143,7 +160,8 @@ typedef struct {
     //Size: 31 -> 32 bytes (aligned)
 } RESULTDATA;
 
-typedef struct {
+typedef struct PROFILE
+{
     u32 frames; //number of frames to search
     u32 seed; //starting search seed
     u16 filter_species; //index of species to filter
@@ -169,73 +187,89 @@ u8 ProfileSlotState[PROFILE_SLOTS_MAX] = { 0 }; //move to gui.h?
 
 /* Functions */
 
-static void SetString(u8* dest, u16 val, const u8 strarr[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* format) {
-    /* Set dest string accoring to val */
-    //If val is greater than the length of array, format it and copy the new buffer string into dest string
-    if (val >= max) {
+static void SetString(u8* dst, u16 val, const u8 strarr[][STRING_LENGTH_MAX], u16 max, u8* zero, u8* format)
+{
+    /* Set dst string accoring to val */
+    // If val is greater than the length of array, format it and copy the new buffer string into dst string
+    if (val >= max)
+    {
         u8 buffer[8] = { 0 };
         sprintf(buffer, format, val);
-        strcpy(dest, buffer);
+        strcpy(dst, buffer);
         return;
     }
-    //Else if val is 0, copy the zero string into dest string
-    if (val == 0) {
-        strcpy(dest, zero);
+    // Else if val is 0, copy the zero string into dst string
+    if (val == 0)
+    {
+        strcpy(dst, zero);
         return;
     }
-    //Else, get the string at the index of val in array and copy it into dest string
-    strcpy(dest, strarr[val]);
+    // Else, get the string at the index of val in array and copy it into dst string
+    strcpy(dst, strarr[val]);
     return;
 }
 
-static BOOL IsValidIntString_hex(u8* b, u32 size) {
+static BOOL IsValidIntString_hex(u8* b, u32 size)
+{
     /* Valid characters are 0~9 and A~F */
-    for (u8 i = 0; i < size; i++) {
+    for (u8 i = 0; i < size; i++)
+    {
         if (b[i] < '0' || b[i] > 'F') { return FALSE; }
         if (b[i] > '9' && b[i] < 'A') { return FALSE; }
     }
     return TRUE;
 }
 
-static BOOL IsValidIntString_dec(u8* b, u8 size) {
+static BOOL IsValidIntString_dec(u8* b, u8 size)
+{
     /* Valid characters are 0~9 */
-    for (u8 i = 0; i < size; i++) {
+    for (u8 i = 0; i < size; i++)
+    {
         if (b[i] < '0' || b[i] > '9') { return FALSE; }
     }
     return TRUE;
 }
 
-static inline u32 AsciiToInt_dec16(const u8* b) {
+static inline u32 AsciiToInt_dec16(const u8* b)
+{
     /* Converts a buffer of chars to a u32 */
     return strtoul(b, NULL, 10);
 }
 
-static inline u64 AsciiToInt_dec32(const u8* b) {
+static inline u64 AsciiToInt_dec32(const u8* b)
+{
     /* Converts a buffer of chars to a u64 */
     return strtoull(b, NULL, 10);
 }
 
-static inline u32 AsciiToInt_hex32(const u8* b) {
+static inline u32 AsciiToInt_hex32(const u8* b)
+{
     /* Converts a buffer of chars in hex format to a u32 */
     return strtoul(b, NULL, 16);
 }
 
-static inline u64 AsciiToInt_hex64(const u8* b) {
+static inline u64 AsciiToInt_hex64(const u8* b)
+{
     /* Converts a buffer of chars in hex format to a u64 */
     return strtoull(b, NULL, 16);
 }
 
-static u32 BCD(u32 val) {
+static u32 BCD(u32 val)
+{
     /* Binary Coded Decimal for values under 100 */
-    //better optimized when u32 instead of u8
+    // note: better optimized by the compiler when u32 instead of u8
     return val + 6 * (val / 10);
 }
 
-static void ZeroLeftPadTextInputInt(u8* b, u8 size) {
-    /* Insert '0' into the buffer from the left until there's no null terminator remaining */
-    for (u8 i = 0; i < size; i++) {
-        if (b[i] == 0) {
-            for (u8 j = i; j > 0; j--) {
+static void ZeroLeftPadTextInputInt(u8* b, u8 size)
+{
+    /* Inserts '0' into the buffer from the left until there's no null terminator remaining */
+    for (u8 i = 0; i < size; i++)
+    {
+        if (b[i] == 0)
+        {
+            for (u8 j = i; j > 0; j--)
+            {
                 b[j] = b[j - 1];
             }
             b[0] = '0';
@@ -243,35 +277,42 @@ static void ZeroLeftPadTextInputInt(u8* b, u8 size) {
     }
 }
 
-static BOOL IsEmptyProfile(PROFILE* p) {
-    /* Check if a PROFILE struct is full of 00 */
+static BOOL IsEmptyProfile(PROFILE* p)
+{
+    /* Checks if a PROFILE struct contains only zeroes */
     u8* d = (u8*)p;
-    for (u32 i = 0; i < sizeof(PROFILE); i++) {
-        if (d[i]) { return FALSE; } //will return as soon as it finds a non-zero value
+    for (u32 i = 0; i < sizeof(PROFILE); i++)
+    {
+        if (d[i]) { return FALSE; }
     }
     return TRUE;
 }
 
-static int GetIndexOfString(u8 str[STRING_LENGTH_MAX], const u8 arr[][STRING_LENGTH_MAX], u16 length) {
-    /* Look for a specific string in an array of strings */
-    for (int i = 0; i < length; i++) { //for each string
+static int GetIndexOfString(u8 str[STRING_LENGTH_MAX], const u8 arr[][STRING_LENGTH_MAX], u16 length)
+{
+    /* Looks for a specific string in an array of strings */
+    for (int i = 0; i < length; i++) // for each string
+    {
         int hits = 0;
-        for (int j = 0; j < STRING_LENGTH_MAX; j++) { //for each char
+        for (int j = 0; j < STRING_LENGTH_MAX; j++) // for each char
+        {
             if (str[j] == arr[i][j]) { hits++; }
         }
-        if (hits == STRING_LENGTH_MAX) { return i; } //found, return index
+        if (hits == STRING_LENGTH_MAX) { return i; } // found, return index
     }
-    return -1; //not found
+    return -1; // not found
 }
 
-static u8 GetLanguageActualIndex(u8 idx) {
-    /* Convert index from LanguagesActual to Languages */
+static u8 GetLanguageActualIndex(u8 idx)
+{
+    /* Converts index from LanguagesActual to Languages */
     if (idx < LANGUAGE__6) { return idx - 1; }
     return idx - 2;
 }
 
-static u8 GetLanguageFullIndex(u8 idx) {
-    /* Convert index from Languages to LanguagesActual */
+static u8 GetLanguageFullIndex(u8 idx)
+{
+    /* Converts index from Languages to LanguagesActual */
     if (idx < LANGUAGE_GE) { return idx + 1; }
     return idx + 2;
 }
