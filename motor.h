@@ -5,27 +5,28 @@
 #include "aslr.h"
 
 /* Constants */
-#define BLOCKS              (4)     // Number of blocks: A, B, C and D
-#define BLOCK_PERMS         (24)    // Factorial of the number of blocks
-#define BLOCK_SIZE          (16)    // Number of 16-bit words in 128 bytes, the size of PKMN Block data
-#define COND_SIZE           (50)    // Number of 16-bit words in 100 bytes, the size of PKMN Condition data
-#define COND_SIZE_S         (25)    // Utility: stop earlier to avoid needless encryption
-#define COND_SIZE_XS        (5)     // Utility: stop even earlier to avoid needless encryption
-#define ABILITIES_MAX       (124)   // Number of abilities
-#define SPECIES_MAX         (494)   // Number of species
-#define MOVES_MAX           (468)   // Number of moves
-#define ITEMS_MAX           (468)   // Number of items (465 in Diamond and Pearl but it doesn't make a difference)
-#define OWN_MOVES_MAX       (4)     // Maximum number of moves a PKMN can know at the same time
-#define STACK_OFFSET        (4)     // Misalignment between wild and seven
-#define KOREAN_OFFSET       (0x44)  // Korean RAM quirk
-#define HEAPID_MAX          (0x5C)  // Hardcoded game constant. Apparently 0x5B would work too?
-#define BALL_ID_MAX         (20)    // Hardcoded? game constant
-#define SEED_MAX_B          (24)    // Hours in a day
-#define SEED_OFF_C          (3600)  // Delay, 1 minute of leeway
-#define MIN_DELAY_DPPT      (700)   // Minimum delay you can get in DPPT from a Save&Quit
-#define MAX_DELAY_DPPT      (MIN_DELAY_DPPT + SEED_OFF_C)
-#define TYPES_MAX           (18)    // Total number of types, including ???
-#define NAME_CHARS_MAX      (11)
+#define BLOCKS         (4)     // Number of blocks: A, B, C and D
+#define BLOCK_PERMS    (24)    // Factorial of the number of blocks
+#define BLOCK_WORDS    (16)    // Number of 16-bit words in 128 bytes, the size of PKMN Block data
+#define BLOCK_SIZE     (sizeof(u16) * BLOCK_WORDS) // Size of a block, in bytes
+#define COND_SIZE      (50)    // Number of 16-bit words in 100 bytes, the size of PKMN Condition data
+#define COND_SIZE_S    (25)    // Utility: stop earlier to avoid needless encryption
+#define COND_SIZE_XS   (5)     // Utility: stop even earlier to avoid needless encryption
+#define ABILITIES_MAX  (124)   // Number of abilities
+#define SPECIES_MAX    (494)   // Number of species
+#define MOVES_MAX      (468)   // Number of moves
+#define ITEMS_MAX      (468)   // Number of items (465 in Diamond and Pearl but it doesn't make a difference)
+#define OWN_MOVES_MAX  (4)     // Maximum number of moves a PKMN can know at the same time
+#define STACK_OFFSET   (4)     // Misalignment between wild and seven
+#define KOREAN_OFFSET  (0x44)  // Korean RAM quirk
+#define HEAPID_MAX     (0x5C)  // Hardcoded game constant. Apparently 0x5B would work too?
+#define BALL_ID_MAX    (20)    // Hardcoded? game constant
+#define SEED_MAX_B     (24)    // Hours in a day
+#define SEED_OFF_C     (3600)  // Delay, 1 minute of leeway
+#define MIN_DELAY_DPPT (700)   // Minimum delay you can get in DPPT from a Save&Quit
+#define MAX_DELAY_DPPT (MIN_DELAY_DPPT + SEED_OFF_C)
+#define TYPES_MAX      (18)    // Total number of types, including ???
+#define NAME_CHARS_MAX (11)    // Number of characters in a pkmn's name, including the terminator
 
 // Seven's PID is static (0x00005544), so its block order is always ACBD
 #define SEVEN_BLOCK_A (0)
@@ -111,17 +112,49 @@
 #define GFX_REGIGIGAS_PT    {0x2022, 0x2226, 0x00A0, 0x0080, 0x5650, 0x0000, 0x0005, 0x0B7A}
 #define GFX_HEATRAN_PT      {0x0004, 0x0008, 0x007C, 0x0101, 0x696B, 0x676E, 0x7405, 0x0061}
 
-/* Indices of each version */
-enum { VERSION_DIAMOND, VERSION_PEARL, VERSION_PLATINUM };
+enum
+{
+    /* Indices of each version */
+    VERSION_DIAMOND,
+    VERSION_PEARL,
+    VERSION_PLATINUM
+};
 
-/* OGWILD wilds, Diamond */
-enum { OGW_DP_GIRATINA, OGW_DP_ARCEUS, OGW_DP_DIALGA, OGW_DP_PALKIA = OGW_DP_DIALGA, OGW_DP_SHAYMIN, OGW_DP_DARKRAI, OGW_DP_UXIE, OGW_DP_AZELF, OGW_DP_ROTOM, OGW_DP_HEATRAN, OGW_DP_REGIGIGAS };
+enum
+{
+    /* Static encounters, Diamond and Pearl */
+    OGW_DP_GIRATINA,
+    OGW_DP_ARCEUS,
+    OGW_DP_DIALGA,
+    OGW_DP_PALKIA = OGW_DP_DIALGA,
+    OGW_DP_SHAYMIN,
+    OGW_DP_DARKRAI,
+    OGW_DP_UXIE,
+    OGW_DP_AZELF,
+    OGW_DP_ROTOM,
+    OGW_DP_HEATRAN,
+    OGW_DP_REGIGIGAS
+};
 
-/* OGWILD wilds, Platinum */
-enum { OGW_PT_GIRATINA_O, OGW_PT_GIRATINA_A, OGW_PT_DIALGA, OGW_PT_PALKIA, OGW_PT_UXIE, OGW_PT_AZELF, OGW_PT_ROTOM, OGW_PT_HEATRAN, OGW_PT_REGIGIGAS, OGW_PT_9, OGW_PT_10 };
+enum
+{
+    /* Static encounters, Platinum */
+    OGW_PT_GIRATINA_O,
+    OGW_PT_GIRATINA_A,
+    OGW_PT_DIALGA,
+    OGW_PT_PALKIA,
+    OGW_PT_UXIE,
+    OGW_PT_AZELF,
+    OGW_PT_ROTOM,
+    OGW_PT_HEATRAN,
+    OGW_PT_REGIGIGAS,
+    OGW_PT_9,
+    OGW_PT_10
+};
 
-/* Types */
-enum {
+enum
+{
+    /* Types */
     TYPE_NORMAL,
     TYPE_FIGHTING,
     TYPE_FLYING,
@@ -131,7 +164,7 @@ enum {
     TYPE_BUG,
     TYPE_GHOST,
     TYPE_STEEL,
-    TYPE_UNKNOWN, //??? type
+    TYPE_UNKNOWN,
     TYPE_FIRE,
     TYPE_WATER,
     TYPE_GRASS,
@@ -141,6 +174,8 @@ enum {
     TYPE_DRAGON,
     TYPE_DARK
 };
+
+u16* XorMasks = NULL;
 
 const u8 Types[TYPES_MAX][STRING_LENGTH_MAX] = { "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel", "???", "Fire", "Water", "Grass", "Electric", "Psychic", "Ice", "Dragon", "Dark" };
 
@@ -163,7 +198,34 @@ const u32 OppPartyOffEnd[VERSIONS_MAX - 1] = { 0x4D310, 0x4C3E4 }; //DP, Pt
 const u32 Perms[32] = { 0x03020100, 0x02030100, 0x03010200, 0x02010300, 0x01030200, 0x01020300, 0x03020001, 0x02030001, 0x03010002, 0x02010003, 0x01030002, 0x01020003, 0x03000201, 0x02000301, 0x03000102, 0x02000103, 0x01000302, 0x01000203, 0x00030201, 0x00020301, 0x00030102, 0x00020103, 0x00010302, 0x00010203, 0x03020100, 0x02030100, 0x03010200, 0x02010300, 0x01030200, 0x01020300, 0x03020001, 0x02030001 };
 
 /* Table for bonus/malus in each stat depending on Nature, HP omitted */
-const s8 NatureStatModifiers[NATURES_MAX][STATS_MAX - 1] = { {0, 0, 0, 0, 0}, {1, -1, 0, 0, 0}, {1, 0, -1, 0, 0}, {1, 0, 0, -1, 0}, {1, 0, 0, 0, -1}, {-1, 1, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 1, -1, 0, 0}, {0, 1, 0, -1, 0}, {0, 1, 0, 0, -1}, {-1, 0, 1, 0, 0}, {0, -1, 1, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 1, -1, 0}, {0, 0, 1, 0, -1}, {-1, 0, 0, 1, 0}, {0, -1, 0, 1, 0}, {0, 0, -1, 1, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 1, -1}, {-1, 0, 0, 0, 1}, {0, -1, 0, 0, 1}, {0, 0, -1, 0, 1}, {0, 0, 0, -1, 1}, {0, 0, 0, 0, 0} };
+const s8 NatureStatModifiers[NATURES_MAX][STATS_MAX - 1] =
+{
+    {  0,  0,  0,  0,  0 }, // Hardy
+    {  1, -1,  0,  0,  0 }, // Lonely
+    {  1,  0, -1,  0,  0 }, // Brave
+    {  1,  0,  0, -1,  0 }, // Adamant
+    {  1,  0,  0,  0, -1 }, // Naughty
+    { -1,  1,  0,  0,  0 }, // Bold
+    {  0,  0,  0,  0,  0 }, // Docile
+    {  0,  1, -1,  0,  0 }, // Relaxed
+    {  0,  1,  0, -1,  0 }, // Impish
+    {  0,  1,  0,  0, -1 }, // Lax
+    { -1,  0,  1,  0,  0 }, // Timid
+    {  0, -1,  1,  0,  0 }, // Hasty
+    {  0,  0,  0,  0,  0 }, // Serious
+    {  0,  0,  1, -1,  0 }, // Jolly
+    {  0,  0,  1,  0, -1 }, // Naive
+    { -1,  0,  0,  1,  0 }, // Modest
+    {  0, -1,  0,  1,  0 }, // Mild
+    {  0,  0, -1,  1,  0 }, // Quiet
+    {  0,  0,  0,  0,  0 }, // Bashful
+    {  0,  0,  0,  1, -1 }, // Rash
+    { -1,  0,  0,  0,  1 }, // Calm
+    {  0, -1,  0,  0,  1 }, // Gentle
+    {  0,  0, -1,  0,  1 }, // Sassy
+    {  0,  0,  0, -1,  1 }, // Careful
+    {  0,  0,  0,  0,  0 }  // Quirky 
+};
 
 const u8 Natures[NATURES_MAX][8] = { "Hardy", "Lonely", "Brave", "Adamant", "Naughty", "Bold", "Docile", "Relaxed", "Impish", "Lax", "Timid", "Hasty", "Serious", "Jolly", "Naive", "Modest", "Mild", "Quiet", "Bashful", "Rash", "Calm", "Gentle", "Sassy", "Careful", "Quirky" };
 
@@ -177,34 +239,36 @@ const u8 Pokelist[SPECIES_MAX][STRING_LENGTH_MAX] = { "Anything", "Bulbasaur", "
 const u8 Items[ITEMS_MAX][STRING_LENGTH_MAX] = { "Anything", "Master Ball", "Ultra Ball", "Great Ball", "Poké Ball", "Safari Ball", "Net Ball", "Dive Ball", "Nest Ball", "Repeat Ball", "Timer Ball", "Luxury Ball", "Premier Ball", "Dusk Ball", "Heal Ball", "Quick Ball", "Cherish Ball", "Potion", "Antidote", "Burn Heal", "Ice Heal", "Awakening", "Paralyze Heal", "Full Restore", "Max Potion", "Hyper Potion", "Super Potion", "Full Heal", "Revive", "Max Revive", "Fresh Water", "Soda Pop", "Lemonade", "Moomoo Milk", "Energy Powder", "Energy Root", "Heal Powder", "Revival Herb", "Ether", "Max Ether", "Elixir", "Max Elixir", "Lava Cookie", "Berry Juice", "Sacred Ash", "HP Up", "Protein", "Iron", "Carbos", "Calcium", "Rare Candy", "PP Up", "Zinc", "PP Max", "Old Gateau", "Guard Spec", "Dire Hit", "X Attack", "X Defense", "X Speed", "X Accuracy", "X SpeAtk", "X SpeDef", "Poké Doll", "Fluffy Tail", "Blue Flute", "Yellow Flute", "Red Flute", "Black Flute", "White Flute", "Shoal Salt", "Shoal Shell", "Red Shard", "Blue Shard", "Yellow Shard", "Green Shard", "Super Repel", "Max Repel", "Escape Rope", "Repel", "Sun Stone", "Moon Stone", "Fire Stone", "Thunder Stone", "Water Stone", "Leaf Stone", "Tiny Mushroom", "Big Mushroom", "Pearl", "Big Pearl", "Stardust", "Star Piece", "Nugget", "Heart Scale", "Honey", "Growth Mulch", "Damp Mulch", "Stable Mulch", "Gooey Mulch", "Root Fossil", "Claw Fossil", "Helix Fossil", "Dome Fossil", "Old Amber", "Armor Fossil", "Skull Fossil", "Rare Bone", "Shiny Stone", "Dusk Stone", "Dawn Stone", "Oval Stone", "Odd Keystone", "Griseous Orb", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Unknown Item", "Adamant Orb", "Lustrous Orb", "Grass Mail", "Flame Mail", "Bubble Mail", "Bloom Mail", "Tunnel Mail", "Steel Mail", "Heart Mail", "Snow Mail", "Space Mail", "Air Mail", "Mosaic Mail", "Brick Mail", "Cheri Berry", "Chesto Berry", "Pecha Berry", "Rawst Berry", "Aspear Berry", "Leppa Berry", "Oran Berry", "Persim Berry", "Lum Berry", "Sitrus Berry", "Figy Berry", "Wiki Berry", "Mago Berry", "Aguav Berry", "Iapapa Berry", "Razz Berry", "Bluk Berry", "Nanab Berry", "Wepear Berry", "Pinap Berry", "Pomeg Berry", "Kelpsy Berry", "Qualot Berry", "Hondew Berry", "Grepa Berry", "Tamato Berry", "Cornn Berry", "Magost Berry", "Rabuta Berry", "Nomel Berry", "Spelon Berry", "Pamtre Berry", "Watmel Berry", "Durin Berry", "Belue Berry", "Occa Berry", "Passho Berry", "Wacan Berry", "Rindo Berry", "Yache Berry", "Chople Berry", "Kebia Berry", "Shuca Berry", "Coba Berry", "Payapa Berry", "Tanga Berry", "Charti Berry", "Kasib Berry", "Haban Berry", "Colbur Berry", "Babiri Berry", "Chilan Berry", "Liechi Berry", "Ganlon Berry", "Salac Berry", "Petaya Berry", "Apicot Berry", "Lansat Berry", "Starf Berry", "Enigma Berry", "Micle Berry", "Custap Berry", "Jaboca Berry", "Rowap Berry", "Bright Powder", "White Herb", "Macho Brace", "Exp Share", "Quick Claw", "Soothe Bell", "Mental Herb", "Choice Band", "King's Rock", "Silver Powder", "Amulet Coin", "Cleanse Tag", "Soul Dew", "Deep Sea Tooth", "Deep Sea Scale", "Smoke Ball", "Everstone", "Focus Band", "Lucky Egg", "Scope Lens", "Metal Coat", "Leftovers", "Dragon Scale", "Light Ball", "Soft Sand", "Hard Stone", "Miracle Seed", "Black Glasses", "Black Belt", "Magnet", "Mystic Water", "Sharp Beak", "Poison Barb", "Never-Melt Ice", "Spell Tag", "Twisted Spoon", "Charcoal", "Dragon Fang", "Silk Scarf", "Up-Grade", "Shell Bell", "Sea Incense", "Lax Incense", "Lucky Punch", "Metal Powder", "Thick Club", "Stick", "Red Scarf", "Blue Scarf", "Pink Scarf", "Green Scarf", "Yellow Scarf", "Wide Lens", "Muscle Band", "Wise Glasses", "Expert Belt", "Light Clay", "Life Orb", "Power Herb", "Toxic Orb", "Flame Orb", "Quick Powder", "Focus Sash", "Zoom Lens", "Metronome", "Iron Ball", "Lagging Tail", "Destiny Knot", "Black Sludge", "Icy Rock", "Smooth Rock", "Heat Rock", "Damp Rock", "Grip Claw", "Choice Scarf", "Sticky Barb", "Power Bracer", "Power Belt", "Power Lens", "Power Band", "Power Anklet", "Power Weight", "Shed Shell", "Big Root", "Choice Specs", "Flame Plate", "Splash Plate", "Zap Plate", "Meadow Plate", "Icicle Plate", "Fist Plate", "Toxic Plate", "Earth Plate", "Sky Plate", "Mind Plate", "Insect Plate", "Stone Plate", "Spooky Plate", "Draco Plate", "Dread Plate", "Iron Plate", "Odd Incense", "Rock Incense", "Full Incense", "Wave Incense", "Rose Incense", "Luck Incense", "Pure Incense", "Protector", "Electirizer", "Magmarizer", "Dubious Disc", "Reaper Cloth", "Razor Claw", "Razor Fang", "TM01", "TM02", "TM03", "TM04", "TM05", "TM06", "TM07", "TM08", "TM09", "TM10", "TM11", "TM12", "TM13", "TM14", "TM15", "TM16", "TM17", "TM18", "TM19", "TM20", "TM21", "TM22", "TM23", "TM24", "TM25", "TM26", "TM27", "TM28", "TM29", "TM30", "TM31", "TM32", "TM33", "TM34", "TM35", "TM36", "TM37", "TM38", "TM39", "TM40", "TM41", "TM42", "TM43", "TM44", "TM45", "TM46", "TM47", "TM48", "TM49", "TM50", "TM51", "TM52", "TM53", "TM54", "TM55", "TM56", "TM57", "TM58", "TM59", "TM60", "TM61", "TM62", "TM63", "TM64", "TM65", "TM66", "TM67", "TM68", "TM69", "TM70", "TM71", "TM72", "TM73", "TM74", "TM75", "TM76", "TM77", "TM78", "TM79", "TM80", "TM81", "TM82", "TM83", "TM84", "TM85", "TM86", "TM87", "TM88", "TM89", "TM90", "TM91", "TM92", "HM01", "HM02", "HM03", "HM04", "HM05", "HM06", "HM07", "HM08", "Explorer Kit", "Loot Sack", "Rule Book", "Poké Radar", "Point Card", "Journal", "Seal Case", "Fashion Case", "Seal", "Pal Pad", "Works Key", "Old Charm", "Galactic Key", "Red Chain", "Town Map", "VS Seeker", "Coin Case", "Old Rod", "Good Rod", "Super Rod", "Sprayduck", "Poffin Case", "Bicycle", "Suite Key", "Oak's Letter", "Lunar Wing", "Member Card", "Azure Flute", "S.S. Ticket", "Contest Pass", "Magma Stone", "Parcel", "Coupon 1", "Coupon 2", "Coupon 3", "Storage Key", "Secret Potion", "VS Recorder", "Gracidea", "Secret Key" };
 
 /* Ordered strings of all moves */
-const u8 Moves[MOVES_MAX][STRING_LENGTH_MAX] = { "Anything" , "Pound", "Karate Chop", "Double Slap", "Comet Punch", "Mega Punch", "Pay Day", "Fire Punch", "Ice Punch", "Thunder Punch", "Scratch", "Vice Grip", "Guillotine", "Razor Wind", "Swords Dance", "Cut", "Gust", "Wing Attack", "Whirlwind", "Fly", "Bind", "Slam", "Vine Whip", "Stomp", "Double Kick", "Mega Kick", "Jump Kick", "Rolling Kick", "Sand Attack", "Headbutt", "Horn Attack", "Fury Attack", "Horn Drill", "Tackle", "Body Slam", "Wrap", "Take Down", "Thrash", "Double-Edge", "Tail Whip", "Poison Sting", "Twineedle", "Pin Missile", "Leer", "Bite", "Growl", "Roar", "Sing", "Supersonic", "Sonic Boom", "Disable", "Acid", "Ember", "Flamethrower", "Mist", "Water Gun", "Hydro Pump", "Surf", "Ice Beam", "Blizzard", "Psybeam", "Bubble Beam", "Aurora Beam", "Hyper Beam", "Peck", "Drill Peck", "Submission", "Low Kick", "Counter", "Seismic Toss", "Strength", "Absorb", "Mega Drain", "Leech Seed", "Growth", "Razor Leaf", "Solar Beam", "Poison Powder", "Stun Spore", "Sleep Powder", "Petal Dance", "String Shot", "Dragon Rage", "Fire Spin", "Thunder Shock", "Thunderbolt", "Thunder Wave", "Thunder", "Rock Throw", "Earthquake", "Fissure", "Dig", "Toxic", "Confusion", "Psychic", "Hypnosis", "Meditate", "Agility", "Quick Attack", "Rage", "Teleport", "Night Shade", "Mimic", "Screech", "Double Team", "Recover", "Harden", "Minimize", "Smokescreen", "Confuse Ray", "Withdraw", "Defense Curl", "Barrier", "Light Screen", "Haze", "Reflect", "Focus Energy", "Bide", "Metronome", "Mirror Move", "Self-Destruct", "Egg Bomb", "Lick", "Smog", "Sludge", "Bone Club", "Fire Blast", "Waterfall", "Clamp", "Swift", "Skull Bash", "Spike Cannon", "Constrict", "Amnesia", "Kinesis", "Soft-Boiled", "High Jump Kick", "Glare", "Dream Eater", "Poison Gas", "Barrage", "Leech Life", "Lovely Kiss", "Sky Attack", "Transform", "Bubble", "Dizzy Punch", "Spore", "Flash", "Psywave", "Splash", "Acid Armor", "Crabhammer", "Explosion", "Fury Swipes", "Bonemerang", "Rest", "Rock Slide", "Hyper Fang", "Sharpen", "Conversion", "Tri Attack", "Super Fang", "Slash", "Substitute", "Struggle", "Sketch", "Triple Kick", "Thief", "Spider Web", "Mind Reader", "Nightmare", "Flame Wheel", "Snore", "Curse", "Flail", "Conversion 2", "Aeroblast", "Cotton Spore", "Reversal", "Spite", "Powder Snow", "Protect", "Mach Punch", "Scary Face", "Feint Attack", "Sweet Kiss", "Belly Drum", "Sludge Bomb", "Mud-Slap", "Octazooka", "Spikes", "Zap Cannon", "Foresight", "Destiny Bond", "Perish Song", "Icy Wind", "Detect", "Bone Rush", "Lock-On", "Outrage", "Sandstorm", "Giga Drain", "Endure", "Charm", "Rollout", "False Swipe", "Swagger", "Milk Drink", "Spark", "Fury Cutter", "Steel Wing", "Mean Look", "Attract", "Sleep Talk", "Heal Bell", "Return", "Present", "Frustration", "Safeguard", "Pain Split", "Sacred Fire", "Magnitude", "Dynamic Punch", "Megahorn", "Dragon Breath", "Baton Pass", "Encore", "Pursuit", "Rapid Spin", "Sweet Scent", "Iron Tail", "Metal Claw", "Vital Throw", "Morning Sun", "Synthesis", "Moonlight", "Hidden Power", "Cross Chop", "Twister", "Rain Dance", "Sunny Day", "Crunch", "Mirror Coat", "Psych Up", "Extreme Speed", "Ancient Power", "Shadow Ball", "Future Sight", "Rock Smash", "Whirlpool", "Beat Up", "Fake Out", "Uproar", "Stockpile", "Spit Up", "Swallow", "Heat Wave", "Hail", "Torment", "Flatter", "Will-O-Wisp", "Memento", "Facade", "Focus Punch", "Smelling Salts", "Follow Me", "Nature Power", "Charge", "Taunt", "Helping Hand", "Trick", "Role Play", "Wish", "Assist", "Ingrain", "Superpower", "Magic Coat", "Recycle", "Revenge", "Brick Break", "Yawn", "Knock Off", "Endeavor", "Eruption", "Skill Swap", "Imprison", "Refresh", "Grudge", "Snatch", "Secret Power", "Dive", "Arm Thrust", "Camouflage", "Tail Glow", "Luster Purge", "Mist Ball", "Feather Dance", "Teeter Dance", "Blaze Kick", "Mud Sport", "Ice Ball", "Needle Arm", "Slack Off", "Hyper Voice", "Poison Fang", "Crush Claw", "Blast Burn", "Hydro Cannon", "Meteor Mash", "Astonish", "Weather Ball", "Aromatherapy", "Fake Tears", "Air Cutter", "Overheat", "Odor Sleuth", "Rock Tomb", "Silver Wind", "Metal Sound", "Grass Whistle", "Tickle", "Cosmic Power", "Water Spout", "Signal Beam", "Shadow Punch", "Extrasensory", "Sky Uppercut", "Sand Tomb", "Sheer Cold", "Muddy Water", "Bullet Seed", "Aerial Ace", "Icicle Spear", "Iron Defense", "Block", "Howl", "Dragon Claw", "Frenzy Plant", "Bulk Up", "Bounce", "Mud Shot", "Poison Tail", "Covet", "Volt Tackle", "Magical Leaf", "Water Sport", "Calm Mind", "Leaf Blade", "Dragon Dance", "Rock Blast", "Shock Wave", "Water Pulse", "Doom Desire", "Psycho Boost", "Roost", "Gravity", "Miracle Eye", "Wake-Up Slap", "Hammer Arm", "Gyro Ball", "Healing Wish", "Brine", "Natural Gift", "Feint", "Pluck", "Tailwind", "Acupressure", "Metal Burst", "U-turn", "Close Combat", "Payback", "Assurance", "Embargo", "Fling", "Psycho Shift", "Trump Card", "Heal Block", "Wring Out", "Power Trick", "Gastro Acid", "Lucky Chant", "Me First", "Copycat", "Power Swap", "Guard Swap", "Punishment", "Last Resort", "Worry Seed", "Sucker Punch", "Toxic Spikes", "Heart Swap", "Aqua Ring", "Magnet Rise", "Flare Blitz", "Force Palm", "Aura Sphere", "Rock Polish", "Poison Jab", "Dark Pulse", "Night Slash", "Aqua Tail", "Seed Bomb", "Air Slash", "X-Scissor", "Bug Buzz", "Dragon Pulse", "Dragon Rush", "Power Gem", "Drain Punch", "Vacuum Wave", "Focus Blast", "Energy Ball", "Brave Bird", "Earth Power", "Switcheroo", "Giga Impact", "Nasty Plot", "Bullet Punch", "Avalanche", "Ice Shard", "Shadow Claw", "Thunder Fang", "Ice Fang", "Fire Fang", "Shadow Sneak", "Mud Bomb", "Psycho Cut", "Zen Headbutt", "Mirror Shot", "Flash Cannon", "Rock Climb", "Defog", "Trick Room", "Draco Meteor", "Discharge", "Lava Plume", "Leaf Storm", "Power Whip", "Rock Wrecker", "Cross Poison", "Gunk Shot", "Iron Head", "Magnet Bomb", "Stone Edge", "Captivate", "Stealth Rock", "Grass Knot", "Chatter", "Judgment", "Bug Bite", "Charge Beam", "Wood Hammer", "Aqua Jet", "Attack Order", "Defend Order", "Heal Order", "Head Smash", "Double Hit", "Roar of Time", "Spacial Rend", "Lunar Dance", "Crush Grip", "Magma Storm", "Dark Void", "Seed Flare", "Ominous Wind", "Shadow Force" };
+const u8 Moves[MOVES_MAX][STRING_LENGTH_MAX] = { "Anything", "Pound", "Karate Chop", "Double Slap", "Comet Punch", "Mega Punch", "Pay Day", "Fire Punch", "Ice Punch", "Thunder Punch", "Scratch", "Vice Grip", "Guillotine", "Razor Wind", "Swords Dance", "Cut", "Gust", "Wing Attack", "Whirlwind", "Fly", "Bind", "Slam", "Vine Whip", "Stomp", "Double Kick", "Mega Kick", "Jump Kick", "Rolling Kick", "Sand Attack", "Headbutt", "Horn Attack", "Fury Attack", "Horn Drill", "Tackle", "Body Slam", "Wrap", "Take Down", "Thrash", "Double-Edge", "Tail Whip", "Poison Sting", "Twineedle", "Pin Missile", "Leer", "Bite", "Growl", "Roar", "Sing", "Supersonic", "Sonic Boom", "Disable", "Acid", "Ember", "Flamethrower", "Mist", "Water Gun", "Hydro Pump", "Surf", "Ice Beam", "Blizzard", "Psybeam", "Bubble Beam", "Aurora Beam", "Hyper Beam", "Peck", "Drill Peck", "Submission", "Low Kick", "Counter", "Seismic Toss", "Strength", "Absorb", "Mega Drain", "Leech Seed", "Growth", "Razor Leaf", "Solar Beam", "Poison Powder", "Stun Spore", "Sleep Powder", "Petal Dance", "String Shot", "Dragon Rage", "Fire Spin", "Thunder Shock", "Thunderbolt", "Thunder Wave", "Thunder", "Rock Throw", "Earthquake", "Fissure", "Dig", "Toxic", "Confusion", "Psychic", "Hypnosis", "Meditate", "Agility", "Quick Attack", "Rage", "Teleport", "Night Shade", "Mimic", "Screech", "Double Team", "Recover", "Harden", "Minimize", "Smokescreen", "Confuse Ray", "Withdraw", "Defense Curl", "Barrier", "Light Screen", "Haze", "Reflect", "Focus Energy", "Bide", "Metronome", "Mirror Move", "Self-Destruct", "Egg Bomb", "Lick", "Smog", "Sludge", "Bone Club", "Fire Blast", "Waterfall", "Clamp", "Swift", "Skull Bash", "Spike Cannon", "Constrict", "Amnesia", "Kinesis", "Soft-Boiled", "High Jump Kick", "Glare", "Dream Eater", "Poison Gas", "Barrage", "Leech Life", "Lovely Kiss", "Sky Attack", "Transform", "Bubble", "Dizzy Punch", "Spore", "Flash", "Psywave", "Splash", "Acid Armor", "Crabhammer", "Explosion", "Fury Swipes", "Bonemerang", "Rest", "Rock Slide", "Hyper Fang", "Sharpen", "Conversion", "Tri Attack", "Super Fang", "Slash", "Substitute", "Struggle", "Sketch", "Triple Kick", "Thief", "Spider Web", "Mind Reader", "Nightmare", "Flame Wheel", "Snore", "Curse", "Flail", "Conversion 2", "Aeroblast", "Cotton Spore", "Reversal", "Spite", "Powder Snow", "Protect", "Mach Punch", "Scary Face", "Feint Attack", "Sweet Kiss", "Belly Drum", "Sludge Bomb", "Mud-Slap", "Octazooka", "Spikes", "Zap Cannon", "Foresight", "Destiny Bond", "Perish Song", "Icy Wind", "Detect", "Bone Rush", "Lock-On", "Outrage", "Sandstorm", "Giga Drain", "Endure", "Charm", "Rollout", "False Swipe", "Swagger", "Milk Drink", "Spark", "Fury Cutter", "Steel Wing", "Mean Look", "Attract", "Sleep Talk", "Heal Bell", "Return", "Present", "Frustration", "Safeguard", "Pain Split", "Sacred Fire", "Magnitude", "Dynamic Punch", "Megahorn", "Dragon Breath", "Baton Pass", "Encore", "Pursuit", "Rapid Spin", "Sweet Scent", "Iron Tail", "Metal Claw", "Vital Throw", "Morning Sun", "Synthesis", "Moonlight", "Hidden Power", "Cross Chop", "Twister", "Rain Dance", "Sunny Day", "Crunch", "Mirror Coat", "Psych Up", "Extreme Speed", "Ancient Power", "Shadow Ball", "Future Sight", "Rock Smash", "Whirlpool", "Beat Up", "Fake Out", "Uproar", "Stockpile", "Spit Up", "Swallow", "Heat Wave", "Hail", "Torment", "Flatter", "Will-O-Wisp", "Memento", "Facade", "Focus Punch", "Smelling Salts", "Follow Me", "Nature Power", "Charge", "Taunt", "Helping Hand", "Trick", "Role Play", "Wish", "Assist", "Ingrain", "Superpower", "Magic Coat", "Recycle", "Revenge", "Brick Break", "Yawn", "Knock Off", "Endeavor", "Eruption", "Skill Swap", "Imprison", "Refresh", "Grudge", "Snatch", "Secret Power", "Dive", "Arm Thrust", "Camouflage", "Tail Glow", "Luster Purge", "Mist Ball", "Feather Dance", "Teeter Dance", "Blaze Kick", "Mud Sport", "Ice Ball", "Needle Arm", "Slack Off", "Hyper Voice", "Poison Fang", "Crush Claw", "Blast Burn", "Hydro Cannon", "Meteor Mash", "Astonish", "Weather Ball", "Aromatherapy", "Fake Tears", "Air Cutter", "Overheat", "Odor Sleuth", "Rock Tomb", "Silver Wind", "Metal Sound", "Grass Whistle", "Tickle", "Cosmic Power", "Water Spout", "Signal Beam", "Shadow Punch", "Extrasensory", "Sky Uppercut", "Sand Tomb", "Sheer Cold", "Muddy Water", "Bullet Seed", "Aerial Ace", "Icicle Spear", "Iron Defense", "Block", "Howl", "Dragon Claw", "Frenzy Plant", "Bulk Up", "Bounce", "Mud Shot", "Poison Tail", "Covet", "Volt Tackle", "Magical Leaf", "Water Sport", "Calm Mind", "Leaf Blade", "Dragon Dance", "Rock Blast", "Shock Wave", "Water Pulse", "Doom Desire", "Psycho Boost", "Roost", "Gravity", "Miracle Eye", "Wake-Up Slap", "Hammer Arm", "Gyro Ball", "Healing Wish", "Brine", "Natural Gift", "Feint", "Pluck", "Tailwind", "Acupressure", "Metal Burst", "U-turn", "Close Combat", "Payback", "Assurance", "Embargo", "Fling", "Psycho Shift", "Trump Card", "Heal Block", "Wring Out", "Power Trick", "Gastro Acid", "Lucky Chant", "Me First", "Copycat", "Power Swap", "Guard Swap", "Punishment", "Last Resort", "Worry Seed", "Sucker Punch", "Toxic Spikes", "Heart Swap", "Aqua Ring", "Magnet Rise", "Flare Blitz", "Force Palm", "Aura Sphere", "Rock Polish", "Poison Jab", "Dark Pulse", "Night Slash", "Aqua Tail", "Seed Bomb", "Air Slash", "X-Scissor", "Bug Buzz", "Dragon Pulse", "Dragon Rush", "Power Gem", "Drain Punch", "Vacuum Wave", "Focus Blast", "Energy Ball", "Brave Bird", "Earth Power", "Switcheroo", "Giga Impact", "Nasty Plot", "Bullet Punch", "Avalanche", "Ice Shard", "Shadow Claw", "Thunder Fang", "Ice Fang", "Fire Fang", "Shadow Sneak", "Mud Bomb", "Psycho Cut", "Zen Headbutt", "Mirror Shot", "Flash Cannon", "Rock Climb", "Defog", "Trick Room", "Draco Meteor", "Discharge", "Lava Plume", "Leaf Storm", "Power Whip", "Rock Wrecker", "Cross Poison", "Gunk Shot", "Iron Head", "Magnet Bomb", "Stone Edge", "Captivate", "Stealth Rock", "Grass Knot", "Chatter", "Judgment", "Bug Bite", "Charge Beam", "Wood Hammer", "Aqua Jet", "Attack Order", "Defend Order", "Heal Order", "Head Smash", "Double Hit", "Roar of Time", "Spacial Rend", "Lunar Dance", "Crush Grip", "Magma Storm", "Dark Void", "Seed Flare", "Ominous Wind", "Shadow Force" };
 
 /* Original wild Pokemon names */
-const u8 OgWilds[VERSIONS_MAX][OG_WILDS_MAX][STRING_LENGTH_MAX] = {
-    { "Giratina", "Arceus", "Dialga", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas" }, //Diamond
-    { "Giratina", "Arceus", "Palkia", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas" }, //Pearl
-    { "Giratina-O", "Giratina-A", "Dialga", "Palkia", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas", "OGW_PT_9", } //Platinum
+const u8 OgWilds[VERSIONS_MAX][OG_WILDS_MAX][STRING_LENGTH_MAX] =
+{
+    { "Giratina", "Arceus", "Dialga", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas" }, // Diamond
+    { "Giratina", "Arceus", "Palkia", "Shaymin", "Darkrai", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas" }, // Pearl
+    { "Giratina-O", "Giratina-A", "Dialga", "Palkia", "Uxie", "Azelf", "Rotom", "Heatran", "Regigigas", "OGW_PT_9", } // Platinum
 };
 
-typedef struct {
+typedef struct PKMN
+{
     u8 pos_a;
     u8 pos_b;
     u8 pos_c;
     u8 pos_d;
-    u8 nature;
     u8 ivs[STATS_MAX];
     u32 iv32;
     //Main pkmn data; ordered the same as in game to simulate the buffer overflow
     u32 pid;
     u16 bef;
     u16 checksum;
-    u16 data[BLOCKS][BLOCK_SIZE];
+    u16 data[BLOCKS][BLOCK_WORDS];
     u16 cond[COND_SIZE_S];
-    //Size: 200 bytes
+    //Size: 204bytes
 } PKMN;
 
 /* The original wild PKMN's unique characteristics */
-typedef struct {
+typedef struct OGWILD
+{
     u16 species;
     u16 item;
     u16 level;
@@ -219,8 +283,8 @@ typedef struct {
     //Size: 74 bytes
 } OGWILD;
 
-typedef struct {
-
+typedef struct SEARCHDATA
+{
     double time; //completion time
     u32 results; //number of results found
     u8 path[PATH_REL_LENGTH_MAX]; //relative path of the results file
@@ -238,14 +302,16 @@ typedef struct {
     //Size: 192 bytes
 } SEARCHDATA;
 
-typedef struct {
+typedef struct REVERSEDSEED
+{
     u32 seed; //original seed
     u32 reversed; //reversed seed
     u32 frames; //distance between seed and reversed
     //Size: 12 bytes
 } REVERSEDSEED;
 
-typedef struct {
+typedef struct HIDDENPOWER
+{
     u8 type;
     u8 power;
     //Size: 2 bytes
@@ -324,193 +390,215 @@ const OGWILD pt_regigigas = { 0x01E6, 0, 1, 0x0000, 0x0000, 0x7000, MOVES_REGIGI
 const OGWILD pt_regigigas_jp = { 0x01E6, 0, 1, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS_JP, GFX_REGIGIGAS_PT };
 const OGWILD pt_regigigas_ko = { 0x01E6, 0, 1, 0x0000, 0x0000, 0x7000, MOVES_REGIGIGAS_PT, 0x140A, 0x280A, NAME_REGIGIGAS_KO, GFX_REGIGIGAS_PT };
 
-
-const OGWILD* OGW_LangVers[LANGUAGES_MAX][VERSIONS_MAX][OG_WILDS_MAX] = {
-    { //_0
+const OGWILD* OGW_LangVers[LANGUAGES_MAX][VERSIONS_MAX][OG_WILDS_MAX] =
+{
+    { // unused
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
     },
-    { //jp
+    { // Japanese
         {&dp_giratina_jp, &dp_arceus_jp, &dp_dialga_jp, &dp_shaymin_jp, &dp_darkrai_jp, &dp_uxie_jp, &dp_azelf_jp, &dp_rotom_jp, &dp_heatran_jp, &dp_regigigas_jp},
         {&dp_giratina_jp, &dp_arceus_jp, &dp_palkia_jp, &dp_shaymin_jp, &dp_darkrai_jp, &dp_uxie_jp, &dp_azelf_jp, &dp_rotom_jp, &dp_heatran_jp, &dp_regigigas_jp},
         {&pt_giratina_o_jp, &pt_giratina_a_jp, &pt_dialga_jp, &pt_palkia_jp, &pt_uxie_jp, &pt_azelf_jp, &pt_rotom_jp, &pt_heatran_jp, &pt_regigigas_jp, NULL}
     },
-    { //en
+    { // English
         {&dp_giratina, &dp_arceus, &dp_dialga, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&dp_giratina, &dp_arceus, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, &pt_heatran, &pt_regigigas, NULL }
     },
-    { //fr
+    { // French
         {&dp_giratina, &dp_arceus, &dp_dialga, &dp_shaymin, &dp_darkrai, &dp_uxie_fr, &dp_azelf_fr, &dp_motisma, &dp_heatran, &dp_regigigas},
         {&dp_giratina, &dp_arceus, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie_fr, &dp_azelf_fr, &dp_motisma, &dp_heatran, &dp_regigigas},
         {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie_fr, &pt_azelf_fr, &pt_rotom_fr, &pt_heatran, &pt_regigigas, NULL}
     },
-    { //it
+    { // Italian
         {&dp_giratina, &dp_arceus, &dp_dialga, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&dp_giratina, &dp_arceus, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, &pt_heatran, &pt_regigigas, NULL}
     },
-    { //ge
+    { // German
         {&dp_giratina, &dp_arceus, &dp_dialga, &dp_shaymin, &dp_darkrai, &dp_uxie_ge, &dp_azelf_ge, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&dp_giratina, &dp_arceus, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie_ge, &dp_azelf_ge, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie_ge, &pt_azelf_ge, &pt_rotom, &pt_heatran, &pt_regigigas, NULL}
     },
-    { //_6
+    { // unused
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
         {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
     },
-    { //sp
+    { // Spanish
         {&dp_giratina, &dp_arceus, &dp_dialga, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&dp_giratina, &dp_arceus, &dp_palkia, &dp_shaymin, &dp_darkrai, &dp_uxie, &dp_azelf, &dp_rotom, &dp_heatran, &dp_regigigas},
         {&pt_giratina_o, &pt_giratina_a, &pt_dialga, &pt_palkia, &pt_uxie, &pt_azelf, &pt_rotom, &pt_heatran, &pt_regigigas, NULL}
     },
-    { //ko
+    { // Korean
         {&dp_giratina_ko, &dp_arceus_ko, &dp_dialga_ko, &dp_shaymin_ko, &dp_darkrai_ko, &dp_uxie_ko, &dp_azelf_ko, &dp_rotom_ko, &dp_heatran_ko, &dp_regigigas_ko},
         {&dp_giratina_ko, &dp_arceus_ko, &dp_palkia_ko, &dp_shaymin_ko, &dp_darkrai_ko, &dp_uxie_ko, &dp_azelf_ko, &dp_rotom_ko, &dp_heatran_ko, &dp_regigigas_ko},
         {&pt_giratina_o_ko, &pt_giratina_a_ko, &pt_dialga_ko, &pt_palkia_ko, &pt_uxie_ko, &pt_azelf_ko, &pt_rotom_ko, &pt_heatran_ko, &pt_regigigas_ko, NULL}
     }
 };
 
-/* Functions */
-
-static u32 GetNatureId(u32 pid) {
-    /* Get the ID of the Nature (from 0 to 24), provided the PID. */
+static u32 GetNatureId(u32 pid)
+{
+    /* Gets the ID of the Nature (from 0 to 24), provided the PID. */
     // optimized to avoid div instruction (pid % 25)
     //return pid - NATURES_MAX * ((0x51EB851FULL * pid) >> 35);
-
     // todo: benchmark, theoretically at most 50% faster when used in the MethodJToPID loop
     // D. Lemire, O. Kaser, and N. Kurz, Faster Remainder by Direct Computation, 2018.
-    return __umulh(0xA3D70A3D70A3D71 * pid, 25); // get top 64 bits of the product
+    return __umulh(0xA3D70A3D70A3D71 * pid, 25); // gets top 64 bits of the product
 }
 
-static u8 GetFormId(u16 fate) {
-    /* Get the form ID from the fateful word */
+static u8 GetFormId(u16 fate)
+{
+    /* Gets the form ID from the fateful word */
     return (fate & 0xFF) >> 3;
 }
 
-static void SetBlocks(PKMN* pkmn) {
-    /* Get the order of each block from the PID and set them in the correct permutation */
+static void SetBlocks(PKMN* pkmn)
+{
+    /* Gets the order of each block from the PID and set them in the correct permutation */
     *(u32*)(&pkmn->pos_a) = Perms[(pkmn->pid >> 13) & 31];
 }
 
-static void SetChecksum(PKMN* pkmn) {
-    /* Set the checksum of a PKMN by summing all of its Block data */
-    u16* data = (u16*)pkmn->data;
+static void SetChecksum(PKMN* pkmn)
+{
+    /* Sets the checksum of a PKMN by summing all of its Block data */
+#if ENABLE_SSE
+    // Requires SSE3
+    u128* data = (u128*)&pkmn->data;
+    u128 s0 = _mm_add_epi16(_mm_add_epi16(*(data + 0), *(data + 1)), _mm_add_epi16(*(data + 2), *(data + 3)));
+    u128 s1 = _mm_add_epi16(_mm_add_epi16(*(data + 4), *(data + 5)), _mm_add_epi16(*(data + 6), *(data + 7)));
+    u128 s = _mm_add_epi16(s0, s1);
+    s = _mm_hadd_epi16(s, s);
+    s = _mm_hadd_epi16(s, s);
+    s = _mm_hadd_epi16(s, s);
+    pkmn->checksum = _mm_cvtsi128_si32(s);
+#else
+    u16* data = (u16*)&pkmn->data;
     u16 c = 0;
-    for (u64 i = 0; i < BLOCKS * BLOCK_SIZE; i++)
+    for (u64 i = 0; i < BLOCKS * BLOCK_WORDS; i++)
     {
         c += data[i];
     }
     pkmn->checksum = c;
+#endif
 }
 
-static void SetChecksumFastSeven(PKMN* s) {
-    /* Checksum already initialized with Block A, sum the remaining blocks */
-    u16* data = (u16*)&s->data[1];
+static void SetChecksumFastSeven(PKMN* pkmn)
+{
+    /* Sums the remaining block data of Seven, block A was already summed */
+#if ENABLE_SSE
+    // Requires SSE3
+    u128* data = (u128*)&pkmn->data[1];
+    u128 s = _mm_add_epi16(_mm_add_epi16(*(data + 0), *(data + 1)), _mm_add_epi16(*(data + 2), *(data + 3)));
+    s = _mm_add_epi16(_mm_add_epi16(*(data + 4), *(data + 5)), s);
+    s = _mm_hadd_epi16(s, s);
+    s = _mm_hadd_epi16(s, s);
+    s = _mm_hadd_epi16(s, s);
+    pkmn->checksum += _mm_cvtsi128_si32(s);
+#else
+    u16* data = (u16*)&pkmn->data[1];
     u16 c = 0;
-    for (u64 i = 0; i < (BLOCKS - 1) * BLOCK_SIZE; i++)
+    for (u64 i = 0; i < (BLOCKS - 1) * BLOCK_WORDS; i++)
     {
         c += data[i];
     }
-    s->checksum += c;
+    pkmn->checksum += c;
+#endif
 }
 
-static u16 GetGender(u32 pid, u16 species) {
-    /* Retrieve gender from pid and species */
-    if (species == 0x01E5) { //Heatran
-        if ((pid & 0xff) < 127) { return 0x0001; }
+static u16 GetGender(u32 pid, u16 species)
+{
+    /* Retrieves gender from PID and species ID */
+    if (species == 0x01E5) // Heatran
+    {
+        if ((pid & 0xFF) < 0x7F) { return 0x0001; }
         return 0x0000;
     }
     return 0x0004; //genderless
 }
 
-static BOOL IsEgg(u32 ivs) {
-    /* Check if the egg flag is set by looking at bit 30 of the ivs.  */
+static BOOL IsEgg(u32 ivs)
+{
+    /* Checks if the egg flag is set by looking at bit 30 of the ivs.  */
     return (ivs >> 30) & 1;
 }
 
-static BOOL IsFatefulEncounter(u16 fate) {
-    /* Check if the fateful encounter bit is set. */
+static BOOL IsFatefulEncounter(u16 fate)
+{
+    /* Checks if the fateful encounter bit is set. */
     return fate & 1;
 }
 
-static BOOL IsShiny(u32 pid, u16 tid, u16 sid) {
-    /* Check if a PKMN is shiny by XORing its PID (top and bottom 16 bits), TID and SID */
+static BOOL IsShiny(u32 pid, u16 tid, u16 sid)
+{
+    /* Checks if a PKMN is shiny by XORing its PID (top and bottom 16 bits), TID and SID */
     return ((pid & 0xffff) ^ (pid >> 16) ^ tid ^ sid) < 8;
 }
 
-static BOOL HasPokerus(u8 pkrs) {
-    /* Check if a PKMN's Pokerus byte is flagged as having Pokerus */
+static BOOL HasPokerus(u8 pkrs)
+{
+    /* Checks if a PKMN's Pokerus byte is flagged as having Pokerus */
     return pkrs & 0x0f;
 }
 
-static u32 RngNext(u32* state) {
+static u32 RngNext(u32* state)
+{
     /* General purpose LCRNG, advance and return state */
     *state = *state * 0x41C64E6D + 0x6073;
     return *state;
 }
 
-static void EncryptBlocks(PKMN* pkmn) {
+static void EncryptBlocks(PKMN* pkmn)
+{
     /* LCRNG is seeded with the Checksum */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of ABCD Block data */
-
-    /* Non-intrinsic version (slower) */
-    //u32 state = pkmn->checksum;
-    //u64* data = (u64*)pkmn->data;
-    //for (u64 i = 0; i < 16; i++)
-    //{
-    //    u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
-    //    u32 state3 = state * 0x807DBCB5 + 0x52713895; //advance LCRNG by 3
-    //    u32 state4 = state * 0xEE067F11 + 0x31B0DDE4; //advance LCRNG by 4
-    //    state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
-    //    u64 x = ((u64)(state >> 16)) | ((u64)(state2 & 0xffff0000)) | ((u64)(state3 >> 16) << 32) | ((u64)(state4 >> 16) << 48);
-    //    data[i] ^= x;
-    //    state = state4;
-    //}
-
-    /* Instrinsic version */
+#if ENABLE_SSE
+    // Requires SSE2
+    // Cached with XorMasks
+    u128* d = (u128*)&pkmn->data;
+    u128* m = (u128*)&XorMasks[pkmn->checksum * (BLOCKS * BLOCK_WORDS)];
+    d[0] = _mm_xor_si128(d[0], m[0]);
+    d[1] = _mm_xor_si128(d[1], m[1]);
+    d[2] = _mm_xor_si128(d[2], m[2]);
+    d[3] = _mm_xor_si128(d[3], m[3]);
+    d[4] = _mm_xor_si128(d[4], m[4]);
+    d[5] = _mm_xor_si128(d[5], m[5]);
+    d[6] = _mm_xor_si128(d[6], m[6]);
+    d[7] = _mm_xor_si128(d[7], m[7]);
+#else
+    // Non-cached
     u32 state = pkmn->checksum;
     u64* data = (u64*)pkmn->data;
-    const __m128i vmul = _mm_set_epi32(0xEE067F11, 0x807DBCB5, 0xC2A29A69, 0x41C64E6D); // multiplier
-    const __m128i vadd = _mm_set_epi32(0x31B0DDE4, 0x52713895, 0xE97E7B6A, 0x00006073); // adder
-    const __m128i vsh0 = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02); // shuffler, upper 64-bits are 0
-    const __m128i vsh1 = _mm_set_epi8(0x0f, 0x0e, 0x0b, 0x0a, 0x07, 0x06, 0x03, 0x02, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80); // shuffler, lower 64-bits are 0
-
-    for (u64 i = 0; i < 16; i += 4) // doing 4 per loop to not waste clock cycles
+    for (u64 i = 0; i < 16; i++)
     {
-        __m128i vstate0 = _mm_set1_epi32(state); // fill all 32-bit slots with state
-        vstate0 = _mm_mullo_epi32(vstate0, vmul); // mul
-        vstate0 = _mm_add_epi32(vstate0, vadd); // add
-        __m128i vstate1 = _mm_shuffle_epi32(vstate0, 0xFF); // set state
-        vstate1 = _mm_mullo_epi32(vstate1, vmul); // mul
-        vstate1 = _mm_add_epi32(vstate1, vadd); // add
-        __m128i vstate2 = _mm_shuffle_epi32(vstate1, 0xFF); // set state
-        vstate2 = _mm_mullo_epi32(vstate2, vmul); // mul
-        vstate2 = _mm_add_epi32(vstate2, vadd); // add
-        __m128i vstate3 = _mm_shuffle_epi32(vstate2, 0xFF); // set state
-        vstate3 = _mm_mullo_epi32(vstate3, vmul); // mul
-        vstate3 = _mm_add_epi32(vstate3, vadd); // add
-        vstate0 = _mm_shuffle_epi8(vstate0, vsh0); // shuffle low
-        vstate1 = _mm_shuffle_epi8(vstate1, vsh1); // shuffle high
-        vstate2 = _mm_shuffle_epi8(vstate2, vsh0); // shuffle low
-        vstate3 = _mm_shuffle_epi8(vstate3, vsh1); // shuffle high
-        vstate0 = _mm_or_si128(vstate0, vstate1); // or
-        vstate2 = _mm_or_si128(vstate2, vstate3); // or
-        vstate0 = _mm_xor_si128(vstate0, _mm_loadu_si128((__m128i*) & data[i])); // xor with pkmn data
-        vstate2 = _mm_xor_si128(vstate2, _mm_loadu_si128((__m128i*) & data[i + 2])); // ditto
-        _mm_storeu_si128((__m128i*) & data[i], vstate0); // store
-        _mm_storeu_si128((__m128i*) & data[i + 2], vstate2); // store
-        state = state * 0x5F748241 + 0xCBA72510; // advance by 16
+        u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
+        u32 state3 = state * 0x807DBCB5 + 0x52713895; //advance LCRNG by 3
+        u32 state4 = state * 0xEE067F11 + 0x31B0DDE4; //advance LCRNG by 4
+        state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
+        u64 x = ((u64)(state >> 16)) | ((u64)(state2 & 0xffff0000)) | ((u64)(state3 >> 16) << 32) | ((u64)(state4 >> 16) << 48);
+        data[i] ^= x;
+        state = state4;
     }
+#endif
 }
 
-static void EncryptBlocksChecksumZero(PKMN* pkmn) {
+static void EncryptBlocksChecksumZero(PKMN* pkmn)
+{
     /* Fast encryption with precomputed RNG XOR mask (checksum == 0) */
     /* Block A (0) is encrypted in MotorInitPkmn */
-    // todo: SIMD
-    u64* d = (u64*)pkmn->data[1];
+#if ENABLE_SSE
+    // Requires SSE2
+    u128* d = (u128*)&pkmn->data[1];
+    d[0] = _mm_xor_si128(d[0], _mm_set_epi64x(0x3080375dcfb81692, 0x618d27a691785dd6));
+    d[1] = _mm_xor_si128(d[1], _mm_set_epi64x(0x1d29639e3d69dfa3, 0xfee7321348fb407c));
+    d[2] = _mm_xor_si128(d[2], _mm_set_epi64x(0xaa8931aa6e031c49, 0xa39792686296ea8d));
+    d[3] = _mm_xor_si128(d[3], _mm_set_epi64x(0x24285a5f4e3b945c, 0xe0c682d9c3ead3c5));
+    d[4] = _mm_xor_si128(d[4], _mm_set_epi64x(0x38b6bfd1c84840c4, 0x007f7b8ebfe1fbb3));
+    d[5] = _mm_xor_si128(d[5], _mm_set_epi64x(0xba84dfc5706ada00, 0xbe347d23fb23903b));
+#else
+    u64* d = (u64*)&pkmn->data[1];
     d[0] ^= 0x618d27a691785dd6;
     d[1] ^= 0x3080375dcfb81692;
     d[2] ^= 0xfee7321348fb407c;
@@ -523,29 +611,55 @@ static void EncryptBlocksChecksumZero(PKMN* pkmn) {
     d[9] ^= 0x38b6bfd1c84840c4;
     d[10] ^= 0xbe347d23fb23903b;
     d[11] ^= 0xba84dfc5706ada00;
+#endif
 }
 
-static void EncryptCondition(PKMN* pkmn) {
+static void EncryptCondition(PKMN* pkmn)
+{
     /* LCRNG is seeded with the PID */
     /* Advance the LCRNG, XOR its 16 most significant bits with each 16-bit word of Condition data */
     /* It is not needed to encrypt the whole 50 16-bit words of Condition data, I stop at 5 to include HP MAX */
+#if ENABLE_SSE
+    // Requires SSSE3
     u32 state = pkmn->pid;
-    for (u64 i = 0; i < COND_SIZE_XS; i++) {
+    u128 vstate = _mm_set1_epi32(state);
+    u128 vmul = _mm_set_epi32(0xEE067F11, 0x807DBCB5, 0xC2A29A69, 0x41C64E6D);
+    u128 vadd = _mm_set_epi32(0x31B0DDE4, 0x52713895, 0xE97E7B6A, 0x00006073);
+    u128 mask_shuffle = _mm_set_epi16(0x8080, 0x8080, 0x8080, 0x8080, 0x0F0E, 0x0B0A, 0x0706, 0x0302);
+    u128* cond = (u128*)&pkmn->cond;
+    vstate = _mm_mullo_epi32(vstate, vmul);
+    vstate = _mm_add_epi32(vstate, vadd);
+    cond[0] = _mm_xor_si128(cond[0], _mm_shuffle_epi8(vstate, mask_shuffle));
+    pkmn->cond[4] ^= ((state * 0xEBA1483D + 0x8E425287) >> 16);
+#else
+    u32 state = pkmn->pid;
+    for (u64 i = 0; i < COND_SIZE_XS; i++)
+    {
         pkmn->cond[i] ^= (RngNext(&state) >> 16);
     }
+#endif
 }
 
-static void DecomposeIVs(u32 p, u8 ivs[STATS_MAX]) {
-    /* Decompose 5-bit packed IVs into individual u8 buffers */
+static void DecomposeIVs(u32 p, u8 ivs[STATS_MAX])
+{
+    /* Decomposes 5-bit packed IVs into individual u8 buffers */
+#if ENABLE_SSE
+    // Requires BMI2
+    // todo: check potential out of bounds write to the <ivs> array
+    u64* x = ivs;
+    *x = _pdep_u64(p, 0x1F1F1F1F1F1F);
+#else
     ivs[HP] = (p >> 0) & IV_VALUE_MAX;
     ivs[AT] = (p >> 5) & IV_VALUE_MAX;
     ivs[DF] = (p >> 10) & IV_VALUE_MAX;
     ivs[SP] = (p >> 15) & IV_VALUE_MAX;
     ivs[SA] = (p >> 20) & IV_VALUE_MAX;
     ivs[SD] = (p >> 25) & IV_VALUE_MAX;
+#endif
 }
 
-static u32 GetIVs(u8 ivs[STATS_MAX]) {
+static u32 GetIVs(u8 ivs[STATS_MAX])
+{
     /* From individual IVs to single 32-bit value */
     //currently unused, want to do something with faster filtering during the search
     return (ivs[HP] << 0) |
@@ -556,48 +670,43 @@ static u32 GetIVs(u8 ivs[STATS_MAX]) {
         (ivs[SD] << 25);
 }
 
-static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX]) {
-    /* Calculate Hidden Power from IVs */
-
+static HIDDENPOWER GetHiddenPower(u8 ivs[STATS_MAX])
+{
+    /* Calculates Hidden Power from IVs */
     u8 power = ((ivs[HP] & 2) >> 1) |
         ((ivs[AT] & 2) >> 0) |
         ((ivs[DF] & 2) << 1) |
         ((ivs[SP] & 2) << 2) |
         ((ivs[SA] & 2) << 3) |
         ((ivs[SD] & 2) << 4);
-
     u8 type = ((ivs[HP] & 1) >> 0) |
         ((ivs[AT] & 1) << 1) |
         ((ivs[DF] & 1) << 2) |
         ((ivs[SP] & 1) << 3) |
         ((ivs[SA] & 1) << 4) |
         ((ivs[SD] & 1) << 5);
-
     power = (power * 40 / 63) + 30;
     type = (type * 15 / 63) + 1;
-
     if (type >= TYPE_UNKNOWN) { type++; }
-
     return (HIDDENPOWER) { type, power };
 }
 
-static void MethodJSeedToPID(u32 state, PKMN* pkmn) {
-    /* Calculate PID, Nature and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
-    //pkmn->nature = (((u64)RngNext(&state) >> 17) * 3276101) >> 32; // fast nature computation (avoids div instruction with 0x0A3E0000)
-    pkmn->nature = ((RngNext(&state) >> 17) * 25595) >> 25; // fast division by 0x0A3E0000 of the 32-bit state
-
+static void MethodJSeedToPID(u32 state, PKMN* pkmn)
+{
+    /* Calculate PID and IVs according to Method J Stationary (no Synchronize / Cute Charm) from a given state */
+    u32 nature = ((RngNext(&state) >> 17) * 25595) >> 25; // fast division by 0x0A3E0000 of the 32-bit state
     do {
         u32 state2 = state * 0xC2A29A69 + 0xE97E7B6A; //advance LCRNG by 2
         state = state * 0x41C64E6D + 0x00006073; //advance LCRNG by 1
         pkmn->pid = (state >> 16) | (state2 & 0xffff0000);
         state = state2;
-    } while (GetNatureId(pkmn->pid) != pkmn->nature);
-
+    } while (GetNatureId(pkmn->pid) != nature);
     pkmn->iv32 = ((RngNext(&state) >> 16) & 0x00007fff) | ((RngNext(&state) >> 1) & 0x3fff8000);
 }
 
-static REVERSEDSEED ReverseSeed(u32 seed) {
-    /* Find the nearest console-hitable seed provided the current state of the RNG */
+static REVERSEDSEED ReverseSeed(u32 seed)
+{
+    /* Finds the nearest seed you can hit on console to reach the desired state of the RNG */
     u32 state = seed;
     u16 frame = 0;
     u8 a = state >> 24;
@@ -615,7 +724,8 @@ static REVERSEDSEED ReverseSeed(u32 seed) {
     return (REVERSEDSEED) { seed, state, frame };
 }
 
-static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
+static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf)
+{
     /* Stripped down version of general search, only vary the ASLR */
 
     // todo: add valid mirrors
@@ -624,9 +734,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
 
     u8 filename[PATH_REL_LENGTH_MAX] = { 0 };
     sprintf(filename, ".results/%08X_ASLR.txt", rs->reversed);
-    FILE* fp = fopen(filename, "wb+");
-    if (fp == NULL) { return APP_ERR_OPEN_FILE; }
-
+    FILE_TRY_OPEN(fp, filename, "wb+");
     fprintf(fp, "/4    ASLR        Wild       Species\n\n");
 
     SEARCHDATA sd = { 0 };
@@ -639,8 +747,8 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
     u8 korean_offset = (pf->language == LANGUAGE_KO) ? KOREAN_OFFSET : 0;
     u32 levelMult = sd.pOgWild->level / 100;
 
-    for (u32 offset = 0; offset <= 256; offset += 4) {
-
+    for (u32 offset = 0; offset <= 256; offset += 4)
+    {
         u32 aslr = AslrMin[pf->language][sd.grouped_version] + offset;
 
         PKMN wild = { 0 }; //0 init
@@ -694,7 +802,7 @@ static APPSTATUS MotorSearchAslr(REVERSEDSEED* rs, PROFILE* pf) {
         seven.data[SEVEN_BLOCK_A][14] = 0x0001;
         seven.data[SEVEN_BLOCK_A][15] = 0x0000;
         /* Block C, B, D and Condition data */
-        memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_SIZE + STACK_OFFSET + COND_SIZE_XS));
+        memcpy(&seven.data[SEVEN_BLOCK_C], &wild.pid, 2 * (BLOCKS * BLOCK_WORDS + STACK_OFFSET + COND_SIZE_XS));
 
         EncryptBlocksChecksumZero(&seven);
 
