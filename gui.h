@@ -127,8 +127,10 @@ const INT MySysElements[SYS_ELEMENTS] = { COLOR_HIGHLIGHT, COLOR_HIGHLIGHTTEXT }
 u8 ResultsListStrings[1500][2 * STRING_LENGTH_MAX] = { 0 };
 
 const u8 Stats[STATS_MAX][3] = { "HP", "AT", "DF", "SA", "SD", "SP" };
+const u8 StatVisualToInternal[STATS_MAX] = { HP, AT, DF, SA, SD, SP };
 
-enum {
+enum
+{
     NATURE_HARDY,
     NATURE_LONELY,
     NATURE_BRAVE,
@@ -157,12 +159,66 @@ enum {
 };
 
 /* List of Natures sorted alphabetically */
-const u8 NaturesSorted[NATURES_FILTER_MAX][8] = { "(none)", "Adamant", "Bashful", "Bold", "Brave", "Calm", "Careful", "Docile", "Gentle", "Hardy", "Hasty", "Impish", "Jolly", "Lax", "Lonely", "Mild", "Modest", "Naive", "Naughty", "Quiet", "Quirky", "Rash", "Relaxed", "Sassy", "Serious", "Timid" };
+const u8 NaturesSorted[NATURES_FILTER_MAX][8] =
+{
+    "(none)",
+    "Adamant",
+    "Bashful",
+    "Bold",
+    "Brave",
+    "Calm",
+    "Careful",
+    "Docile",
+    "Gentle",
+    "Hardy",
+    "Hasty",
+    "Impish",
+    "Jolly",
+    "Lax",
+    "Lonely",
+    "Mild",
+    "Modest",
+    "Naive",
+    "Naughty",
+    "Quiet",
+    "Quirky",
+    "Rash",
+    "Relaxed",
+    "Sassy",
+    "Serious",
+    "Timid"
+};
 
 /* Conversion table for alphabetical to internal Natures ordering */
-const u8 NatureSortedToInternal[NATURES_FILTER_MAX] = { NATURE_FILTER_NONE, NATURE_ADAMANT, NATURE_BASHFUL, NATURE_BOLD, NATURE_BRAVE, NATURE_CALM, NATURE_CAREFUL, NATURE_DOCILE, NATURE_GENTLE, NATURE_HARDY, NATURE_HASTY, NATURE_IMPISH, NATURE_JOLLY, NATURE_LAX, NATURE_LONELY, NATURE_MILD, NATURE_MODEST, NATURE_NAIVE, NATURE_NAUGHTY, NATURE_QUIET, NATURE_QUIRKY, NATURE_RASH, NATURE_RELAXED, NATURE_SASSY, NATURE_SERIOUS, NATURE_TIMID };
-
-const u8 StatVisualToInternal[STATS_MAX] = { HP, AT, DF, SA, SD, SP };
+const u8 NatureSortedToInternal[NATURES_FILTER_MAX] =
+{
+    NATURE_FILTER_NONE,
+    NATURE_ADAMANT,
+    NATURE_BASHFUL,
+    NATURE_BOLD,
+    NATURE_BRAVE,
+    NATURE_CALM,
+    NATURE_CAREFUL,
+    NATURE_DOCILE,
+    NATURE_GENTLE,
+    NATURE_HARDY,
+    NATURE_HASTY,
+    NATURE_IMPISH,
+    NATURE_JOLLY,
+    NATURE_LAX,
+    NATURE_LONELY,
+    NATURE_MILD,
+    NATURE_MODEST,
+    NATURE_NAIVE,
+    NATURE_NAUGHTY,
+    NATURE_QUIET,
+    NATURE_QUIRKY,
+    NATURE_RASH,
+    NATURE_RELAXED,
+    NATURE_SASSY,
+    NATURE_SERIOUS,
+    NATURE_TIMID
+};
 
 /* Windows and classes */
 DeclareWindowAndClass(AppMain)
@@ -210,16 +266,15 @@ DeclareBrushAndPen(Debug)
 
 /* Functions */
 
-static void Esketit(void) {
-    /* All the pretty things */
-
-    //Use an old Windows System Font for highest compatibility
+static void Esketit(void)
+{
+    /* Initializes all the pretty things */
+    // Use an old Windows System Font for highest compatibility
     myFont = CreateFontA(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Courier");
-
     /* Save user system colors to restore them at the end */
     MyOldSysColors[0] = GetSysColor(MySysElements[0]);
     MyOldSysColors[1] = GetSysColor(MySysElements[1]);
-
+    /* Create the brushes */
     HBRUSH_Dark = CreateSolidBrush(MOTOR_COLOR_DARK);
     HBRUSH_Teal = CreateSolidBrush(MOTOR_COLOR_TEAL);
     HBRUSH_Teal_h = CreateSolidBrush(MOTOR_COLOR_TEAL_H);
@@ -227,8 +282,7 @@ static void Esketit(void) {
     HBRUSH_Pump_h = CreateSolidBrush(MOTOR_COLOR_PUMP_H);
     HBRUSH_Gray = CreateSolidBrush(MOTOR_COLOR_GRAY);
     HBRUSH_Debug = CreateSolidBrush(MOTOR_COLOR_DEBUG);
-
-    /* All pens are solid with a width of 1 pixel */
+    /* Create the pens, all solid with a width of 1 pixel */
     HPEN_Dark = CreatePen(PS_SOLID, 0, MOTOR_COLOR_DARK);
     HPEN_Teal = CreatePen(PS_SOLID, 0, MOTOR_COLOR_TEAL);
     HPEN_Teal_h = CreatePen(PS_SOLID, 0, MOTOR_COLOR_TEAL_H);
@@ -238,10 +292,10 @@ static void Esketit(void) {
     HPEN_Debug = CreatePen(PS_SOLID, 0, MOTOR_COLOR_DEBUG);
 }
 
-static void FreeEsketit(void) {
-    /* Free/restore resources */
-    SetSysColors(SYS_ELEMENTS, MySysElements, MyOldSysColors);
-
+static void FreeEsketit(void)
+{
+    /* Free resources */
+    SetSysColors(SYS_ELEMENTS, MySysElements, MyOldSysColors); // not great, used for custom text highlight color
     DeleteObject(HBRUSH_Dark);
     DeleteObject(HBRUSH_Teal);
     DeleteObject(HBRUSH_Teal_h);
@@ -258,7 +312,8 @@ static void FreeEsketit(void) {
     DeleteObject(HPEN_Debug);
 }
 
-static HBRUSH GetBrushFromColor(int color) {
+static HBRUSH GetBrushFromColor(int color)
+{
     /* Return the HBRUSH corresponding to a MOTOR_COLOR */
     switch (color)
     {
@@ -272,8 +327,9 @@ static HBRUSH GetBrushFromColor(int color) {
     return HBRUSH_Debug;
 }
 
-static HBRUSH GetDarkBrushFromColor(int color) {
-    /* Return the dark HBRUSH corresponding to a MOTOR_COLOR */
+static HBRUSH GetDarkBrushFromColor(int color)
+{
+    /* Returns the dark HBRUSH corresponding to a MOTOR_COLOR */
     switch (color)
     {
     case MOTOR_COLOR_TEAL_H: return HBRUSH_Teal;
@@ -282,8 +338,9 @@ static HBRUSH GetDarkBrushFromColor(int color) {
     return HBRUSH_Debug;
 }
 
-static int GetDarkColor(int color) {
-    /* Return the dark HBRUSH corresponding to a MOTOR_COLOR */
+static int GetDarkColor(int color)
+{
+    /* Returns the dark HBRUSH corresponding to a MOTOR_COLOR */
     switch (color)
     {
     case MOTOR_COLOR_TEAL_H: return MOTOR_COLOR_TEAL;
@@ -292,8 +349,9 @@ static int GetDarkColor(int color) {
     return MOTOR_COLOR_DEBUG;
 }
 
-static HPEN GetPenFromColor(int color) {
-    /* Return the HPEN corresponding to a MOTOR_COLOR */
+static HPEN GetPenFromColor(int color)
+{
+    /* Returns the HPEN corresponding to a MOTOR_COLOR */
     switch (color)
     {
     case MOTOR_COLOR_DARK: return HPEN_Dark;
@@ -306,15 +364,16 @@ static HPEN GetPenFromColor(int color) {
     return HPEN_Debug;
 }
 
-static BOOL DrawButton_hover(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 length) {
-    /* Draw button but hollow */
+static BOOL DrawButton_hover(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 length)
+{
+    /* Draws button on hover */
     SelectObject(lpdis->hDC, HBRUSH_Dark);
     Rectangle(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom);
-    /* Draw the rounded button */
+    /* Draws the rounded button */
     SelectObject(lpdis->hDC, GetPenFromColor(color)); //stroke color
     SelectObject(lpdis->hDC, HBRUSH_Dark); //fill color
     RoundRect(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S);
-    /* Draw the text of the button */
+    /* Draws the text of the button */
     SelectObject(lpdis->hDC, myFont);
     SetBkColor(lpdis->hDC, MOTOR_COLOR_DARK);
     SetTextColor(lpdis->hDC, color);
@@ -322,42 +381,50 @@ static BOOL DrawButton_hover(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 le
     return TRUE;
 }
 
-static BOOL DrawButton(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 length) {
-    /**/
-    /* Draw the background rect the same color as main window */
-    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED) || lpdis->itemState == ODS_INVERT) {
-        return DrawButton_hover(lpdis, color, label, length); //only when clicked
+static BOOL DrawButton(LPDRAWITEMSTRUCT lpdis, int color, u8* label, u8 length)
+{
+    /* Draws the background rect the same color as main window */
+    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED) || lpdis->itemState == ODS_INVERT)
+    {
+        return DrawButton_hover(lpdis, color, label, length); // only when clicked
     }
     SelectObject(lpdis->hDC, HBRUSH_Dark);
     Rectangle(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom);
-    /* Draw the rounded button */
-    SelectObject(lpdis->hDC, GetPenFromColor(color)); //stroke color
-    SelectObject(lpdis->hDC, GetBrushFromColor(color)); //fill color
+    /* Draws the rounded button */
+    SelectObject(lpdis->hDC, GetPenFromColor(color)); // stroke color
+    SelectObject(lpdis->hDC, GetBrushFromColor(color)); // fill color
     RoundRect(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom, APP_BORDER_RADIUS_S, APP_BORDER_RADIUS_S);
-    /* Draw the text of the button */
+    /* Draws the text of the button */
     SelectObject(lpdis->hDC, myFont);
     SetBkColor(lpdis->hDC, color);
-    SetTextColor(lpdis->hDC, MOTOR_COLOR_GRAY); //always
+    SetTextColor(lpdis->hDC, MOTOR_COLOR_GRAY); // always
     DrawTextA(lpdis->hDC, label, length, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
     return TRUE;
 }
 
-static BOOL DrawList(LPDRAWITEMSTRUCT lpdis, u8* label, u32 length, int color) {
+static BOOL DrawList(LPDRAWITEMSTRUCT lpdis, u8* label, u32 length, int color)
+{
     /* Draws a combobox control: drop down list and static text at the top */
-    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED)) { //mouse hover highlight
+    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED))
+    {
+        // Mouse hover highlight
         SelectObject(lpdis->hDC, GetDarkBrushFromColor(color));
         Rectangle(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom);
         SetBkColor(lpdis->hDC, GetDarkColor(color));
         SetTextColor(lpdis->hDC, MOTOR_COLOR_GRAY);
     }
-    else if (lpdis->itemState < 2) { //hack: avoids drawing Rectangle on the static text
+    else if (lpdis->itemState < 2)
+    {
+        // Hack, avoids drawing Rectangle on the static text
         SelectObject(lpdis->hDC, HBRUSH_Dark);
         SelectObject(lpdis->hDC, GetPenFromColor(color));
         Rectangle(lpdis->hDC, lpdis->rcItem.left, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom);
         SetBkColor(lpdis->hDC, MOTOR_COLOR_DARK);
         SetTextColor(lpdis->hDC, color);
     }
-    else { //static text
+    else
+    {
+        // Static text
         SetBkColor(lpdis->hDC, MOTOR_COLOR_DARK);
         SetTextColor(lpdis->hDC, color);
     }
@@ -366,17 +433,19 @@ static BOOL DrawList(LPDRAWITEMSTRUCT lpdis, u8* label, u32 length, int color) {
     return TRUE;
 }
 
-static BOOL DrawResultsList(LPDRAWITEMSTRUCT lpdis) {
-    /* Draw each item in the results list */
-
+static BOOL DrawResultsList(LPDRAWITEMSTRUCT lpdis)
+{
+    /* Draws each item in the results list */
     // debugging below (apparently this fixed the crash in release mode when loading file results)
-    if (lpdis->itemID == -1) return FALSE;
-
-    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED) || lpdis->itemState == ODS_SELECTED) { //selected
+    if (lpdis->itemID == -1) { return FALSE; }
+    if (lpdis->itemState == (ODS_FOCUS | ODS_SELECTED) || lpdis->itemState == ODS_SELECTED)
+    {
+        // Selected
         SetBkColor(lpdis->hDC, MOTOR_COLOR_PUMP);
         SetTextColor(lpdis->hDC, MOTOR_COLOR_GRAY);
     }
-    else {
+    else
+    {
         SetBkColor(lpdis->hDC, MOTOR_COLOR_DARK);
         SetTextColor(lpdis->hDC, MOTOR_COLOR_TEAL_H);
     }
@@ -385,78 +454,91 @@ static BOOL DrawResultsList(LPDRAWITEMSTRUCT lpdis) {
     return TRUE;
 }
 
-static HWND GetNextSearchParamTabStop(HWND cur) {
+static HWND GetNextSearchParamTabStop(HWND cur)
+{
     /* There's probably a better way to do this */
-    if (cur == HWND_tid_param)           return HWND_sid_param;
-    if (cur == HWND_sid_param)           return HWND_aslr_param;
-    if (cur == HWND_aslr_param)          return HWND_seed_param;
-    if (cur == HWND_seed_param)          return HWND_frames_param;
-    if (cur == HWND_frames_param)        return HWND_version_param;
-    if (cur == HWND_version_param)       return HWND_language_param;
-    if (cur == HWND_language_param)      return HWND_wild_param;
-    if (cur == HWND_wild_param)          return HWND_mac_param;
-    if (cur == HWND_mac_param)           return HWND_species_filter;
+    if (cur == HWND_tid_param)      return HWND_sid_param;
+    if (cur == HWND_sid_param)      return HWND_aslr_param;
+    if (cur == HWND_aslr_param)     return HWND_seed_param;
+    if (cur == HWND_seed_param)     return HWND_frames_param;
+    if (cur == HWND_frames_param)   return HWND_version_param;
+    if (cur == HWND_version_param)  return HWND_language_param;
+    if (cur == HWND_language_param) return HWND_wild_param;
+    if (cur == HWND_wild_param)     return HWND_mac_param;
+    if (cur == HWND_mac_param)      return HWND_species_filter;
     if (cur == HWND_species_filter) return HWND_item_filter;
     if (cur == HWND_item_filter)    return HWND_move_filter;
     if (cur == HWND_move_filter)    return HWND_ability_filter;
     if (cur == HWND_ability_filter) return HWND_nature_filter;
     if (cur == HWND_nature_filter)  return HWND_iv_filter[0];
-    if (cur == HWND_iv_filter[0])         return HWND_iv_filter[1];
-    if (cur == HWND_iv_filter[1])         return HWND_iv_filter[2];
-    if (cur == HWND_iv_filter[2])         return HWND_iv_filter[3];
-    if (cur == HWND_iv_filter[3])         return HWND_iv_filter[4];
-    if (cur == HWND_iv_filter[4])         return HWND_iv_filter[5];
-    if (cur == HWND_iv_filter[5])         return HWND_tid_param;
+    if (cur == HWND_iv_filter[0])   return HWND_iv_filter[1];
+    if (cur == HWND_iv_filter[1])   return HWND_iv_filter[2];
+    if (cur == HWND_iv_filter[2])   return HWND_iv_filter[3];
+    if (cur == HWND_iv_filter[3])   return HWND_iv_filter[4];
+    if (cur == HWND_iv_filter[4])   return HWND_iv_filter[5];
+    if (cur == HWND_iv_filter[5])   return HWND_tid_param;
     return HWND_tid_param;
 }
 
-static APPSTATUS ConfirmAbortSearch(void) {
+static APPSTATUS ConfirmAbortSearch(void)
+{
     /* Message box */
     int answer = MessageBoxA(NULL, "Do you want to abort the search?", MBL_CONFIRM, MB_YESNOCANCEL | MB_ICONQUESTION);
     if (answer == IDYES) { return APP_ABORT_SEARCH; }
     return APP_RESUME;
 }
 
-static void ErrorMessageBox_BadProfile(APPSTATUS code) {
+static void ErrorMessageBox_BadProfile(APPSTATUS code)
+{
     /* Message box when a search parameter is incorrect */
     u8 str[3 * STRING_LENGTH_MAX] = { 0 };
     sprintf(str, "%s is invalid, please correct it.", PROFILE_ErrorCodes[code - PROFILE_OK]);
     MessageBoxA(NULL, str, MBL_ERROR, MB_OK | MB_ICONWARNING);
 }
 
-static void SetWindowTextFromInt(HWND hwnd, u8* format, u64 value) {
+static void SetWindowTextFromInt(HWND hwnd, u8* format, u64 value)
+{
     /* Format the string with value and send it to the window */
     u8 str[STRING_LENGTH_MAX] = { 0 };
     sprintf(str, format, value);
     SetWindowTextA(hwnd, str);
 }
 
-static void SetFilterInput(HWND hInput, const u8 strarr[][STRING_LENGTH_MAX], u16 max, u16* pparam) {
+static void SetFilterInput(HWND hInput, const u8 strarr[][STRING_LENGTH_MAX], u16 max, u16* pparam)
+{
     /* Filters */
     //Enter a digit, see the corresponding string show up (ex: 151 -> Mew)
     u8 b[STRING_LENGTH_MAX] = { 0 };
     GetWindowTextA(hInput, b, STRING_LENGTH_MAX);
     ZeroLeftPadTextInputInt(b, FILTER_DIGITS_MAX);
-    if (!IsValidIntString_dec(b, FILTER_DIGITS_MAX)) { //String
-        if (GetIndexOfString(b, strarr, max) == -1) {
+    if (!IsValidIntString_dec(b, FILTER_DIGITS_MAX))
+    {
+        // String
+        if (GetIndexOfString(b, strarr, max) == -1)
+        {
             *pparam = 0;
-            SetWindowTextA(hInput, "Anything"); //default
+            SetWindowTextA(hInput, "Anything"); // default
         }
     }
-    else { //Number string
+    else
+    {
+        // Number string
         u32 value = AsciiToInt_dec16(b);
-        if (value >= max) {
+        if (value >= max)
+        {
             *pparam = 0;
-            SetWindowTextA(hInput, "Anything"); //default
+            SetWindowTextA(hInput, "Anything"); // default
         }
-        else {
+        else
+        {
             *pparam = value;
-            SetWindowTextA(hInput, strarr[value]); //fetch string from array
+            SetWindowTextA(hInput, strarr[value]); // fetch string from array
         }
     }
 }
 
-static u32 SetTextInput_dec16(HWND hInput, u16 min, u16 max, u16 def, u8 digits) {
+static u32 SetTextInput_dec16(HWND hInput, u16 min, u16 max, u16 def, u8 digits)
+{
     /* TID, SID, Year, IVs  */
     u8 b[U16_DIGITS_DEC_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_dec16
     GetWindowTextA(hInput, b, digits + 1);
@@ -471,75 +553,91 @@ static u32 SetTextInput_dec16(HWND hInput, u16 min, u16 max, u16 def, u8 digits)
     return value;
 }
 
-static void SetTextInput_dec32(HWND hInput) {
+static void SetTextInput_dec32(HWND hInput)
+{
     /* Frames limit = 0xFFFFFFFF */
     u8 b[U32_DIGITS_DEC_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_dec32
     GetWindowTextA(hInput, b, U32_DIGITS_DEC_MAX + 1);
     ZeroLeftPadTextInputInt(b, U32_DIGITS_DEC_MAX);
     u64 value = AsciiToInt_dec32(b);
-    if (!value || value > U32_VALUE_MAX || !IsValidIntString_dec(b, U32_DIGITS_DEC_MAX)) {
+    if (!value || value > U32_VALUE_MAX || !IsValidIntString_dec(b, U32_DIGITS_DEC_MAX))
+    {
         SetWindowTextA(hInput, "4294967295");
     }
-    else {
+    else
+    {
         SetWindowTextA(hInput, b);
     }
 }
 
-static void SetTextInput_hex32(HWND hInput) {
+static void SetTextInput_hex32(HWND hInput)
+{
     /* Seed */
     u8 b[U32_DIGITS_HEX_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_hex32
     GetWindowTextA(hInput, b, U32_DIGITS_HEX_MAX + 1);
     ZeroLeftPadTextInputInt(b, U32_DIGITS_HEX_MAX);
     u32 value = AsciiToInt_hex32(b);
-    if (value > U32_VALUE_MAX || !IsValidIntString_hex(b, U32_DIGITS_HEX_MAX)) {
+    if (value > U32_VALUE_MAX || !IsValidIntString_hex(b, U32_DIGITS_HEX_MAX))
+    {
         SetWindowTextA(hInput, "FFFFFFFF");
     }
-    else {
+    else
+    {
         sprintf(b, "%08X", value);
         SetWindowTextA(hInput, b);
     }
 }
 
-static void SetTextInput_aslr(HWND hInput) {
+static void SetTextInput_aslr(HWND hInput)
+{
     /* ASLR */
-    u8 b[ASLR_DIGITS_DEC_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_aslr
+    u8 b[ASLR_DIGITS_DEC_MAX + 1] = { 0 }; // null terminator discarded when b is sent to AsciiToInt_aslr
     GetWindowTextA(hInput, b, ASLR_DIGITS_DEC_MAX + 1);
     ZeroLeftPadTextInputInt(b, ASLR_DIGITS_DEC_MAX);
     u32 value = AsciiToInt_dec16(b);
-    if (value > ASLR_VALUE_MAX || !IsValidIntString_dec(b, ASLR_DIGITS_DEC_MAX)) {
-        SetWindowTextA(hInput, "11"); //not always 11, depends on language and version
+    if (value > ASLR_VALUE_MAX || !IsValidIntString_dec(b, ASLR_DIGITS_DEC_MAX))
+    {
+        SetWindowTextA(hInput, "11"); // not always 11, depends on language and version
     }
-    else {
+    else
+    {
         SetWindowTextA(hInput, b);
     }
 }
 
-static void SetTextInput_mac(HWND hInput) {
+static void SetTextInput_mac(HWND hInput)
+{
     /* MAC address (hex) */
     u8 b[MAC_DIGITS_HEX_MAX + 1] = { 0 }; //null terminator discarded when b is sent to AsciiToInt_hex32
     GetWindowTextA(hInput, b, MAC_DIGITS_HEX_MAX + 1);
     ZeroLeftPadTextInputInt(b, MAC_DIGITS_HEX_MAX);
     u64 value = AsciiToInt_hex64(b);
-    if (value > MAC_VALUE_MAX || !IsValidIntString_hex(b, MAC_DIGITS_HEX_MAX)) {
+    if (value > MAC_VALUE_MAX || !IsValidIntString_hex(b, MAC_DIGITS_HEX_MAX))
+    {
         SetWindowTextA(hInput, "000000000000");
     }
-    else {
+    else
+    {
         sprintf(b, "%012llX", value);
         SetWindowTextA(hInput, b);
     }
 }
 
-static u8 GetProfileSlot(void) {
+static u8 GetProfileSlot(void)
+{
     /* Find and return the first active profile slot (there should only be 1) */
-    for (u8 i = 0; i < PROFILE_SLOTS_MAX; i++) {
-        if ((ProfileSlotState[i] & 0xf0) == PSS_ACTIVE) {
+    for (u32 i = 0; i < PROFILE_SLOTS_MAX; i++)
+    {
+        if ((ProfileSlotState[i] & 0xf0) == PSS_ACTIVE)
+        {
             return i;
         }
     }
-    return 255; //couldn't find active slot
+    return PROFILE_SLOTS_MAX; //couldn't find active slot
 }
 
-static void CheckTab(MSG* msg) {
+static void CheckTab(MSG* msg)
+{
     /* Checks if Motor is the foreground window and process TAB key */
     if (GetForegroundWindow() != HWND_AppMain) return;
 
@@ -558,7 +656,8 @@ static LRESULT WINAPI SearchParametersProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 static LRESULT WINAPI ResultsProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT WINAPI AppMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-static int CreateWindows(HINSTANCE hInstance) {
+static int CreateWindows(HINSTANCE hInstance)
+{
     /* Create windows, instances and classes */
 
     WC_AppMain.cbSize = sizeof(WNDCLASSEXA);
